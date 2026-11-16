@@ -6,75 +6,72 @@
     <title>Flickctx</title>
     <meta
       name="description"
-      content="Mark a screen region, ask about it, keep chatting. Open-source vision companion that follows the signal across AWS, Datadog, and your local repos."
+      content="Mark a region on screen, ask about it, keep chatting. Follow incidents across AWS, Datadog, and your local repos."
     />
+    <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Syne:wght@600;700;800&display=swap"
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Syne:wght@700;800&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
-    <div class="page">
-      <header class="mast">
-        <a class="logo" href="./">Flick<span>ctx</span></a>
+    <header class="mast">
+      <a class="logo" href="./">Flick<span>ctx</span></a>
+      <nav>
+        <a href="#install">Install</a>
         <a
-          class="mast-link"
           href="https://github.com/Pegusus/flickctx"
           target="_blank"
           rel="noreferrer"
-          >github.com/Pegusus/flickctx</a
+          >GitHub</a
         >
-      </header>
+      </nav>
+    </header>
 
-      <section class="hero" id="top">
-        <div class="hero-text">
-          <h1 class="logo-hero">Flick<span>ctx</span></h1>
-          <p class="line">
-            Follow an incident across tabs — mark the spike, mark the log, ask
-            what connects them.
-          </p>
-          <div class="actions">
-            <a
-              class="action"
-              href="https://github.com/Pegusus/flickctx"
-              target="_blank"
-              rel="noreferrer"
-              >Clone the repo</a
-            >
-            <a class="action quiet" href="#install">npm start</a>
-          </div>
+    <section class="hero">
+      <div class="hero-rail">
+        <p class="brand">Flick<span>ctx</span></p>
+        <p class="line">
+          Mark the CloudWatch spike. Switch tabs. Mark the Datadog timeout.
+          Ask what connects them.
+        </p>
+        <div class="actions">
+          <a
+            class="action"
+            href="https://github.com/Pegusus/flickctx"
+            target="_blank"
+            rel="noreferrer"
+            >Clone the repo</a
+          >
+          <a class="action quiet" href="#install">Install</a>
         </div>
+      </div>
 
-        <div class="theater" aria-label="Animated product demonstration">
-          <div class="theater-inner" id="demo"></div>
-          <p class="theater-caption" id="caption" aria-live="polite"></p>
-        </div>
-      </section>
+      <div class="theater" aria-label="Animated cross-tab incident demo">
+        <div class="theater-stage" id="demo"></div>
+        <p class="caption" id="caption"></p>
+      </div>
+    </section>
 
-      <section class="strip" id="install">
-        <div class="strip-copy">
-          <h2>Run it locally</h2>
-          <p>
-            Electron app. Freehand mark → JPEG vision crop + full-screen context
-            + frontmost app hint → multi-turn chat.
-          </p>
-        </div>
-        <pre class="terminal"><code>git clone https://github.com/Pegusus/flickctx.git
-cd flickctx &amp;&amp; npm install
+    <section class="install" id="install">
+      <h2>Install</h2>
+      <pre><code>git clone https://github.com/Pegusus/flickctx.git
+cd flickctx && npm install
 npx flickctx config --api-key sk-ant-… --model claude-sonnet-4-5
-npm start   # then ⌘⇧F / Ctrl+Shift+F</code></pre>
-      </section>
+npm start</code></pre>
+      <p class="hint">Then <kbd>⌘⇧F</kbd> / <kbd>Ctrl+Shift+F</kbd> — draw freehand, ask, keep chatting.</p>
+    </section>
 
-      <footer class="colophon">
-        <span>MIT · Pegusus</span>
-        <a href="https://github.com/Pegusus/flickctx" target="_blank" rel="noreferrer"
-          >Source</a
-        >
-      </footer>
-    </div>
+    <footer class="foot">
+      <span>MIT · Pegusus</span>
+      <a href="https://github.com/Pegusus/flickctx" target="_blank" rel="noreferrer"
+        >github.com/Pegusus/flickctx</a
+      >
+    </footer>
+
     <script src="./demo.js"></script>
   </body>
 </html>
