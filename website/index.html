@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Flickctx — mark anything, ask anything</title>
+    <meta
+      name="description"
+      content="Open-source screen companion. Mark a region, ask a question, get a vision-grounded answer with local context and web tools."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="top">
+      <a class="brand" href="#top" aria-label="Flickctx home">
+        Flick<span>ctx</span>
+      </a>
+      <nav class="nav">
+        <a href="#how">How it works</a>
+        <a href="#use">Walkthrough</a>
+        <a href="#install">Install</a>
+        <a
+          class="nav-cta"
+          href="https://github.com/Pegusus/flickctx"
+          target="_blank"
+          rel="noreferrer"
+          >GitHub</a
+        >
+      </nav>
+    </header>
+
+    <main id="top">
+      <section class="hero" aria-label="Introduction">
+        <div class="hero-copy">
+          <p class="brand-mark" aria-hidden="true">Flick<span>ctx</span></p>
+          <h1>Mark anything on your screen. Ask anything.</h1>
+          <p class="lede">
+            Open-source vision companion for engineers — freehand a region,
+            keep chatting, grounded in what’s actually on screen.
+          </p>
+          <div class="cta-row">
+            <a
+              class="btn primary"
+              href="https://github.com/Pegusus/flickctx"
+              target="_blank"
+              rel="noreferrer"
+              >View on GitHub</a
+            >
+            <a class="btn ghost" href="#install">Install locally</a>
+          </div>
+        </div>
+
+        <div class="hero-stage" aria-hidden="true">
+          <div class="stage-frame" id="hero-demo">
+            <!-- animated product stage filled by demo.js -->
+          </div>
+        </div>
+      </section>
+
+      <section class="section how" id="how">
+        <header class="section-head">
+          <h2>How it works</h2>
+          <p>One path for every ask — crop first, tools second.</p>
+        </header>
+        <ol class="flow">
+          <li>
+            <span class="step">01</span>
+            <div>
+              <h3>Mark</h3>
+              <p>Freehand around a metric, diagram, error, or UI fragment.</p>
+            </div>
+          </li>
+          <li>
+            <span class="step">02</span>
+            <div>
+              <h3>Capture</h3>
+              <p>
+                Crop becomes the primary image; full display rides along as
+                context. Frontmost app/URL tagged when available.
+              </p>
+            </div>
+          </li>
+          <li>
+            <span class="step">03</span>
+            <div>
+              <h3>Ask &amp; continue</h3>
+              <p>
+                Vision agent answers from the pixels, then you keep chatting on
+                the same mark.
+              </p>
+            </div>
+          </li>
+        </ol>
+      </section>
+
+      <section class="section use" id="use">
+        <header class="section-head">
+          <h2>Walkthrough</h2>
+          <p>A looped demo of the mark → ask → answer flow.</p>
+        </header>
+        <div class="walk-layout">
+          <div class="walk-stage" id="walk-demo" aria-hidden="true"></div>
+          <aside class="walk-caption" id="walk-caption">
+            <p class="phase-label" id="phase-label">Mark</p>
+            <p class="phase-text" id="phase-text">
+              Draw freehand around the region you care about.
+            </p>
+            <ul class="phase-dots" id="phase-dots" aria-hidden="true">
+              <li class="on"></li>
+              <li></li>
+              <li></li>
+              <li></li>
+            </ul>
+          </aside>
+        </div>
+      </section>
+
+      <section class="section install" id="install">
+        <header class="section-head">
+          <h2>Install</h2>
+          <p>MIT licensed. Runs as a local Electron app.</p>
+        </header>
+        <div class="install-block">
+          <pre><code>git clone https://github.com/Pegusus/flickctx.git
+cd flickctx
+npm install
+npx flickctx config --api-key sk-ant-... --model claude-sonnet-4-5
+npm start</code></pre>
+          <p class="install-note">
+            Then press <kbd>⌘⇧F</kbd> / <kbd>Ctrl+Shift+F</kbd>, draw, and ask.
+            On macOS, enable Screen Recording for the app.
+          </p>
+          <a
+            class="btn primary"
+            href="https://github.com/Pegusus/flickctx"
+            target="_blank"
+            rel="noreferrer"
+            >Open repository</a
+          >
+        </div>
+      </section>
+    </main>
+
+    <footer class="foot">
+      <div class="foot-brand">Flick<span>ctx</span></div>
+      <p>
+        Open source by
+        <a href="https://github.com/Pegusus" target="_blank" rel="noreferrer"
+          >Pegusus</a
+        >
+        ·
+        <a
+          href="https://github.com/Pegusus/flickctx"
+          target="_blank"
+          rel="noreferrer"
+          >github.com/Pegusus/flickctx</a
+        >
+      </p>
+    </footer>
+
+    <script src="./demo.js"></script>
+  </body>
+</html>
