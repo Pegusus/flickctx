@@ -14,36 +14,60 @@
   --sans: "IBM Plex Sans", "Segoe UI", sans-serif;
   --mono: "IBM Plex Mono", ui-monospace, monospace;
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --safe-t: env(safe-area-inset-top, 0px);
+  --safe-r: env(safe-area-inset-right, 0px);
+  --safe-b: env(safe-area-inset-bottom, 0px);
+  --safe-l: env(safe-area-inset-left, 0px);
+  --pad-x: max(28px, var(--safe-l), var(--safe-r));
 }
 
 * {
   box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  margin: 0;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 html,
 body {
   margin: 0;
+  max-width: 100%;
+  overflow-x: clip;
 }
 
 body {
   min-height: 100vh;
+  min-height: 100dvh;
   color: var(--ink);
   font-family: var(--sans);
+  font-size: 16px; /* avoid iOS input zoom; readable base */
   background:
     radial-gradient(900px 420px at 100% 0%, rgba(11, 107, 95, 0.07), transparent 60%),
     linear-gradient(180deg, #eef0f2 0%, var(--bg) 40%, #e2e5e8 100%);
+  padding-bottom: var(--safe-b);
 }
 
 a {
   color: inherit;
+  touch-action: manipulation;
 }
 
 .mast {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 18px 28px;
+  padding: calc(14px + var(--safe-t)) max(20px, var(--safe-r)) 14px max(20px, var(--safe-l));
   border-bottom: 1px solid var(--rule);
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: rgba(238, 240, 242, 0.92);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
 }
 
 .logo {
@@ -61,7 +85,7 @@ a {
 
 .mast nav {
   display: flex;
-  gap: 22px;
+  gap: 8px;
   font-family: var(--mono);
   font-size: 0.75rem;
 }
@@ -69,6 +93,12 @@ a {
 .mast nav a {
   text-decoration: none;
   color: var(--mute);
+  min-height: 44px;
+  min-width: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 10px;
 }
 
 .mast nav a:hover {
@@ -80,11 +110,12 @@ a {
   grid-template-columns: minmax(220px, 300px) minmax(0, 1fr);
   gap: 0;
   min-height: calc(100vh - 58px);
+  min-height: calc(100dvh - 58px);
   border-bottom: 1px solid var(--rule);
 }
 
 .hero-rail {
-  padding: 40px 28px 36px;
+  padding: 40px max(28px, var(--safe-r)) 36px max(28px, var(--safe-l));
   border-right: 1px solid var(--rule);
   display: flex;
   flex-direction: column;
@@ -122,10 +153,17 @@ a {
   font-size: 0.78rem;
   text-decoration: none;
   text-align: center;
-  padding: 11px 12px;
+  padding: 12px 14px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   background: var(--ink);
   color: #f3f4f5;
   border: 1px solid var(--ink);
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .action.quiet {
@@ -182,6 +220,13 @@ a {
   background: #090d11;
   border-bottom: 1px solid var(--hair);
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  overscroll-behavior-x: contain;
+}
+
+.tabs::-webkit-scrollbar {
+  display: none;
 }
 
 .tab {
@@ -219,6 +264,14 @@ a {
 .viewport {
   position: relative;
   overflow: hidden;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.stage-pane {
+  position: relative;
+  flex: 1;
   min-height: 0;
 }
 
@@ -536,7 +589,7 @@ a {
 
 .install {
   max-width: 720px;
-  padding: 48px 28px 24px;
+  padding: 48px max(28px, var(--safe-r)) 24px max(28px, var(--safe-l));
 }
 
 .install h2 {
@@ -555,6 +608,11 @@ a {
   font-size: 0.78rem;
   line-height: 1.7;
   overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  max-width: 100%;
+  white-space: pre;
+  word-break: normal;
+  overscroll-behavior: contain;
 }
 
 .hint {
@@ -574,8 +632,9 @@ kbd {
 .foot {
   display: flex;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 12px;
-  padding: 18px 28px 40px;
+  padding: 18px max(28px, var(--safe-r)) calc(28px + var(--safe-b)) max(28px, var(--safe-l));
   border-top: 1px solid var(--rule);
   font-family: var(--mono);
   font-size: 0.72rem;
@@ -596,52 +655,90 @@ kbd {
   .hero-rail {
     border-right: none;
     border-bottom: 1px solid var(--rule);
-    padding: 28px 20px;
+    padding: 24px max(16px, var(--safe-l)) 22px max(16px, var(--safe-r));
     justify-content: flex-start;
   }
 
+  .brand {
+    font-size: clamp(2.2rem, 11vw, 3rem);
+  }
+
+  .line {
+    font-size: 0.95rem;
+  }
+
   .actions {
-    flex-direction: row;
-    flex-wrap: wrap;
+    flex-direction: column;
   }
 
   .action {
-    flex: 1;
-    min-width: 140px;
+    width: 100%;
+    min-width: 0;
   }
 
   .theater {
-    min-height: 460px;
+    min-height: min(70dvh, 520px);
+  }
+
+  .theater-stage {
+    min-height: min(58dvh, 440px);
+  }
+
+  .caption {
+    padding: 10px max(12px, var(--safe-l));
+    font-size: 0.68rem;
+    line-height: 1.4;
+  }
+
+  .tab {
+    padding: 0 12px;
+    min-height: 38px;
+    font-size: 10px;
   }
 
   .metrics {
     grid-template-columns: 1fr;
+    gap: 8px;
   }
 
   .side {
     flex-direction: row;
   }
 
+  .side .card .val {
+    font-size: 0.85rem;
+  }
+
+  .log {
+    grid-template-columns: 52px 40px 1fr;
+    gap: 6px;
+    font-size: 10px;
+    padding: 5px 8px;
+  }
+
+  /* Chat sits under the marked stage on phones — never overlays the mark */
   .chat {
     position: static;
     width: auto;
-    margin: 10px 12px 12px;
+    margin: 0;
+    border-left: none;
+    border-right: none;
+    border-bottom: none;
     transform: none;
+    flex-shrink: 0;
   }
 
   .demo.chat-on .chat {
     animation: fade 0.35s var(--ease) forwards;
   }
 
-  .viewport {
-    display: flex;
-    flex-direction: column;
+  .stage-pane {
+    min-height: 260px;
   }
 
   .scene {
-    position: relative;
-    flex: 1;
-    min-height: 280px;
+    position: absolute;
+    inset: 0;
   }
 
   .scene:not(.on) {
@@ -650,6 +747,38 @@ kbd {
 
   .marks {
     position: absolute;
+    inset: 0;
+  }
+
+  .install {
+    padding: 36px max(16px, var(--safe-l)) 20px max(16px, var(--safe-r));
+  }
+
+  .install pre {
+    font-size: 0.72rem;
+    padding: 14px;
+  }
+
+  .foot {
+    padding: 16px max(16px, var(--safe-l)) calc(24px + var(--safe-b)) max(16px, var(--safe-r));
+  }
+
+  .foot a {
+    word-break: break-all;
+  }
+}
+
+/* Narrow phones (iPhone SE / mini) */
+@media (max-width: 400px) {
+  .log .ts {
+    display: none;
+  }
+  .log {
+    grid-template-columns: 40px 1fr;
+  }
+  .aws-head {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }
 
