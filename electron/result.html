@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Flickctx</title>
+    <style>
+      :root {
+        --bg: #111318;
+        --panel: #181b22;
+        --text: #e8eaef;
+        --muted: #9aa3b2;
+        --accent: #5eead4;
+        --danger: #fb7185;
+        --line: rgba(255, 255, 255, 0.08);
+        --user: #1a2430;
+        --bot: #151820;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: var(--bg);
+        color: var(--text);
+        font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+        display: flex;
+        flex-direction: column;
+      }
+      #chrome {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 14px;
+        border-bottom: 1px solid var(--line);
+        -webkit-app-region: drag;
+        background: var(--panel);
+        flex-shrink: 0;
+      }
+      #brand {
+        font-weight: 650;
+        letter-spacing: 0.04em;
+        font-size: 13px;
+      }
+      #brand span {
+        color: var(--accent);
+      }
+      #actions {
+        display: flex;
+        gap: 8px;
+        -webkit-app-region: no-drag;
+      }
+      button {
+        border: 1px solid var(--line);
+        background: transparent;
+        color: var(--text);
+        border-radius: 8px;
+        padding: 6px 10px;
+        font-size: 12px;
+        cursor: pointer;
+      }
+      button:hover {
+        border-color: rgba(94, 234, 212, 0.45);
+      }
+      button.primary {
+        background: rgba(94, 234, 212, 0.12);
+        border-color: rgba(94, 234, 212, 0.35);
+        color: var(--accent);
+      }
+      button:disabled {
+        opacity: 0.5;
+        cursor: default;
+      }
+      #meta {
+        padding: 8px 14px;
+        font-size: 11px;
+        color: var(--muted);
+        word-break: break-all;
+        border-bottom: 1px solid var(--line);
+        flex-shrink: 0;
+      }
+      #mark-preview {
+        display: none;
+        padding: 10px 14px;
+        border-bottom: 1px solid var(--line);
+        background: #0d0f14;
+        flex-shrink: 0;
+      }
+      #mark-preview.visible {
+        display: block;
+      }
+      #mark-preview .label {
+        font-size: 10px;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin-bottom: 6px;
+      }
+      #mark-preview img {
+        display: block;
+        max-width: 100%;
+        max-height: 140px;
+        border-radius: 8px;
+        border: 1px solid var(--line);
+        object-fit: contain;
+        background: #000;
+      }
+      #mark-preview .dims {
+        margin-top: 6px;
+        font-size: 11px;
+        color: var(--muted);
+      }
+      #chat {
+        flex: 1;
+        overflow: auto;
+        padding: 12px 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .msg {
+        max-width: 100%;
+        border-radius: 12px;
+        padding: 10px 12px;
+        line-height: 1.5;
+        font-size: 13.5px;
+        border: 1px solid var(--line);
+      }
+      .msg.user {
+        align-self: flex-end;
+        background: var(--user);
+        white-space: pre-wrap;
+      }
+      .msg.assistant {
+        align-self: stretch;
+        background: var(--bot);
+      }
+      .msg.system {
+        align-self: stretch;
+        background: transparent;
+        border-style: dashed;
+        color: var(--muted);
+        font-size: 12.5px;
+      }
+      .msg.pending {
+        color: var(--muted);
+        font-style: italic;
+      }
+      .msg.error {
+        color: var(--danger);
+        border-color: rgba(251, 113, 133, 0.35);
+      }
+      .role {
+        font-size: 10px;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin-bottom: 6px;
+      }
+      .msg.user .role {
+        color: #7dd3c0;
+      }
+      details.reasoning {
+        margin: 0 0 10px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #0d0f14;
+        overflow: hidden;
+      }
+      details.reasoning > summary {
+        cursor: pointer;
+        list-style: none;
+        padding: 8px 10px;
+        font-size: 11px;
+        color: var(--accent);
+        font-weight: 650;
+        user-select: none;
+      }
+      details.reasoning > summary::-webkit-details-marker {
+        display: none;
+      }
+      details.reasoning > summary::before {
+        content: "▸ ";
+      }
+      details.reasoning[open] > summary::before {
+        content: "▾ ";
+      }
+      details.reasoning .reasoning-body {
+        padding: 0 10px 10px;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.45;
+        max-height: 180px;
+        overflow: auto;
+        white-space: pre-wrap;
+        border-top: 1px solid var(--line);
+        padding-top: 8px;
+      }
+      .md h1,
+      .md h2,
+      .md h3 {
+        margin: 0.7em 0 0.3em;
+        line-height: 1.25;
+        font-weight: 650;
+      }
+      .md h2 {
+        font-size: 1.05em;
+        color: var(--accent);
+      }
+      .md p {
+        margin: 0.4em 0;
+      }
+      .md ul,
+      .md ol {
+        margin: 0.35em 0 0.5em;
+        padding-left: 1.2em;
+      }
+      .md code {
+        font-family: "IBM Plex Mono", ui-monospace, monospace;
+        font-size: 0.92em;
+        background: rgba(255, 255, 255, 0.06);
+        padding: 0.1em 0.35em;
+        border-radius: 4px;
+      }
+      .md pre {
+        background: #0d0f14;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 10px;
+        overflow: auto;
+      }
+      .md pre code {
+        background: none;
+        padding: 0;
+      }
+      .md strong {
+        color: #fff;
+      }
+      .md a {
+        color: var(--accent);
+      }
+      #composer {
+        flex-shrink: 0;
+        border-top: 1px solid var(--line);
+        background: var(--panel);
+        padding: 10px 14px 12px;
+      }
+      #composer.hidden {
+        display: none;
+      }
+      #composer label {
+        display: block;
+        font-size: 11px;
+        color: var(--muted);
+        margin-bottom: 6px;
+      }
+      #question {
+        width: 100%;
+        min-height: 56px;
+        max-height: 140px;
+        resize: vertical;
+        border-radius: 8px;
+        border: 1px solid var(--line);
+        background: #0d0f14;
+        color: var(--text);
+        padding: 8px 10px;
+        font: inherit;
+        font-size: 13px;
+      }
+      #composer-actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 8px;
+      }
+      #composer-actions button {
+        flex: 1;
+      }
+      #footer {
+        flex-shrink: 0;
+        padding: 8px 14px 12px;
+        border-top: 1px solid var(--line);
+        background: var(--panel);
+        display: flex;
+        gap: 8px;
+      }
+      #footer.hidden {
+        display: none;
+      }
+      #footer button {
+        flex: 1;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="chrome">
+      <div id="brand">Flick<span>ctx</span></div>
+      <div id="actions">
+        <button id="clear" title="Clear this chat">Clear</button>
+        <button id="cfg" title="Open config">Config</button>
+        <button id="close">Close</button>
+      </div>
+    </div>
+    <div id="meta">Mark a region, then keep chatting about it.</div>
+    <div id="mark-preview">
+      <div class="label">Marked snippet sent to the model</div>
+      <img id="mark-img" alt="Marked region preview" />
+      <div class="dims" id="mark-dims"></div>
+    </div>
+    <div id="chat"></div>
+    <div id="composer" class="hidden">
+      <label for="question">Continue about this mark</label>
+      <textarea
+        id="question"
+        placeholder="Ask a follow-up… (Enter to send, Shift+Enter for newline)"
+      ></textarea>
+      <div id="composer-actions">
+        <button id="askBtn" class="primary">Send</button>
+        <button id="explainBtn">Explain mark</button>
+      </div>
+    </div>
+    <div id="footer" class="hidden">
+      <button id="copy" class="primary">Copy last answer</button>
+      <button id="copyPrompt">Copy agent prompt</button>
+    </div>
+    <script>
+      const chat = document.getElementById("chat");
+      const meta = document.getElementById("meta");
+      const footer = document.getElementById("footer");
+      const composer = document.getElementById("composer");
+      const questionEl = document.getElementById("question");
+      const askBtn = document.getElementById("askBtn");
+      const markPreview = document.getElementById("mark-preview");
+      const markImg = document.getElementById("mark-img");
+      const markDims = document.getElementById("mark-dims");
+      let last = null;
+      let pendingImagePath = null;
+      let busy = false;
+      let messages = []; // {role, text, reasoning?}
+
+      function showMarkPreview(data) {
+        if (data?.previewDataUrl) {
+          markImg.src = data.previewDataUrl;
+          markPreview.classList.add("visible");
+          const bits = [];
+          if (data.width && data.height) bits.push(data.width + "×" + data.height);
+          if (data.bytes) bits.push(Math.round(data.bytes / 1024) + " KB");
+          if (data.imageBytes) bits.push(Math.round(data.imageBytes / 1024) + " KB");
+          bits.push("attached to Claude");
+          markDims.textContent = bits.join(" · ");
+        } else {
+          markPreview.classList.remove("visible");
+          markImg.removeAttribute("src");
+          markDims.textContent = "";
+        }
+      }
+
+      function escapeHtml(s) {
+        return String(s)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;");
+      }
+
+      function renderMarkdown(md) {
+        if (!md) return "";
+        let text = String(md).replace(/\r\n/g, "\n");
+        const blocks = [];
+        text = text.replace(/```([\s\S]*?)```/g, (_, code) => {
+          const i = blocks.length;
+          blocks.push(
+            `<pre><code>${escapeHtml(code.replace(/^\n/, ""))}</code></pre>`
+          );
+          return `\n%%BLOCK${i}%%\n`;
+        });
+        const lines = text.split("\n");
+        const out = [];
+        let listType = null;
+        function closeList() {
+          if (listType) {
+            out.push(listType === "ol" ? "</ol>" : "</ul>");
+            listType = null;
+          }
+        }
+        function inlineFormat(s) {
+          let t = escapeHtml(s);
+          t = t.replace(/`([^`]+)`/g, "<code>$1</code>");
+          t = t.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+          t = t.replace(/(^|[^\*])\*([^*]+)\*/g, "$1<em>$2</em>");
+          t = t.replace(
+            /\[([^\]]+)\]\((https?:[^)\s]+)\)/g,
+            '<a href="$2" target="_blank" rel="noreferrer">$1</a>'
+          );
+          return t;
+        }
+        for (const raw of lines) {
+          const line = raw;
+          const blockMatch = line.match(/^%%BLOCK(\d+)%%$/);
+          if (blockMatch) {
+            closeList();
+            out.push(blocks[Number(blockMatch[1])]);
+            continue;
+          }
+          if (/^\s*$/.test(line)) {
+            closeList();
+            continue;
+          }
+          const heading = line.match(/^(#{1,3})\s+(.*)$/);
+          if (heading) {
+            closeList();
+            const level = heading[1].length;
+            out.push(`<h${level}>${inlineFormat(heading[2])}</h${level}>`);
+            continue;
+          }
+          const ul = line.match(/^\s*[-*]\s+(.*)$/);
+          if (ul) {
+            if (listType !== "ul") {
+              closeList();
+              out.push("<ul>");
+              listType = "ul";
+            }
+            out.push(`<li>${inlineFormat(ul[1])}</li>`);
+            continue;
+          }
+          const ol = line.match(/^\s*\d+\.\s+(.*)$/);
+          if (ol) {
+            if (listType !== "ol") {
+              closeList();
+              out.push("<ol>");
+              listType = "ol";
+            }
+            out.push(`<li>${inlineFormat(ol[1])}</li>`);
+            continue;
+          }
+          closeList();
+          out.push(`<p>${inlineFormat(line)}</p>`);
+        }
+        closeList();
+        return out.join("\n");
+      }
+
+      function renderChat() {
+        chat.innerHTML = "";
+        for (const m of messages) {
+          const el = document.createElement("div");
+          el.className = "msg " + m.role + (m.pending ? " pending" : "") + (m.error ? " error" : "");
+          if (m.role === "system") {
+            el.textContent = m.text;
+          } else if (m.role === "user") {
+            el.innerHTML =
+              `<div class="role">You</div>` + escapeHtml(m.text);
+          } else {
+            let html = `<div class="role">Flickctx</div>`;
+            if (m.reasoning && String(m.reasoning).trim()) {
+              html +=
+                `<details class="reasoning">` +
+                `<summary>Reasoning</summary>` +
+                `<div class="reasoning-body">${escapeHtml(
+                  String(m.reasoning).trim()
+                )}</div>` +
+                `</details>`;
+            }
+            if (m.pending) {
+              html += escapeHtml(m.text || "Thinking…");
+            } else if (m.error) {
+              html += escapeHtml(m.text || "Error");
+            } else {
+              html += `<div class="md">${renderMarkdown(m.text || "")}</div>`;
+            }
+            el.innerHTML = html;
+          }
+          chat.appendChild(el);
+        }
+        chat.scrollTop = chat.scrollHeight;
+      }
+
+      function setBusy(isBusy) {
+        busy = isBusy;
+        askBtn.disabled = isBusy;
+        questionEl.disabled = isBusy;
+      }
+
+      function submit(question) {
+        if (!pendingImagePath || busy) return;
+        const q = (question || "").trim();
+        if (!q && messages.some((m) => m.role === "assistant" && !m.pending && !m.error)) {
+          // follow-up empty ignored; first explain still allowed via Explain mark
+        }
+        if (q) {
+          messages.push({ role: "user", text: q });
+        } else {
+          messages.push({ role: "user", text: "Explain what I marked." });
+        }
+        messages.push({
+          role: "assistant",
+          text: "Thinking…",
+          pending: true,
+        });
+        renderChat();
+        questionEl.value = "";
+        setBusy(true);
+        window.flickctx.askAboutMark({
+          imagePath: pendingImagePath,
+          question: q,
+        });
+      }
+
+      document.getElementById("close").onclick = () =>
+        window.flickctx.closeResult();
+      document.getElementById("cfg").onclick = () =>
+        window.flickctx.openConfig();
+      document.getElementById("clear").onclick = () => {
+        if (busy) return;
+        messages = pendingImagePath
+          ? [
+              {
+                role: "system",
+                text: "Chat cleared. Same mark is still attached — ask anything about it.",
+              },
+            ]
+          : [];
+        last = null;
+        footer.classList.add("hidden");
+        renderChat();
+        window.flickctx.clearChat && window.flickctx.clearChat();
+        questionEl.focus();
+      };
+      document.getElementById("copy").onclick = () => {
+        if (last?.explanation) window.flickctx.copyText(last.explanation);
+      };
+      document.getElementById("copyPrompt").onclick = () => {
+        if (last?.followUpPrompt)
+          window.flickctx.copyText(last.followUpPrompt);
+      };
+      askBtn.onclick = () => submit(questionEl.value);
+      document.getElementById("explainBtn").onclick = () => submit("");
+      questionEl.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" && !e.shiftKey) {
+          e.preventDefault();
+          submit(questionEl.value);
+        }
+      });
+
+      window.flickctx.onResultReadyAsk((data) => {
+        last = null;
+        pendingImagePath = data.imagePath;
+        setBusy(false);
+        footer.classList.add("hidden");
+        composer.classList.remove("hidden");
+        showMarkPreview(data);
+        messages = [
+          {
+            role: "system",
+            text:
+              "Region captured (preview above). Ask about that exact snippet — follow-ups keep the same image.",
+          },
+        ];
+        renderChat();
+        meta.textContent = data?.projectPath
+          ? "Mark attached · " + data.projectPath
+          : "Mark attached — continue chatting";
+        questionEl.value = "";
+        questionEl.focus();
+      });
+
+      window.flickctx.onResultLoading((data) => {
+        // If we already added a pending bubble via submit(), keep chat.
+        // If loading without local pending (edge), add one.
+        if (!messages.some((m) => m.pending)) {
+          messages.push({
+            role: "assistant",
+            text: "Thinking…",
+            pending: true,
+          });
+          renderChat();
+        }
+        setBusy(true);
+        composer.classList.remove("hidden");
+        if (data?.projectPath) {
+          meta.textContent = "Mark attached · " + data.projectPath;
+        }
+      });
+
+      window.flickctx.onResultDone((data) => {
+        last = data;
+        pendingImagePath = data.imagePath || pendingImagePath;
+        if (data.previewDataUrl) showMarkPreview(data);
+        // Replace pending assistant bubble
+        const idx = messages.map((m) => m.pending).lastIndexOf(true);
+        const assistantMsg = {
+          role: "assistant",
+          text: data.explanation || "(empty)",
+          reasoning: data.reasoning || "",
+        };
+        if (idx >= 0) messages[idx] = assistantMsg;
+        else messages.push(assistantMsg);
+        renderChat();
+        const bits = [];
+        bits.push("vision");
+        if (data.width && data.height) bits.push(data.width + "×" + data.height);
+        if (data.imageBytes) bits.push(Math.round(data.imageBytes / 1024) + "KB");
+        if (data.contextMeta) {
+          const m = data.contextMeta;
+          bits.push(`repos:${m.localRepos ?? 0}`);
+        }
+        if (data.model) bits.push(data.model);
+        if (data.thinkingEnabled) bits.push("thinking");
+        meta.textContent = bits.join(" · ");
+        footer.classList.remove("hidden");
+        composer.classList.remove("hidden");
+        setBusy(false);
+        questionEl.focus();
+      });
+
+      window.flickctx.onResultError((data) => {
+        const idx = messages.map((m) => m.pending).lastIndexOf(true);
+        const errMsg = {
+          role: "assistant",
+          text: data?.message || "Something went wrong.",
+          error: true,
+        };
+        if (idx >= 0) messages[idx] = errMsg;
+        else messages.push(errMsg);
+        renderChat();
+        composer.classList.remove("hidden");
+        setBusy(false);
+        questionEl.focus();
+      });
+
+      // empty state
+      messages = [
+        {
+          role: "system",
+          text: "Click Mark (or ⌘⇧F / Ctrl+Shift+F), draw freehand, then chat about the snippet.",
+        },
+      ];
+      renderChat();
+    </script>
+  </body>
+</html>

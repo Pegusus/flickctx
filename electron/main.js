@@ -1,0 +1,644 @@
+const {
+  app,
+  BrowserWindow,
+  globalShortcut,
+  Tray,
+  Menu,
+  nativeImage,
+  clipboard,
+  ipcMain,
+  screen,
+  shell,
+  desktopCapturer,
+  systemPreferences,
+  dialog,
+} = require("electron");
+const fs = require("fs");
+const path = require("path");
+const { execFileSync } = require("child_process");
+const { loadConfig, saveConfig } = require("../src/config");
+const { explainSelection } = require("../src/explain");
+const { captureFullScreenPng, tmpPng } = require("../src/capture");
+
+// So dialogs / menus say Flickctx (Screen Recording list still shows “Electron” for npm start)
+app.setName("Flickctx");
+
+let tray = null;
+let overlayWindows = []; // one per display — required for multi-monitor + macOS Spaces
+let resultWindow = null;
+let launcherWindow = null;
+let busy = false;
+let lastImagePath = null;
+let permissionPrompted = false;
+/** Short conversation memory for the current mark: [{ user, assistant }] */
+let conversationHistory = [];
+
+function ensureMacScreenPermission({ forcePrompt = false } = {}) {
+  if (process.platform !== "darwin") return true;
+  let status = "unknown";
+  try {
+    status = systemPreferences.getMediaAccessStatus("screen");
+  } catch {
+    status = "unknown";
+  }
+  if (status === "granted") return true;
+
+  // Hitting desktopCapturer makes macOS add "Electron" to the Screen Recording list
+  desktopCapturer
+    .getSources({
+      types: ["screen", "window"],
+      thumbnailSize: { width: 1, height: 1 },
+    })
+    .catch(() => {});
+
+  if (!permissionPrompted || forcePrompt) {
+    permissionPrompted = true;
+    dialog
+      .showMessageBox({
+        type: "info",
+        title: "Enable Screen Recording",
+        message: "Flickctx needs Screen Recording to mark any app or tab",
+        detail:
+          "In System Settings → Privacy & Security → Screen Recording:\n\n" +
+          "1. Look for “Electron” (npm start does NOT show as Flickctx yet)\n" +
+          "2. Turn it ON\n" +
+          "3. Quit Flickctx completely and run npm start again\n\n" +
+          "If Electron is missing from the list, click Mark once first, then reopen this settings page.",
+        buttons: ["Open Screen Recording settings", "OK"],
+        defaultId: 0,
+      })
+      .then(({ response }) => {
+        if (response === 0) {
+          shell.openExternal(
+            "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture"
+          );
+        }
+      });
+  }
+  return false;
+}
+
+function trayIcon() {
+  // 16x16 simple PNG
+  const png = Buffer.from(
+    "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAMklEQVQ4T2NkYGD4z0ABYBzVMKoBBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGABu+AaH1nYGxAAAAAElFTkSuQmCC",
+    "base64"
+  );
+  return nativeImage.createFromBuffer(png);
+}
+
+function createOverlayForDisplay(display) {
+  const { x, y, width, height } = display.bounds;
+  const win = new BrowserWindow({
+    x,
+    y,
+    width,
+    height,
+    frame: false,
+    transparent: true,
+    resizable: false,
+    movable: false,
+    minimizable: false,
+    maximizable: false,
+    fullscreenable: false,
+    skipTaskbar: true,
+    alwaysOnTop: true,
+    hasShadow: false,
+    show: false,
+    focusable: true,
+    // panel helps the overlay sit above normal apps on macOS
+    type: process.platform === "darwin" ? "panel" : "toolbar",
+    webPreferences: {
+      preload: path.join(__dirname, "preload.js"),
+      contextIsolation: true,
+      nodeIntegration: false,
+      backgroundThrottling: false,
+    },
+  });
+
+  win.setAlwaysOnTop(true, "screen-saver");
+  win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+  if (process.platform === "darwin") {
+    try {
+      win.setWindowButtonVisibility(false);
+    } catch {
+      /* ignore */
+    }
+  }
+  win.loadFile(path.join(__dirname, "overlay.html"));
+  return win;
+}
+
+function destroyOverlays() {
+  for (const win of overlayWindows) {
+    if (win && !win.isDestroyed()) win.destroy();
+  }
+  overlayWindows = [];
+}
+
+function createOverlays() {
+  destroyOverlays();
+  overlayWindows = screen.getAllDisplays().map((d) => createOverlayForDisplay(d));
+  return overlayWindows;
+}
+
+function createResultWindow() {
+  const primary = screen.getPrimaryDisplay().workArea;
+  const width = 460;
+  const height = 620;
+  const win = new BrowserWindow({
+    width,
+    height,
+    x: primary.x + primary.width - width - 24,
+    y: primary.y + 24,
+    frame: false,
+    transparent: false,
+    resizable: true,
+    alwaysOnTop: true,
+    skipTaskbar: false,
+    show: false,
+    backgroundColor: "#111318",
+    webPreferences: {
+      preload: path.join(__dirname, "preload.js"),
+      contextIsolation: true,
+      nodeIntegration: false,
+    },
+  });
+  win.loadFile(path.join(__dirname, "result.html"));
+  return win;
+}
+
+function createLauncher() {
+  const primary = screen.getPrimaryDisplay().workArea;
+  const width = 320;
+  const height = 44;
+  const win = new BrowserWindow({
+    width,
+    height,
+    x: primary.x + Math.round((primary.width - width) / 2),
+    y: primary.y + 16,
+    frame: false,
+    transparent: false,
+    resizable: false,
+    alwaysOnTop: true,
+    skipTaskbar: false,
+    show: true,
+    backgroundColor: "#111318",
+    webPreferences: {
+      preload: path.join(__dirname, "preload.js"),
+      contextIsolation: true,
+      nodeIntegration: false,
+    },
+  });
+  win.setAlwaysOnTop(true, "screen-saver");
+  win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+  win.loadFile(path.join(__dirname, "launcher.html"));
+  return win;
+}
+
+function showOverlay() {
+  if (busy) return;
+  ensureMacScreenPermission();
+  if (launcherWindow && !launcherWindow.isDestroyed()) {
+    launcherWindow.hide();
+  }
+  if (resultWindow && !resultWindow.isDestroyed()) {
+    resultWindow.hide();
+  }
+  // Recreate each time so newly plugged monitors / Spaces are covered
+  const wins = createOverlays();
+  for (const win of wins) {
+    win.show();
+    win.setAlwaysOnTop(true, "screen-saver");
+    win.webContents.send("overlay:reset");
+  }
+  // Focus the overlay on the cursor's display
+  const pt = screen.getCursorScreenPoint();
+  const targetDisplay = screen.getDisplayNearestPoint(pt);
+  const focusWin =
+    wins.find((w) => {
+      const b = w.getBounds();
+      return (
+        b.x === targetDisplay.bounds.x &&
+        b.y === targetDisplay.bounds.y &&
+        b.width === targetDisplay.bounds.width &&
+        b.height === targetDisplay.bounds.height
+      );
+    }) || wins[0];
+  if (focusWin) focusWin.focus();
+}
+
+function hideOverlay() {
+  destroyOverlays();
+  if (launcherWindow && !launcherWindow.isDestroyed()) {
+    launcherWindow.show();
+  }
+}
+
+async function captureDisplayPng(display) {
+  // macOS: screencapture is the most reliable for any Space / display
+  if (process.platform === "darwin") {
+    const out = tmpPng("flickctx-display");
+    const { x, y, width, height } = display.bounds;
+    try {
+      execFileSync(
+        "screencapture",
+        ["-x", "-R", `${x},${y},${width},${height}`, out],
+        { stdio: "ignore" }
+      );
+      if (fs.existsSync(out) && fs.statSync(out).size > 0) return out;
+    } catch (err) {
+      console.warn("screencapture failed:", err.message || err);
+    }
+  }
+
+  const targetW = Math.round(display.size.width * (display.scaleFactor || 1));
+  const targetH = Math.round(display.size.height * (display.scaleFactor || 1));
+
+  // Prefer Electron desktopCapturer (no ImageMagick / scrot dependency)
+  try {
+    const sources = await desktopCapturer.getSources({
+      types: ["screen"],
+      thumbnailSize: { width: targetW, height: targetH },
+    });
+    if (!sources.length) throw new Error("No screen sources");
+
+    const match =
+      sources.find((s) => {
+        const size = s.thumbnail.getSize();
+        return (
+          Math.abs(size.width - targetW) < 16 &&
+          Math.abs(size.height - targetH) < 16
+        );
+      }) ||
+      sources.find((s) => String(s.display_id) === String(display.id)) ||
+      sources[0];
+
+    const out = tmpPng("flickctx-display");
+    fs.writeFileSync(out, match.thumbnail.toPNG());
+    return out;
+  } catch (err) {
+    console.warn("desktopCapturer failed, falling back:", err.message || err);
+  }
+
+  try {
+    const screenshot = require("screenshot-desktop");
+    const list = await screenshot.listDisplays();
+    const match =
+      list.find(
+        (d) =>
+          Math.abs((d.width || 0) - display.size.width) < 8 &&
+          Math.abs((d.height || 0) - display.size.height) < 8
+      ) ||
+      list[0];
+    const img = await screenshot({
+      format: "png",
+      screen: match?.id,
+    });
+    const out = tmpPng("flickctx-display");
+    fs.writeFileSync(out, img);
+    return out;
+  } catch (err) {
+    console.warn("screenshot-desktop failed, trying scrot:", err.message || err);
+  }
+
+  // Last resort: scrot / import full screen
+  const out = tmpPng("flickctx-display");
+  const { execFileSync } = require("child_process");
+  try {
+    execFileSync("scrot", [out], { stdio: "ignore" });
+    return out;
+  } catch {
+    execFileSync("import", ["-window", "root", out], { stdio: "ignore" });
+    return out;
+  }
+}
+
+async function cropSelection(fullPath, rect, display) {
+  const img = nativeImage.createFromPath(fullPath);
+  const size = img.getSize();
+  if (!size.width || !size.height) {
+    throw new Error("Screen capture produced an empty image.");
+  }
+
+  // Map screen-space rect → pixels using actual capture size (handles Retina
+  // better than assuming scaleFactor matches the PNG).
+  const scaleX = size.width / Math.max(1, display.bounds.width);
+  const scaleY = size.height / Math.max(1, display.bounds.height);
+
+  const crop = {
+    x: Math.max(0, Math.round((rect.x - display.bounds.x) * scaleX)),
+    y: Math.max(0, Math.round((rect.y - display.bounds.y) * scaleY)),
+    width: Math.max(1, Math.round(rect.width * scaleX)),
+    height: Math.max(1, Math.round(rect.height * scaleY)),
+  };
+
+  crop.x = Math.min(crop.x, Math.max(0, size.width - 1));
+  crop.y = Math.min(crop.y, Math.max(0, size.height - 1));
+  crop.width = Math.min(crop.width, size.width - crop.x);
+  crop.height = Math.min(crop.height, size.height - crop.y);
+
+  if (crop.width < 8 || crop.height < 8) {
+    throw new Error(
+      `Crop too small (${crop.width}×${crop.height}). Draw a larger freehand mark.`
+    );
+  }
+
+  const cropped = img.crop(crop);
+  const out = tmpPng("flickctx-crop");
+  const png = cropped.toPNG();
+  if (!png || png.length < 200) {
+    throw new Error("Cropped mark is empty — try marking again.");
+  }
+  fs.writeFileSync(out, png);
+  return { path: out, width: crop.width, height: crop.height, bytes: png.length };
+}
+
+function imagePreviewDataUrl(imagePath, maxW = 640) {
+  try {
+    let img = nativeImage.createFromPath(imagePath);
+    const size = img.getSize();
+    if (size.width > maxW) {
+      const h = Math.round((size.height * maxW) / size.width);
+      img = img.resize({ width: maxW, height: h });
+    }
+    return img.toDataURL();
+  } catch {
+    return null;
+  }
+}
+
+function ensureResultWindow() {
+  if (!resultWindow || resultWindow.isDestroyed()) {
+    resultWindow = createResultWindow();
+  }
+  return resultWindow;
+}
+
+async function runExplain(imagePath, question = "") {
+  const config = loadConfig();
+  const win = ensureResultWindow();
+  win.show();
+  win.focus();
+  win.webContents.send("result:loading", {
+    projectPath: config.projectPath,
+  });
+
+  try {
+    const result = await explainSelection({
+      apiKey: config.apiKey,
+      model: config.model,
+      projectPath: config.projectPath,
+      imagePath,
+      question,
+      maxTranscriptChars: config.maxTranscriptChars,
+      maxDiffChars: config.maxDiffChars,
+      searchRoots: config.searchRoots,
+      maxRepos: config.maxRepos,
+      scanLocalRepos: config.scanLocalRepos,
+      conversationHistory,
+      thinking: config.thinking !== false,
+      thinkingBudgetTokens: config.thinkingBudgetTokens || 8000,
+    });
+    conversationHistory.push({
+      user: question || "look at what i marked and explain it.",
+      assistant: result.explanation || "",
+    });
+    if (conversationHistory.length > 10) {
+      conversationHistory = conversationHistory.slice(-10);
+    }
+    let width = null;
+    let height = null;
+    try {
+      const sz = nativeImage.createFromPath(imagePath).getSize();
+      width = sz.width;
+      height = sz.height;
+    } catch {
+      /* ignore */
+    }
+    win.webContents.send("result:done", {
+      ...result,
+      imagePath,
+      previewDataUrl: imagePreviewDataUrl(imagePath),
+      width,
+      height,
+    });
+  } catch (err) {
+    win.webContents.send("result:error", {
+      message: err.message || String(err),
+    });
+  }
+}
+
+function registerIpc() {
+  ipcMain.handle("config:get", () => {
+    const c = loadConfig();
+    return {
+      projectPath: c.projectPath,
+      model: c.model,
+      hotkey: c.hotkey,
+      hasApiKey: Boolean(c.apiKey),
+      configPath: c.configPath,
+    };
+  });
+
+  ipcMain.handle("config:set", (_e, partial) => {
+    const saved = saveConfig(partial || {});
+    return {
+      projectPath: saved.projectPath,
+      model: saved.model,
+      hotkey: saved.hotkey,
+      hasApiKey: Boolean(saved.apiKey),
+    };
+  });
+
+  ipcMain.on("app:mark", () => showOverlay());
+
+  ipcMain.on("overlay:cancel", () => {
+    hideOverlay();
+  });
+
+  ipcMain.on("overlay:complete", async (_e, rect) => {
+    // Ignore duplicate completes from other display overlays
+    if (busy) {
+      hideOverlay();
+      return;
+    }
+    if (!rect || rect.width < 4 || rect.height < 4) {
+      hideOverlay();
+      return;
+    }
+    busy = true;
+    hideOverlay();
+    try {
+      // Capture after overlay hides so the dimmer isn't in the shot
+      await new Promise((r) => setTimeout(r, 120));
+      const display = screen.getDisplayNearestPoint({
+        x: Math.round(rect.x + rect.width / 2),
+        y: Math.round(rect.y + rect.height / 2),
+      });
+      const full = await captureDisplayPng(display);
+      const cropped = await cropSelection(full, rect, display);
+      try {
+        fs.unlinkSync(full);
+      } catch {
+        /* ignore */
+      }
+      lastImagePath = cropped.path;
+      conversationHistory = []; // new mark = new chat thread
+      const config = loadConfig();
+      const win = ensureResultWindow();
+      win.show();
+      win.focus();
+      win.webContents.send("result:ready-ask", {
+        imagePath: cropped.path,
+        previewDataUrl: imagePreviewDataUrl(cropped.path),
+        width: cropped.width,
+        height: cropped.height,
+        bytes: cropped.bytes,
+        projectPath: config.projectPath,
+      });
+    } catch (err) {
+      const win = ensureResultWindow();
+      win.show();
+      win.webContents.send("result:error", {
+        message: err.message || String(err),
+      });
+    } finally {
+      busy = false;
+    }
+  });
+
+  ipcMain.on("result:ask", async (_e, payload) => {
+    const imagePath = payload?.imagePath || lastImagePath;
+    if (!imagePath) {
+      const win = ensureResultWindow();
+      win.show();
+      win.webContents.send("result:error", {
+        message: "No marked region yet. Click Mark and draw freehand around something first.",
+      });
+      return;
+    }
+    if (busy) return;
+    busy = true;
+    try {
+      await runExplain(imagePath, payload?.question || "");
+    } finally {
+      busy = false;
+    }
+  });
+
+  ipcMain.on("result:close", () => {
+    if (resultWindow && !resultWindow.isDestroyed()) resultWindow.hide();
+  });
+
+  ipcMain.on("result:clear-chat", () => {
+    conversationHistory = [];
+  });
+
+  ipcMain.on("result:copy", (_e, text) => {
+    clipboard.writeText(text || "");
+  });
+
+  ipcMain.on("result:open-config", () => {
+    const c = loadConfig();
+    shell.showItemInFolder(c.configPath);
+  });
+}
+
+function buildTray() {
+  tray = new Tray(trayIcon());
+  tray.setToolTip("Flickctx");
+  const contextMenu = Menu.buildFromTemplate([
+    {
+      label: "Mark region",
+      click: () => showOverlay(),
+    },
+    {
+      label: "Show last result",
+      click: () => {
+        if (resultWindow && !resultWindow.isDestroyed()) resultWindow.show();
+      },
+    },
+    {
+      label: "Fix Screen Recording permission…",
+      click: () => ensureMacScreenPermission({ forcePrompt: true }),
+    },
+    { type: "separator" },
+    {
+      label: "Open config folder",
+      click: () => {
+        const c = loadConfig();
+        fs.mkdirSync(c.configDir, { recursive: true });
+        if (!fs.existsSync(c.configPath)) {
+          fs.writeFileSync(
+            c.configPath,
+            JSON.stringify(
+              {
+                apiKey: "",
+                projectPath: process.cwd(),
+                model: c.model,
+                hotkey: c.hotkey,
+              },
+              null,
+              2
+            ) + "\n"
+          );
+        }
+        shell.showItemInFolder(c.configPath);
+      },
+    },
+    { type: "separator" },
+    { label: "Quit", click: () => app.quit() },
+  ]);
+  tray.setContextMenu(contextMenu);
+  tray.on("click", () => showOverlay());
+}
+
+function registerHotkey() {
+  const config = loadConfig();
+  globalShortcut.unregisterAll();
+  const ok = globalShortcut.register(config.hotkey, () => showOverlay());
+  if (!ok) {
+    console.error("Failed to register hotkey", config.hotkey);
+  } else {
+    console.log(`Flickctx ready — press ${config.hotkey} to mark a region`);
+  }
+}
+
+const gotLock = app.requestSingleInstanceLock();
+if (!gotLock) {
+  app.quit();
+} else {
+  app.on("second-instance", () => showOverlay());
+
+  app.whenReady().then(async () => {
+    registerIpc();
+    buildTray();
+    registerHotkey();
+    launcherWindow = createLauncher();
+    resultWindow = createResultWindow();
+    // Trigger macOS to register this process in Screen Recording (shows as Electron)
+    ensureMacScreenPermission({ forcePrompt: true });
+    try {
+      await desktopCapturer.getSources({
+        types: ["screen"],
+        thumbnailSize: { width: 1, height: 1 },
+      });
+    } catch {
+      /* permission may still be pending */
+    }
+    console.log(
+      "Flickctx UI: Mark → draw freehand → ask. On macOS enable Screen Recording for “Electron”, then restart."
+    );
+  });
+
+  app.on("will-quit", () => {
+    globalShortcut.unregisterAll();
+  });
+
+  app.on("window-all-closed", (e) => {
+    // Keep tray app alive
+    e.preventDefault?.();
+  });
+}
