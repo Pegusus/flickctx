@@ -557,8 +557,12 @@
           },
         ];
         renderChat();
-        meta.textContent = data?.projectPath
-          ? "Mark attached · " + data.projectPath
+        const metaBits = [];
+        if (data.frontmostLabel) metaBits.push(data.frontmostLabel);
+        if (data.hasContextImage) metaBits.push("full-screen context");
+        if (data?.projectPath) metaBits.push(data.projectPath);
+        meta.textContent = metaBits.length
+          ? "Mark attached · " + metaBits.join(" · ")
           : "Mark attached — continue chatting";
         questionEl.value = "";
         questionEl.focus();
@@ -598,8 +602,14 @@
         renderChat();
         const bits = [];
         bits.push("vision");
-        if (data.width && data.height) bits.push(data.width + "×" + data.height);
-        if (data.imageBytes) bits.push(Math.round(data.imageBytes / 1024) + "KB");
+        if (data.frontmostLabel) bits.push(data.frontmostLabel);
+        if (data.hasContextImage) bits.push("+context");
+        const vp = data.contextMeta?.visionPrimary;
+        if (vp?.mediaType) bits.push(vp.mediaType.replace("image/", ""));
+        if (vp?.width && vp?.height) bits.push(vp.width + "×" + vp.height);
+        else if (data.width && data.height) bits.push(data.width + "×" + data.height);
+        if (vp?.bytes) bits.push(Math.round(vp.bytes / 1024) + "KB");
+        else if (data.imageBytes) bits.push(Math.round(data.imageBytes / 1024) + "KB");
         if (data.contextMeta) {
           const m = data.contextMeta;
           bits.push(`repos:${m.localRepos ?? 0}`);

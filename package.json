@@ -1,6 +1,6 @@
 {
   "name": "flickctx",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "description": "Mark anything on your screen, ask anything. Vision agent + local context + web tools.",
   "main": "electron/main.js",
   "productName": "Flickctx",

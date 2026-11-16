@@ -55,7 +55,9 @@ npx flickctx mark
 
 ## What the agent can use
 
-- The marked screenshot (primary)
+- The marked screenshot (primary), JPEG-resized for the API
+- Full-display context image (secondary) for surrounding UI
+- Frontmost app / browser URL hint (when detectable)
 - Your question (verbatim)
 - Short conversation history
 - Ambient local repo catalog (when relevant)

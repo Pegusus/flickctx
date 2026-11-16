@@ -7,27 +7,29 @@ const { toolSchemas, runTool } = require("./tools");
  * Flickctx brain — generic vision agent + visible reasoning.
  */
 
-const SYSTEM = `you're flickctx. the user marked a region on their screen. the image attached to the message IS that mark — you can see it.
+const SYSTEM = `you're flickctx. the user marked a region on their screen. images in the message show that mark (primary) and sometimes the full display for context.
 
 rules (in order):
-1. GROUND IN THE IMAGE. before answering, notice what is actually visible (product name, UI labels, charts, code, urls, logos, colors). your answer must be about THAT mark, not a generic web FAQ on the topic words alone.
-2. ANSWER THE ASK using the screenshot as primary evidence. quote visible labels when useful.
-3. TOOLS ARE SECONDARY. use web_search / fetch_url only when the image cannot answer (missing docs, need a link, confirm pricing). never replace the screenshot with a generic "how to get X" guide that ignores what was marked.
-4. LOCAL CONTEXT is optional background. use list_local_repos / grep only if the mark looks related. never force an unrelated local project.
-5. if the crop is blank/unreadable, say so clearly instead of inventing.
-6. be concrete. short markdown ok. no filler about missing git/claude sessions.
-7. don't invent file paths or repos that aren't in tool results or provided context.`;
+1. GROUND IN THE MARKED IMAGE FIRST. notice what is actually visible (product, UI labels, charts, code, urls, logos, numbers). your answer must be about THAT mark, not a generic web FAQ on the topic words alone.
+2. Use the optional full-display image only to resolve surrounding chrome (app name, nav, which page). Never let it override the marked region as the subject.
+3. If an environment hint (frontmost app / URL) is provided, use it as a weak prior — the pixels still win if they disagree.
+4. ANSWER THE ASK using the screenshot as primary evidence. quote visible labels when useful.
+5. TOOLS ARE SECONDARY. try to answer from the images first. use web_search / fetch_url only when the image cannot answer (missing docs, need a link, confirm live pricing). never replace the screenshot with a generic guide that ignores what was marked.
+6. LOCAL CONTEXT is optional. use list_local_repos / grep only if the mark looks related. never force an unrelated local project.
+7. if the crop is blank/unreadable, say so clearly instead of inventing.
+8. be concrete. short markdown ok. no filler about missing git/claude sessions.
+9. don't invent file paths or repos that aren't in tool results or provided context.`;
 
 function buildUserPrompt(question) {
   const q = (question || "").trim();
   if (q) {
     return (
-      "User question about the marked screenshot above:\n" +
+      "User question about the marked screenshot (primary image) above:\n" +
       q +
-      "\n\nRespond about what is visible in the image. Do not ignore the screenshot."
+      "\n\nRespond about what is visible in the marked region. Do not ignore the screenshot."
     );
   }
-  return "Look at the marked screenshot above and explain what it is showing.";
+  return "Look at the marked screenshot (primary image) above and explain what it is showing.";
 }
 
 function extractText(content) {
@@ -101,6 +103,9 @@ async function runAgent({
   model,
   imageBase64,
   mediaType,
+  contextImageBase64,
+  contextMediaType,
+  frontmostHint,
   question,
   ambientContext,
   conversationHistory = [],
@@ -126,16 +131,39 @@ async function runAgent({
       type: "image",
       source: {
         type: "base64",
-        media_type: mediaType || "image/png",
+        media_type: mediaType || "image/jpeg",
         data: imageBase64,
       },
     },
     {
       type: "text",
       text:
-        "↑ This image is the user's freehand-marked screen region. Treat it as the subject of the question.",
+        "↑ PRIMARY FOCUS — user's freehand-marked screen region. This is the subject of the question.",
     },
   ];
+
+  if (contextImageBase64 && contextImageBase64.length > 64) {
+    contentBlocks.push({
+      type: "image",
+      source: {
+        type: "base64",
+        media_type: contextMediaType || "image/jpeg",
+        data: contextImageBase64,
+      },
+    });
+    contentBlocks.push({
+      type: "text",
+      text:
+        "↑ FULL DISPLAY CONTEXT (secondary) — surrounding UI only. Do not treat this as the subject unless the mark is unreadable.",
+    });
+  }
+
+  if (frontmostHint) {
+    contentBlocks.push({
+      type: "text",
+      text: frontmostHint,
+    });
+  }
 
   contentBlocks.push({
     type: "text",
@@ -286,6 +314,11 @@ async function explainSelection({
   imagePath,
   imageBase64,
   mediaType,
+  contextImagePath,
+  contextImageBase64,
+  contextMediaType,
+  frontmostHint,
+  frontmost,
   question,
   maxTranscriptChars,
   maxDiffChars,
@@ -295,6 +328,8 @@ async function explainSelection({
   conversationHistory,
   thinking,
   thinkingBudgetTokens,
+  maxImageEdge,
+  jpegQuality,
 }) {
   if (!apiKey && !proxyBase()) {
     throw new Error(
@@ -302,24 +337,53 @@ async function explainSelection({
     );
   }
 
-  let b64 = imageBase64;
-  let type = mediaType || "image/png";
-  let imageBytes = 0;
-  if (!b64) {
+  const { prepareVisionImage, toBase64Payload } = require("./image");
+  const edge = maxImageEdge || 1600;
+  const quality = jpegQuality || 80;
+
+  let primary;
+  if (imageBase64) {
+    primary = {
+      base64: imageBase64,
+      mediaType: mediaType || "image/jpeg",
+      width: 0,
+      height: 0,
+      bytes: Math.floor((imageBase64.length * 3) / 4),
+    };
+  } else {
     if (!imagePath || !fs.existsSync(imagePath)) {
       throw new Error("No screenshot provided.");
     }
-    const buf = fs.readFileSync(imagePath);
-    imageBytes = buf.length;
-    if (imageBytes < 200) {
+    const prepared = prepareVisionImage(imagePath, {
+      maxEdge: edge,
+      quality,
+    });
+    if (prepared.bytes < 200) {
       throw new Error(
-        `Captured crop looks empty (${imageBytes} bytes). Try marking again — check Screen Recording permission if on macOS.`
+        `Captured crop looks empty (${prepared.bytes} bytes). Try marking again — check Screen Recording permission if on macOS.`
       );
     }
-    b64 = buf.toString("base64");
-    type = mediaTypeFor(imagePath);
-  } else {
-    imageBytes = Math.floor((b64.length * 3) / 4);
+    primary = toBase64Payload(prepared);
+  }
+
+  let contextPayload = null;
+  if (contextImageBase64) {
+    contextPayload = {
+      base64: contextImageBase64,
+      mediaType: contextMediaType || "image/jpeg",
+    };
+  } else if (contextImagePath && fs.existsSync(contextImagePath)) {
+    const preparedCtx = prepareVisionImage(contextImagePath, {
+      maxEdge: Math.min(edge, 1280),
+      quality: Math.min(quality, 75),
+    });
+    contextPayload = toBase64Payload(preparedCtx);
+  }
+
+  let hint = frontmostHint || "";
+  if (!hint && frontmost) {
+    const { formatFrontmostHint } = require("./frontmost");
+    hint = formatFrontmostHint(frontmost);
   }
 
   const ctx = gatherContext({
@@ -336,8 +400,11 @@ async function explainSelection({
   const result = await runAgent({
     apiKey,
     model,
-    imageBase64: b64,
-    mediaType: type,
+    imageBase64: primary.base64,
+    mediaType: primary.mediaType,
+    contextImageBase64: contextPayload?.base64 || null,
+    contextMediaType: contextPayload?.mediaType || null,
+    frontmostHint: hint || "",
     question: question || "",
     ambientContext: ctx.text.slice(0, 8000),
     conversationHistory: conversationHistory || [],
@@ -360,12 +427,29 @@ async function explainSelection({
     usage: result.usage,
     model: result.model,
     thinkingEnabled: result.thinkingEnabled,
-    contextMeta: ctx.meta,
+    contextMeta: {
+      ...ctx.meta,
+      visionPrimary: {
+        mediaType: primary.mediaType,
+        width: primary.width,
+        height: primary.height,
+        bytes: primary.bytes,
+      },
+      visionContext: contextPayload
+        ? {
+            mediaType: contextPayload.mediaType,
+            width: contextPayload.width,
+            height: contextPayload.height,
+            bytes: contextPayload.bytes,
+          }
+        : null,
+      frontmost: frontmost || null,
+    },
     projectPath: ctx.projectPath,
     contextPreview: ctx.text.slice(0, 1500),
     imagePath: imagePath || null,
-    imageBytes,
-    imageBase64Len: b64.length,
+    imageBytes: primary.bytes,
+    imageBase64Len: primary.base64.length,
     question: question || "",
   };
 }

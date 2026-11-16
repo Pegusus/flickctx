@@ -19,6 +19,7 @@ const { execFileSync } = require("child_process");
 const { loadConfig, saveConfig } = require("../src/config");
 const { explainSelection } = require("../src/explain");
 const { captureFullScreenPng, tmpPng } = require("../src/capture");
+const { detectFrontmost } = require("../src/frontmost");
 
 // So dialogs / menus say Flickctx (Screen Recording list still shows “Electron” for npm start)
 app.setName("Flickctx");
@@ -29,6 +30,9 @@ let resultWindow = null;
 let launcherWindow = null;
 let busy = false;
 let lastImagePath = null;
+let lastContextImagePath = null;
+let lastFrontmost = null;
+let pendingFrontmost = null;
 let permissionPrompted = false;
 /** Short conversation memory for the current mark: [{ user, assistant }] */
 let conversationHistory = [];
@@ -199,6 +203,12 @@ function createLauncher() {
 function showOverlay() {
   if (busy) return;
   ensureMacScreenPermission();
+  // Snapshot frontmost app/URL *before* overlays steal focus
+  try {
+    pendingFrontmost = detectFrontmost();
+  } catch {
+    pendingFrontmost = null;
+  }
   if (launcherWindow && !launcherWindow.isDestroyed()) {
     launcherWindow.hide();
   }
@@ -390,6 +400,8 @@ async function runExplain(imagePath, question = "") {
       model: config.model,
       projectPath: config.projectPath,
       imagePath,
+      contextImagePath: lastContextImagePath,
+      frontmost: lastFrontmost,
       question,
       maxTranscriptChars: config.maxTranscriptChars,
       maxDiffChars: config.maxDiffChars,
@@ -399,6 +411,8 @@ async function runExplain(imagePath, question = "") {
       conversationHistory,
       thinking: config.thinking !== false,
       thinkingBudgetTokens: config.thinkingBudgetTokens || 8000,
+      maxImageEdge: config.maxImageEdge || 1600,
+      jpegQuality: config.jpegQuality || 80,
     });
     conversationHistory.push({
       user: question || "look at what i marked and explain it.",
@@ -416,12 +430,24 @@ async function runExplain(imagePath, question = "") {
     } catch {
       /* ignore */
     }
+    const fm = lastFrontmost;
+    const hintBits = [];
+    if (fm?.appName) hintBits.push(fm.appName);
+    if (fm?.url) {
+      try {
+        hintBits.push(new URL(fm.url).hostname);
+      } catch {
+        hintBits.push(fm.url.slice(0, 48));
+      }
+    }
     win.webContents.send("result:done", {
       ...result,
       imagePath,
       previewDataUrl: imagePreviewDataUrl(imagePath),
       width,
       height,
+      frontmostLabel: hintBits.join(" · ") || "",
+      hasContextImage: Boolean(lastContextImagePath),
     });
   } catch (err) {
     win.webContents.send("result:error", {
@@ -479,17 +505,33 @@ function registerIpc() {
       });
       const full = await captureDisplayPng(display);
       const cropped = await cropSelection(full, rect, display);
-      try {
-        fs.unlinkSync(full);
-      } catch {
-        /* ignore */
+      // Keep full-display PNG as secondary vision context (cleaned on next mark)
+      if (lastContextImagePath && lastContextImagePath !== full) {
+        try {
+          fs.unlinkSync(lastContextImagePath);
+        } catch {
+          /* ignore */
+        }
       }
+      lastContextImagePath = full;
       lastImagePath = cropped.path;
+      lastFrontmost = pendingFrontmost;
+      pendingFrontmost = null;
       conversationHistory = []; // new mark = new chat thread
       const config = loadConfig();
       const win = ensureResultWindow();
       win.show();
       win.focus();
+      const fm = lastFrontmost;
+      const hintBits = [];
+      if (fm?.appName) hintBits.push(fm.appName);
+      if (fm?.url) {
+        try {
+          hintBits.push(new URL(fm.url).hostname);
+        } catch {
+          hintBits.push(String(fm.url).slice(0, 48));
+        }
+      }
       win.webContents.send("result:ready-ask", {
         imagePath: cropped.path,
         previewDataUrl: imagePreviewDataUrl(cropped.path),
@@ -497,6 +539,8 @@ function registerIpc() {
         height: cropped.height,
         bytes: cropped.bytes,
         projectPath: config.projectPath,
+        frontmostLabel: hintBits.join(" · ") || "",
+        hasContextImage: true,
       });
     } catch (err) {
       const win = ensureResultWindow();

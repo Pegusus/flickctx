@@ -7,9 +7,11 @@ Flickctx is a desktop companion that captures a freehand-marked region of your s
 | Step | What happens |
 |------|----------------|
 | Mark | Per-display Electron overlay; freehand stroke → bounding box |
-| Capture | Screenshot of that display, crop to the mark |
+| Capture | Screenshot of that display, crop to the mark; keep full display as secondary context |
+| Environment | Frontmost app (+ browser URL when available) snapped before overlay steals focus |
 | Ask | Raw user question (no special-case prompts) |
-| Agent | Claude Messages API with image + question + tools |
+| Vision prep | Resize long edge (~1600) + JPEG compress for the API |
+| Agent | Claude Messages API: primary crop + optional full-display + hint + question + tools |
 | Chat | Multi-turn history keeps the same mark attached |
 
 ## Request shape
@@ -18,7 +20,13 @@ Flickctx is a desktop companion that captures a freehand-marked region of your s
 system: generic companion instructions (vision-first)
 messages: [
   ...history...,
-  user: [ image + labels, optional ambient local context, raw question ]
+  user: [
+    primary crop (JPEG),
+    optional full-display context (JPEG),
+    optional frontmost app/URL hint,
+    raw question,
+    optional ambient local context
+  ]
 ]
 tools: [ web_search, fetch_url, list_local_repos, read_local_file, grep_local, repo_details ]
 ```
