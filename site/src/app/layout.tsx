@@ -7,6 +7,8 @@ const display = Syne({
   weight: ["700", "800"],
   variable: "--font-display",
   display: "swap",
+  // Prevent size-adjust fallback metrics from making Syne look horizontally stretched
+  adjustFontFallback: false,
 });
 
 const sans = IBM_Plex_Sans({
@@ -14,6 +16,7 @@ const sans = IBM_Plex_Sans({
   weight: ["400", "500", "600"],
   variable: "--font-sans",
   display: "swap",
+  adjustFontFallback: false,
 });
 
 const mono = IBM_Plex_Mono({
@@ -21,6 +24,7 @@ const mono = IBM_Plex_Mono({
   weight: ["400", "500"],
   variable: "--font-mono",
   display: "swap",
+  adjustFontFallback: false,
 });
 
 export const metadata: Metadata = {

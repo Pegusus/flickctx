@@ -2,7 +2,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 12px;
+  gap: 16px;
   padding: calc(12px + var(--safe-t)) var(--pad-x) 12px;
   border-bottom: 1px solid var(--rule);
   position: sticky;
@@ -17,8 +17,10 @@
   font-family: var(--font-display), "Segoe UI", sans-serif;
   font-weight: 800;
   font-size: 1.05rem;
-  letter-spacing: -0.04em;
+  letter-spacing: -0.03em;
   text-decoration: none;
+  line-height: 1;
+  flex-shrink: 0;
 }
 
 .logo span {
@@ -27,22 +29,24 @@
 
 .nav {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   justify-content: flex-end;
-  gap: 2px 4px;
-  font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 0.75rem;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-sans), "Segoe UI", sans-serif;
+  font-size: 0.8125rem;
+  font-weight: 500;
 }
 
 .nav a {
   text-decoration: none;
   color: var(--mute);
   min-height: 40px;
-  min-width: 40px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   padding: 0 10px;
+  white-space: nowrap;
 }
 
 .nav a:hover,
@@ -50,8 +54,29 @@
   color: var(--ink);
 }
 
+.hideMobile {
+  /* desktop default: show */
+}
+
 @media (max-width: 900px) {
+  .logo {
+    font-family: var(--font-sans), "Segoe UI", sans-serif;
+    font-weight: 600;
+    font-size: 1rem;
+    letter-spacing: -0.02em;
+  }
+
   .hideMobile {
-    display: none;
+    display: none !important;
+  }
+
+  .nav {
+    gap: 0;
+    font-size: 0.8125rem;
+  }
+
+  .nav a {
+    padding: 0 8px;
+    min-width: 0;
   }
 }

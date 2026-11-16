@@ -24,8 +24,8 @@
   font-family: var(--font-display), "Segoe UI", sans-serif;
   font-weight: 800;
   font-size: clamp(2.4rem, 4vw, 3.4rem);
-  letter-spacing: -0.05em;
-  line-height: 0.92;
+  letter-spacing: -0.04em;
+  line-height: 1;
 }
 
 .brand span {
@@ -89,15 +89,18 @@
   }
 
   .brand {
-    font-size: clamp(1.5rem, 6.2vw, 1.8rem);
-    letter-spacing: -0.035em;
-    line-height: 1.05;
-    max-width: 11ch;
+    /* Syne reads ultra-wide on phones — use Plex for natural proportions */
+    font-family: var(--font-sans), "Segoe UI", sans-serif;
+    font-weight: 600;
+    font-size: 1.75rem;
+    letter-spacing: -0.025em;
+    line-height: 1.15;
+    max-width: none;
   }
 
   .line {
     font-size: 0.9rem;
-    line-height: 1.5;
+    line-height: 1.45;
     max-width: 34ch;
   }
 

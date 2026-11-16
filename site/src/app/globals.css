@@ -190,10 +190,10 @@ kbd {
   .sec-title {
     max-width: none;
     font-family: var(--font-sans), "Segoe UI", sans-serif;
-    font-size: 1.32rem;
+    font-size: 1.28rem;
     font-weight: 600;
     letter-spacing: -0.02em;
-    line-height: 1.25;
+    line-height: 1.3;
   }
 
   .section.ink .sec-title {
