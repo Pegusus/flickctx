@@ -1,0 +1,125 @@
+.hero {
+  display: grid;
+  grid-template-columns: minmax(220px, 300px) minmax(0, 1fr);
+  gap: 0;
+  min-height: calc(100dvh - var(--header-h));
+  min-width: 0;
+  max-width: 100%;
+  border-bottom: 1px solid var(--rule);
+}
+
+.rail {
+  padding: 40px var(--pad-x) 36px;
+  border-right: 1px solid var(--rule);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 18px;
+  background: rgba(255, 255, 255, 0.28);
+  min-width: 0;
+}
+
+.brand {
+  margin: 0;
+  font-family: var(--font-display), "Segoe UI", sans-serif;
+  font-weight: 800;
+  font-size: clamp(2.4rem, 4vw, 3.4rem);
+  letter-spacing: -0.05em;
+  line-height: 0.92;
+}
+
+.brand span {
+  color: var(--accent);
+}
+
+.line {
+  margin: 0;
+  color: var(--mute);
+  font-size: 0.98rem;
+  line-height: 1.45;
+  max-width: 22rem;
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.theater {
+  display: grid;
+  grid-template-rows: 1fr auto;
+  min-height: 520px;
+  min-width: 0;
+  max-width: 100%;
+  background: #d9dde1;
+}
+
+.stage {
+  position: relative;
+  min-height: 0;
+  min-width: 0;
+  background: var(--screen);
+}
+
+.caption {
+  margin: 0;
+  padding: 11px 16px;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.72rem;
+  color: var(--mute);
+  background: #f4f5f6;
+  border-top: 1px solid var(--rule);
+  min-height: 2.5em;
+}
+
+@media (max-width: 900px) {
+  .hero {
+    grid-template-columns: 1fr;
+    min-height: auto;
+  }
+
+  .rail {
+    border-right: none;
+    border-bottom: 1px solid var(--rule);
+    padding: 22px var(--pad-x) 18px;
+    justify-content: flex-start;
+    gap: 14px;
+  }
+
+  .brand {
+    font-size: clamp(1.5rem, 6.2vw, 1.8rem);
+    letter-spacing: -0.035em;
+    line-height: 1.05;
+    max-width: 11ch;
+  }
+
+  .line {
+    font-size: 0.9rem;
+    line-height: 1.5;
+    max-width: 34ch;
+  }
+
+  .actions .btn {
+    width: 100%;
+    min-height: 44px;
+    padding: 10px 14px;
+    font-size: 0.75rem;
+  }
+
+  .theater {
+    min-height: 0;
+    grid-template-rows: auto auto;
+  }
+
+  .stage {
+    height: auto;
+  }
+
+  .caption {
+    padding: 10px var(--pad-x);
+    font-size: 0.68rem;
+    line-height: 1.4;
+  }
+}

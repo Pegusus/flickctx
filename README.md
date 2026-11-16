@@ -2,7 +2,8 @@
 
 Mark anything on your screen. Ask anything. Get a direct answer.
 
-**Landing page:** https://pegusus.github.io/flickctx/ · source in [`website/`](./website/) / [`docs/`](./docs/)
+**Landing page (Next.js):** [`site/`](./site/) → deploy on Vercel as **flickctx** (`flickctx.vercel.app`)  
+**Static mirror (GitHub Pages):** https://pegusus.github.io/flickctx/ · [`website/`](./website/) / [`docs/`](./docs/)
 
 **screenshot + your question → vision agent reasons → answer**  
 (+ optional local repos, web search tools, multi-turn chat)

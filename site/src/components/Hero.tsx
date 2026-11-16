@@ -1,0 +1,44 @@
+"use client";
+
+import { useCallback, useState } from "react";
+import { IncidentDemo } from "./IncidentDemo";
+import styles from "./Hero.module.css";
+
+export function Hero() {
+  const [caption, setCaption] = useState("");
+  const onCaption = useCallback((text: string) => setCaption(text), []);
+
+  return (
+    <section className={styles.hero} aria-label="Flickctx overview">
+      <div className={styles.rail}>
+        <p className={styles.brand}>
+          Flick<span>ctx</span>
+        </p>
+        <p className={styles.line}>
+          Mark the CloudWatch spike. Switch tabs. Mark the Datadog timeout. Ask
+          what connects them.
+        </p>
+        <div className={styles.actions}>
+          <a
+            className="btn"
+            href="https://github.com/Pegusus/flickctx"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Clone the repo
+          </a>
+          <a className="btn quiet" href="#install">
+            Install
+          </a>
+        </div>
+      </div>
+
+      <div className={styles.theater} aria-label="Animated cross-tab incident demo">
+        <div className={styles.stage}>
+          <IncidentDemo onCaption={onCaption} />
+        </div>
+        <p className={styles.caption}>{caption}</p>
+      </div>
+    </section>
+  );
+}

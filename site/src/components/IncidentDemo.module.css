@@ -1,0 +1,544 @@
+.demo {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-rows: 44px 1fr;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.tabs {
+  display: flex;
+  background: #090d11;
+  border-bottom: 1px solid var(--hair);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  overscroll-behavior-x: contain;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 14px;
+  min-height: 44px;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.38);
+  border-right: 1px solid var(--hair);
+  white-space: nowrap;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.tabOn {
+  color: rgba(255, 255, 255, 0.92);
+  background: var(--screen);
+}
+
+.dot {
+  width: 7px;
+  height: 7px;
+  flex-shrink: 0;
+  display: block;
+}
+
+.dotAws {
+  background: var(--aws);
+}
+.dotDd {
+  background: #8b5cf6;
+}
+.dotFlick {
+  background: var(--teal);
+}
+
+.tabShort {
+  display: none;
+}
+
+.viewport {
+  position: relative;
+  overflow: hidden;
+  min-height: 0;
+  min-width: 0;
+  max-width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.stagePane {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+
+.scene {
+  position: absolute;
+  inset: 0;
+  padding: 16px;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.35s var(--ease), transform 0.35s var(--ease);
+  pointer-events: none;
+}
+
+.sceneOn {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
+
+.awsHead {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 11px;
+}
+
+.awsHead strong {
+  color: rgba(255, 255, 255, 0.78);
+  font-weight: 500;
+}
+
+.awsHead span {
+  color: rgba(255, 255, 255, 0.32);
+}
+
+.metrics {
+  display: grid;
+  grid-template-columns: 1.45fr 0.75fr;
+  gap: 10px;
+  height: calc(100% - 28px);
+}
+
+.card {
+  background: var(--panel);
+  border: 1px solid var(--hair);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.lbl {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.val {
+  font-family: var(--font-display), "Segoe UI", sans-serif;
+  font-weight: 800;
+  font-size: 1.7rem;
+  letter-spacing: -0.03em;
+  color: #fff;
+  margin: 6px 0 10px;
+}
+
+.warn {
+  color: #ffb020;
+}
+
+.spark {
+  flex: 1;
+  display: flex;
+  align-items: flex-end;
+  gap: 5px;
+  min-height: 80px;
+}
+
+.spark i {
+  flex: 1;
+  background: rgba(255, 153, 0, 0.28);
+  transform-origin: bottom;
+}
+
+.spark i:nth-child(1) {
+  height: 26%;
+}
+.spark i:nth-child(2) {
+  height: 32%;
+}
+.spark i:nth-child(3) {
+  height: 29%;
+}
+.spark i:nth-child(4) {
+  height: 36%;
+}
+.spark i:nth-child(5) {
+  height: 48%;
+}
+.spark i:nth-child(6) {
+  height: 82%;
+}
+.spark i:nth-child(7) {
+  height: 94%;
+}
+.spark i:nth-child(8) {
+  height: 68%;
+}
+
+.spike .spark i:nth-child(n + 5) {
+  background: var(--aws);
+  animation: riseBar 0.55s var(--ease) both;
+}
+
+@keyframes riseBar {
+  from {
+    transform: scaleY(0.4);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+
+.side {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.side .card {
+  flex: 1;
+}
+
+.side .val {
+  font-size: 1rem;
+  margin: 8px 0 0;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-weight: 500;
+}
+
+.bad {
+  color: #ff8a8a;
+}
+
+.ddBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.ddBar span {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 10px;
+  padding: 4px 7px;
+  border: 1px solid var(--hair);
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.ddOn {
+  color: #c4b0ff !important;
+  border-color: rgba(139, 92, 246, 0.5) !important;
+  background: rgba(139, 92, 246, 0.12);
+}
+
+.logs {
+  height: calc(100% - 34px);
+  overflow: hidden;
+  background: var(--panel);
+  border: 1px solid var(--hair);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 11px;
+  line-height: 1.5;
+  padding: 8px 0;
+}
+
+.log {
+  display: grid;
+  grid-template-columns: 64px 48px 1fr;
+  gap: 8px;
+  padding: 4px 10px;
+  color: rgba(255, 255, 255, 0.4);
+  border-left: 2px solid transparent;
+}
+
+.ts {
+  color: rgba(255, 255, 255, 0.25);
+}
+
+.err {
+  color: #ffd0d0;
+  background: rgba(226, 85, 85, 0.08);
+  border-left-color: var(--bad);
+}
+
+.err .lvl {
+  color: #ff8e8e;
+}
+
+.hl {
+  background: rgba(46, 196, 168, 0.1);
+  box-shadow: inset 0 0 0 1px rgba(46, 196, 168, 0.45);
+}
+
+.marks {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.marks svg {
+  width: 100%;
+  height: 100%;
+}
+
+.stroke {
+  fill: none;
+  stroke: var(--teal);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  opacity: 0;
+}
+
+.bbox {
+  fill: rgba(46, 196, 168, 0.06);
+  stroke: rgba(46, 196, 168, 0.65);
+  stroke-width: 1.2;
+  stroke-dasharray: 4 3;
+  opacity: 0;
+}
+
+.drawing .strokeActive {
+  opacity: 1;
+  animation: draw 1.2s var(--ease) forwards;
+}
+
+.drawn .strokeActive {
+  opacity: 1;
+  stroke-dashoffset: 0;
+  animation: none;
+}
+
+.boxed .bboxActive {
+  animation: fade 0.3s var(--ease) forwards;
+}
+
+@keyframes draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes fade {
+  to {
+    opacity: 1;
+  }
+}
+
+.chat {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  width: min(300px, 46%);
+  z-index: 3;
+  background: #10151c;
+  border: 1px solid rgba(46, 196, 168, 0.4);
+  padding: 11px 12px;
+  opacity: 0;
+  transform: translateY(12px);
+  pointer-events: none;
+}
+
+.chatOn .chat {
+  animation: up 0.4s var(--ease) forwards;
+}
+
+@keyframes up {
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.meta {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 10px;
+  color: var(--teal);
+  margin-bottom: 6px;
+}
+
+.q {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.38);
+  margin-bottom: 7px;
+}
+
+.a {
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.9);
+  min-height: 4.2em;
+}
+
+.a em {
+  font-style: normal;
+  color: #ffb020;
+}
+
+@media (max-width: 900px) {
+  .demo {
+    position: relative;
+    inset: auto;
+    height: auto;
+    display: flex;
+    flex-direction: column;
+    grid-template-rows: none;
+  }
+
+  .tabs {
+    flex: none;
+  }
+
+  .tab {
+    padding: 0 12px;
+    min-height: 40px;
+    font-size: 10px;
+  }
+
+  .viewport {
+    flex: none;
+    overflow: hidden;
+  }
+
+  .stagePane {
+    flex: none;
+    width: 100%;
+    aspect-ratio: 800 / 480;
+    min-height: 0;
+  }
+
+  .scene {
+    padding: 10px;
+  }
+
+  .sceneOff {
+    display: none;
+  }
+
+  .awsHead {
+    margin-bottom: 8px;
+    font-size: 10px;
+  }
+
+  .metrics {
+    grid-template-columns: 1.4fr 0.75fr;
+    gap: 6px;
+    height: calc(100% - 22px);
+  }
+
+  .card {
+    padding: 8px;
+  }
+
+  .val {
+    font-size: 1.25rem;
+    margin: 4px 0 6px;
+  }
+
+  .side .val {
+    font-size: 0.78rem;
+    margin: 4px 0 0;
+  }
+
+  .spark {
+    min-height: 0;
+    gap: 3px;
+  }
+
+  .ddBar {
+    margin-bottom: 6px;
+  }
+
+  .ddBar span {
+    font-size: 9px;
+    padding: 3px 6px;
+  }
+
+  .logs {
+    height: calc(100% - 28px);
+    padding: 4px 0;
+    font-size: 10px;
+  }
+
+  .log {
+    grid-template-columns: 48px 36px 1fr;
+    gap: 4px;
+    font-size: 9.5px;
+    padding: 3px 8px;
+  }
+
+  .chat {
+    position: static;
+    width: auto;
+    margin: 0;
+    border-left: none;
+    border-right: none;
+    border-bottom: none;
+    transform: none;
+    flex-shrink: 0;
+    padding: 10px 12px;
+  }
+
+  .chatOn .chat {
+    animation: fade 0.35s var(--ease) forwards;
+  }
+
+  .a {
+    font-size: 12px;
+    min-height: 3.2em;
+  }
+}
+
+@media (max-width: 400px) {
+  .tabFull {
+    display: none;
+  }
+  .tabShort {
+    display: inline;
+  }
+  .ts {
+    display: none;
+  }
+  .log {
+    grid-template-columns: 40px 1fr;
+  }
+  .awsHead {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scene,
+  .stroke,
+  .bbox,
+  .chat,
+  .spark i {
+    animation: none !important;
+    transition: none !important;
+  }
+  .strokeActive,
+  .bboxActive,
+  .chat {
+    opacity: 1;
+    stroke-dashoffset: 0;
+    transform: none;
+  }
+}

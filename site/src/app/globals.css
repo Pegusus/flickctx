@@ -1,0 +1,224 @@
+:root {
+  --bg: #e8eaec;
+  --bg-elev: rgba(255, 255, 255, 0.55);
+  --ink: #101214;
+  --mute: #4a5159;
+  --rule: rgba(16, 18, 20, 0.12);
+  --accent: #0b6b5f;
+  --teal: #2ec4a8;
+  --aws: #f90;
+  --bad: #e25555;
+  --screen: #0e1318;
+  --panel: #161c24;
+  --hair: rgba(255, 255, 255, 0.09);
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --safe-t: env(safe-area-inset-top, 0px);
+  --safe-r: env(safe-area-inset-right, 0px);
+  --safe-b: env(safe-area-inset-bottom, 0px);
+  --safe-l: env(safe-area-inset-left, 0px);
+  --pad-x: max(24px, var(--safe-l), var(--safe-r));
+  --content: 1080px;
+  --header-h: 58px;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  margin: 0;
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+html,
+body {
+  margin: 0;
+  max-width: 100%;
+  overflow-x: hidden;
+  overflow-x: clip;
+}
+
+body {
+  min-height: 100vh;
+  min-height: 100dvh;
+  color: var(--ink);
+  font-family: var(--font-sans), "Segoe UI", sans-serif;
+  font-size: 16px;
+  background:
+    radial-gradient(900px 420px at 100% 0%, rgba(11, 107, 95, 0.07), transparent 60%),
+    linear-gradient(180deg, #eef0f2 0%, var(--bg) 42%, #e2e5e8 100%);
+  padding-bottom: var(--safe-b);
+}
+
+a {
+  color: inherit;
+  touch-action: manipulation;
+}
+
+button {
+  font: inherit;
+}
+
+.container {
+  width: min(100%, var(--content));
+  margin: 0 auto;
+  padding-left: var(--pad-x);
+  padding-right: var(--pad-x);
+}
+
+.kicker {
+  margin: 0 0 10px;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.kicker.light {
+  color: var(--teal);
+}
+
+.sec-title {
+  margin: 0 0 14px;
+  font-family: var(--font-display), "Segoe UI", sans-serif;
+  font-weight: 800;
+  font-size: clamp(1.55rem, 2.8vw, 2.25rem);
+  letter-spacing: -0.035em;
+  line-height: 1.08;
+  max-width: 18ch;
+  text-wrap: balance;
+}
+
+.sec-lead {
+  margin: 0;
+  color: var(--mute);
+  font-size: 1.02rem;
+  line-height: 1.55;
+  max-width: 36rem;
+}
+
+.sec-lead.light {
+  color: rgba(243, 244, 245, 0.72);
+}
+
+.section {
+  padding: 72px 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.section.ink {
+  background: var(--screen);
+  color: #f3f4f5;
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+
+.section.quiet {
+  background: rgba(255, 255, 255, 0.35);
+}
+
+.section.ink .sec-title {
+  max-width: 22ch;
+}
+
+kbd {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.85em;
+  border: 1px solid var(--rule);
+  background: rgba(16, 18, 20, 0.04);
+  padding: 1px 5px;
+}
+
+.btn {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.78rem;
+  text-decoration: none;
+  text-align: center;
+  padding: 12px 14px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--ink);
+  color: #f3f4f5;
+  border: 1px solid var(--ink);
+  touch-action: manipulation;
+  user-select: none;
+  transition: background 0.2s var(--ease), border-color 0.2s var(--ease), color 0.2s var(--ease);
+}
+
+.btn:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.btn.quiet {
+  background: transparent;
+  color: var(--ink);
+}
+
+.btn.quiet:hover {
+  background: transparent;
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.reveal {
+  opacity: 0;
+  transform: translateY(16px);
+  transition: opacity 0.55s var(--ease), transform 0.55s var(--ease);
+}
+
+.reveal.in {
+  opacity: 1;
+  transform: none;
+}
+
+@media (max-width: 900px) {
+  :root {
+    --pad-x: max(20px, var(--safe-l), var(--safe-r));
+  }
+
+  .section {
+    padding: 48px 0;
+  }
+
+  .sec-title {
+    max-width: none;
+    font-family: var(--font-sans), "Segoe UI", sans-serif;
+    font-size: 1.32rem;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1.25;
+  }
+
+  .section.ink .sec-title {
+    max-width: none;
+  }
+
+  .sec-lead {
+    font-size: 0.92rem;
+    max-width: none;
+  }
+
+  .kicker {
+    font-size: 0.68rem;
+    letter-spacing: 0.04em;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}

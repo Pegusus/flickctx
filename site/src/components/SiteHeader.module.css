@@ -1,0 +1,57 @@
+.mast {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: calc(12px + var(--safe-t)) var(--pad-x) 12px;
+  border-bottom: 1px solid var(--rule);
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background: rgba(238, 240, 242, 0.92);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.logo {
+  font-family: var(--font-display), "Segoe UI", sans-serif;
+  font-weight: 800;
+  font-size: 1.05rem;
+  letter-spacing: -0.04em;
+  text-decoration: none;
+}
+
+.logo span {
+  color: var(--accent);
+}
+
+.nav {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 2px 4px;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.75rem;
+}
+
+.nav a {
+  text-decoration: none;
+  color: var(--mute);
+  min-height: 40px;
+  min-width: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 10px;
+}
+
+.nav a:hover,
+.active {
+  color: var(--ink);
+}
+
+@media (max-width: 900px) {
+  .hideMobile {
+    display: none;
+  }
+}
