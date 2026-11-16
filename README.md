@@ -63,7 +63,8 @@ npx flickctx mark
 - Your question (verbatim)
 - Short conversation history
 - Ambient local repo catalog (when relevant)
-- Tools: `web_search`, `fetch_url`, `list_local_repos`, `read_local_file`, `grep_local`, `repo_details`
+- On-demand product skills (`skills/`: aws, datadog, gcp, …) via `list_skills` / `read_skill` — not preloaded into every chat
+- Tools: `web_search`, `fetch_url`, `list_local_repos`, `read_local_file`, `grep_local`, `repo_details`, `list_skills`, `read_skill`
 
 ## License
 

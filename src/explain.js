@@ -15,10 +15,11 @@ rules (in order):
 3. If an environment hint (frontmost app / URL) is provided, use it as a weak prior — the pixels still win if they disagree.
 4. ANSWER THE ASK using the screenshot as primary evidence. quote visible labels when useful.
 5. TOOLS ARE SECONDARY. try to answer from the images first. use web_search / fetch_url only when the image cannot answer (missing docs, need a link, confirm live pricing). never replace the screenshot with a generic guide that ignores what was marked.
-6. LOCAL CONTEXT is optional. use list_local_repos / grep only if the mark looks related. never force an unrelated local project.
-7. if the crop is blank/unreadable, say so clearly instead of inventing.
-8. be concrete. short markdown ok. no filler about missing git/claude sessions.
-9. don't invent file paths or repos that aren't in tool results or provided context.`;
+6. PRODUCT SKILLS are on-demand. if the mark is clearly AWS/Datadog/GCP/k8s/etc, call list_skills then read_skill for at most 1–2 ids. never preload all skills; never paste skill catalogs into the answer.
+7. LOCAL CONTEXT is optional. use list_local_repos / grep only if the mark looks related. never force an unrelated local project.
+8. if the crop is blank/unreadable, say so clearly instead of inventing.
+9. be concrete. short markdown ok. no filler about missing git/claude sessions.
+10. don't invent file paths or repos that aren't in tool results or provided context.`;
 
 function buildUserPrompt(question) {
   const q = (question || "").trim();

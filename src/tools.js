@@ -7,6 +7,11 @@ const {
   formatRepoCatalog,
   rankRepos,
 } = require("./repos");
+const {
+  listSkills,
+  formatSkillsCatalog,
+  readSkill,
+} = require("./skills");
 
 function run(cmd, args, cwd) {
   try {
@@ -220,6 +225,39 @@ function toolSchemas() {
         required: ["path"],
       },
     },
+    {
+      name: "list_skills",
+      description:
+        "List bundled/user product skills (aws, datadog, gcp, …). Returns ONLY ids + one-line descriptions. Use when the screenshot looks like a known console; then read_skill for at most 1–2 matches. Do not call this every turn.",
+      input_schema: {
+        type: "object",
+        properties: {
+          query: {
+            type: "string",
+            description: "Optional filter (e.g. aws, kafka, datadog)",
+          },
+        },
+      },
+    },
+    {
+      name: "read_skill",
+      description:
+        "Load ONE skill body (capped length) for interpreting a matching screenshot. Prefer after list_skills. Never read more than 2 skills per answer.",
+      input_schema: {
+        type: "object",
+        properties: {
+          id: {
+            type: "string",
+            description: "Skill id, e.g. aws, datadog, gcp, kubernetes",
+          },
+          max_chars: {
+            type: "number",
+            description: "Optional cap (max 3500)",
+          },
+        },
+        required: ["id"],
+      },
+    },
   ];
 }
 
@@ -283,6 +321,24 @@ async function runTool(name, input, env) {
   if (name === "repo_details") {
     const p = path.resolve(input.path);
     return deepenRepo(p);
+  }
+  if (name === "list_skills") {
+    const all = formatSkillsCatalog(listSkills());
+    const q = String(input.query || "")
+      .trim()
+      .toLowerCase();
+    if (!q) return all;
+    const skills = all.skills.filter(
+      (s) =>
+        s.id.includes(q) ||
+        (s.name || "").toLowerCase().includes(q) ||
+        (s.description || "").toLowerCase().includes(q) ||
+        (s.triggers || []).some((t) => String(t).toLowerCase().includes(q))
+    );
+    return { ...all, count: skills.length, skills };
+  }
+  if (name === "read_skill") {
+    return readSkill(input.id, input.max_chars);
   }
   return { error: `unknown tool: ${name}` };
 }

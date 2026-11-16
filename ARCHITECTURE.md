@@ -28,10 +28,10 @@ messages: [
     optional ambient local context
   ]
 ]
-tools: [ web_search, fetch_url, list_local_repos, read_local_file, grep_local, repo_details ]
+tools: [ web_search, fetch_url, list_local_repos, read_local_file, grep_local, repo_details, list_skills, read_skill ]
 ```
 
-The model decides whether to search the web, open a docs URL, or inspect a local repo. We do **not** special-case “pricing” vs “diagram” vs “datadog” in prompts. The marked screenshot is the primary subject.
+The model decides whether to search the web, open a docs URL, inspect a local repo, or load a **product skill**. Bundled skills (`skills/*.md`) stay out of the prompt body — ambient context only lists skill ids; `read_skill` loads at most ~3.5k chars when the mark matches. The marked screenshot is still the primary subject.
 
 ## Optional proxy
 
@@ -40,7 +40,9 @@ The model decides whether to search the web, open a docs URL, or inspect a local
 ## Key files
 
 - `src/explain.js` — agent loop (generic prompt + tools + thinking)
-- `src/tools.js` — web + local tools
+- `src/tools.js` — web + local + skills tools
+- `src/skills.js` — on-demand skill catalog / reader
+- `skills/` — bundled AWS/Datadog/GCP/… references (thin)
 - `src/repos.js` / `src/context.js` — ambient local context
 - `electron/` — mark overlay + chat UI
 - `worker/` — Anthropic proxy

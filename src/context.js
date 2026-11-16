@@ -340,11 +340,24 @@ function gatherContext(options = {}) {
     formatRepoCatalog,
   } = require("./repos");
 
+  const { formatSkillsCatalogLine, suggestSkills } = require("./skills");
+
   const sections = [];
   sections.push(`Machine: ${process.platform} | ${new Date().toISOString()}`);
   sections.push(
     `Note: local paths below are optional background. Answer the user's ask about the screenshot. Do not treat an unrelated local app folder as the subject.`
   );
+  // Thin skills hint only — full skill bodies load via read_skill tool
+  const skillsLine = formatSkillsCatalogLine();
+  if (skillsLine) sections.push(skillsLine);
+  const suggested = suggestSkills(question, 2);
+  if (suggested.length) {
+    sections.push(
+      `Skill hints from the question text (optional): ${suggested
+        .map((s) => s.id)
+        .join(", ")}. Load with read_skill only if the screenshot matches.`
+    );
+  }
 
   let repoMeta = { scanned: false, count: 0, matched: [], roots: searchRoots };
   let git = { isGit: false };
