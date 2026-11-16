@@ -894,7 +894,7 @@ a {
 
 .install pre {
   margin: 0 0 14px;
-  max-width: 720px;
+  max-width: min(720px, 100%);
   padding: 18px 20px;
   background: var(--ink);
   color: #dce1e6;
@@ -903,7 +903,6 @@ a {
   line-height: 1.7;
   overflow: auto;
   -webkit-overflow-scrolling: touch;
-  max-width: 100%;
   white-space: pre;
   word-break: normal;
   overscroll-behavior: contain;
