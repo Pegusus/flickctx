@@ -36,6 +36,7 @@ html,
 body {
   margin: 0;
   max-width: 100%;
+  overflow-x: hidden; /* Safari fallback before clip */
   overflow-x: clip;
 }
 
@@ -212,7 +213,7 @@ a {
   position: absolute;
   inset: 0;
   display: grid;
-  grid-template-rows: 38px 1fr;
+  grid-template-rows: 44px 1fr;
 }
 
 .tabs {
@@ -234,11 +235,15 @@ a {
   align-items: center;
   gap: 8px;
   padding: 0 14px;
+  min-height: 44px;
   font-family: var(--mono);
   font-size: 11px;
   color: rgba(255, 255, 255, 0.38);
   border-right: 1px solid var(--hair);
   white-space: nowrap;
+  flex-shrink: 0;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .tab .dot {
@@ -692,8 +697,12 @@ kbd {
 
   .tab {
     padding: 0 12px;
-    min-height: 38px;
+    min-height: 44px;
     font-size: 10px;
+  }
+
+  .demo {
+    grid-template-rows: 44px 1fr;
   }
 
   .metrics {
