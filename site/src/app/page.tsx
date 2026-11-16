@@ -1,5 +1,6 @@
 import { Hero } from "@/components/Hero";
 import {
+  ConfigSection,
   CrossSection,
   DesktopSection,
   HowSection,
@@ -22,6 +23,7 @@ export default function HomePage() {
         <CrossSection />
         <SkillsSection />
         <ToolsSection />
+        <ConfigSection />
         <DesktopSection />
         <InstallSection />
       </main>

@@ -87,6 +87,18 @@
   line-height: 1.45;
 }
 
+.splitList code {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.84em;
+  color: var(--accent);
+}
+
+.hint code {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.9em;
+  color: var(--accent);
+}
+
 .flow {
   display: flex;
   flex-wrap: wrap;

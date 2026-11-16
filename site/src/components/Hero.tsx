@@ -16,7 +16,8 @@ export function Hero() {
         </p>
         <p className={styles.line}>
           Mark the CloudWatch spike. Switch tabs. Mark the Datadog timeout. Ask
-          what connects them.
+          what connects them — with your API key, model, and Claude Code /
+          OpenCode context.
         </p>
         <div className={styles.actions}>
           <a

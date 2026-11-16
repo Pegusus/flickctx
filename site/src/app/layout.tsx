@@ -30,12 +30,12 @@ const mono = IBM_Plex_Mono({
 export const metadata: Metadata = {
   title: "Flickctx — mark screen, ask, keep chatting",
   description:
-    "Mark a region on screen, ask about it, keep chatting. Follow incidents across AWS, Datadog, and your local repos.",
+    "Mark a region on screen, ask about it, keep chatting. Configurable API key and model — uses Claude Code / OpenCode context when available.",
   metadataBase: new URL("https://flickctx.vercel.app"),
   openGraph: {
     title: "Flickctx",
     description:
-      "Mark a region on screen, ask about it, keep chatting. Follow incidents across AWS, Datadog, and your local repos.",
+      "Mark a region on screen, ask about it, keep chatting. Configurable API key and model — uses Claude Code / OpenCode context when available.",
     type: "website",
   },
 };

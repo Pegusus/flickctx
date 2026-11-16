@@ -203,18 +203,81 @@ export function ToolsSection() {
   );
 }
 
+export function ConfigSection() {
+  return (
+    <section className="section quiet" id="config">
+      <div className="container">
+        <Reveal>
+          <div className={styles.split}>
+            <div className={styles.copy}>
+              <p className="kicker">Easily configurable</p>
+              <h2 className="sec-title">
+                Your key. Your model. Your coding agents.
+              </h2>
+              <p className="sec-lead">
+                Point Flickctx at an API key and model in one CLI command. It
+                also picks up Claude Code and OpenCode context from your machine
+                when those sessions are around — no separate wiring.
+              </p>
+            </div>
+            <ul className={styles.splitList}>
+              <li>
+                <strong>Any API key</strong>
+                <span>
+                  <code>ANTHROPIC_API_KEY</code>,{" "}
+                  <code>flickctx config --api-key</code>, or a Cloudflare proxy
+                  URL
+                </span>
+              </li>
+              <li>
+                <strong>Any model</strong>
+                <span>
+                  <code>flickctx config --model claude-sonnet-4-5</code> (or
+                  whatever vision-capable model you use)
+                </span>
+              </li>
+              <li>
+                <strong>Claude Code</strong>
+                <span>
+                  Reads recent project / transcript context from{" "}
+                  <code>~/.claude</code> when available
+                </span>
+              </li>
+              <li>
+                <strong>OpenCode</strong>
+                <span>
+                  Pulls OpenCode session / log context automatically when it
+                  finds a local install
+                </span>
+              </li>
+              <li>
+                <strong>Repos & hotkey</strong>
+                <span>
+                  Set search roots, project path, and{" "}
+                  <kbd>⌘⇧F</kbd> / <kbd>Ctrl+Shift+F</kbd> in config — edit JSON
+                  under <code>~/.config/flickctx</code> anytime
+                </span>
+              </li>
+            </ul>
+          </div>
+        </Reveal>
+      </div>
+    </section>
+  );
+}
+
 export function DesktopSection() {
   return (
-    <section className="section quiet" id="macos">
+    <section className="section" id="macos">
       <div className="container">
         <Reveal>
           <div className={styles.narrow}>
             <p className="kicker">Desktop companion</p>
-            <h2 className="sec-title">Electron overlay. Your API key. MIT.</h2>
+            <h2 className="sec-title">Electron overlay. Runs on your machine. MIT.</h2>
             <p className="sec-lead">
-              Runs locally. On macOS, grant Screen Recording to{" "}
-              <strong>Electron</strong> in System Settings, then restart.
-              Optional Cloudflare Worker proxy keeps the key off each laptop.
+              Local-first. On macOS, grant Screen Recording to{" "}
+              <strong>Electron</strong> in System Settings, then restart. Keep
+              keys on-box or route them through the optional Worker proxy.
             </p>
           </div>
         </Reveal>
@@ -229,16 +292,16 @@ export function InstallSection() {
       <div className="container">
         <Reveal>
           <p className="kicker">Get it running</p>
-          <h2 className="sec-title">Install</h2>
+          <h2 className="sec-title">Install & configure</h2>
           <pre className={styles.installPre}>{`git clone https://github.com/Pegusus/flickctx.git
 cd flickctx && npm install
-export ANTHROPIC_API_KEY=sk-ant-…
-npx flickctx config --model claude-sonnet-4-5
+npx flickctx config --api-key sk-ant-… --model claude-sonnet-4-5
 npx flickctx config --search-roots "$HOME/code,$HOME/Projects"
 npm start`}</pre>
           <p className={styles.hint}>
-            Then <kbd>⌘⇧F</kbd> / <kbd>Ctrl+Shift+F</kbd> — draw freehand, ask,
-            keep chatting.
+            Or export <code>ANTHROPIC_API_KEY</code>. Claude Code / OpenCode
+            context is detected automatically. Then{" "}
+            <kbd>⌘⇧F</kbd> / <kbd>Ctrl+Shift+F</kbd> — draw, ask, keep chatting.
           </p>
           <div className={styles.installActions}>
             <a
