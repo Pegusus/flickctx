@@ -2,7 +2,7 @@
 
 Mark anything on your screen. Ask anything. Get a direct answer.
 
-**Landing page:** [`website/`](./website/) — open `website/index.html` or browse the published site after deploy.
+**Landing page:** https://pegusus.github.io/flickctx/ · source in [`website/`](./website/) / [`docs/`](./docs/)
 
 **screenshot + your question → vision agent reasons → answer**  
 (+ optional local repos, web search tools, multi-turn chat)
