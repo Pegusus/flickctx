@@ -15,9 +15,8 @@ export function Hero() {
           Flick<span>ctx</span>
         </p>
         <p className={styles.line}>
-          Mark the CloudWatch spike. Switch tabs. Mark the Datadog timeout. Ask
-          what connects them — with your API key, model, and Claude Code /
-          OpenCode context.
+          Mark anything on your screen. Ask anything. Keep chatting — pricing,
+          diagrams, dashboards, code, docs. Same path every time.
         </p>
         <div className={styles.actions}>
           <a
@@ -34,7 +33,10 @@ export function Hero() {
         </div>
       </div>
 
-      <div className={styles.theater} aria-label="Animated cross-tab incident demo">
+      <div
+        className={styles.theater}
+        aria-label="Example demo: connecting an AWS spike to Datadog errors"
+      >
         <div className={styles.stage}>
           <IncidentDemo onCaption={onCaption} />
         </div>

@@ -39,8 +39,8 @@ export function HowSection() {
               <div>
                 <h3>Chat</h3>
                 <p>
-                  Follow-ups stay on the same mark. Dig into the spike, compare
-                  tabs, or pull the matching code from a local repo.
+                  Follow-ups stay on the same mark. Compare tabs, open a
+                  diagram, or pull matching code from a local repo.
                 </p>
               </div>
             </li>
@@ -102,12 +102,12 @@ export function CrossSection() {
     <section className="section ink" id="cross">
       <div className="container">
         <Reveal>
-          <p className="kicker light">Cross-tool incidents</p>
-          <h2 className="sec-title">One incident. Two consoles. One answer.</h2>
+          <p className="kicker light">Example walkthrough</p>
+          <h2 className="sec-title">One mark can follow you across tabs.</h2>
           <p className="sec-lead light">
-            CloudWatch says ACU is pegged. Datadog says payment timeouts.
-            Flickctx is for the moment you need both marks in the same
-            conversation — then a straight explanation of what connects them.
+            The hero animation is just one story — AWS spike, Datadog timeouts,
+            same chat. Flickctx itself is generic: whatever you circle becomes
+            the question.
           </p>
           <div className={styles.flow} aria-hidden>
             <div className={`${styles.flowNode} ${styles.aws}`}>
