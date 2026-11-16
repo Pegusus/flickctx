@@ -968,7 +968,7 @@ kbd {
 
 @media (max-width: 900px) {
   :root {
-    --pad-x: max(16px, var(--safe-l), var(--safe-r));
+    --pad-x: max(20px, var(--safe-l), var(--safe-r));
   }
 
   .mast nav a:not([href*="github"]):nth-child(-n + 3) {
@@ -989,12 +989,16 @@ kbd {
   }
 
   .brand {
-    font-size: clamp(2rem, 9.5vw, 2.6rem);
+    font-size: clamp(1.55rem, 6.2vw, 1.8rem);
+    letter-spacing: -0.035em;
+    line-height: 1.05;
+    max-width: 11ch;
   }
 
   .line {
-    font-size: 0.92rem;
-    max-width: none;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    max-width: 34ch;
   }
 
   .actions {
@@ -1004,6 +1008,9 @@ kbd {
   .action {
     width: 100%;
     min-width: 0;
+    min-height: 44px;
+    padding: 10px 14px;
+    font-size: 0.75rem;
   }
 
   /* Stop forcing a tall stage — size from content + locked aspect */
@@ -1165,7 +1172,29 @@ kbd {
     padding: 48px var(--pad-x);
   }
 
+  .kicker {
+    font-size: 0.68rem;
+    letter-spacing: 0.04em;
+  }
+
+  /* Syne reads too wide on phones — use Plex for section titles */
   .sec-title {
+    max-width: none;
+    font-family: var(--sans);
+    font-size: 1.35rem;
+    letter-spacing: -0.02em;
+    line-height: 1.25;
+    font-weight: 600;
+    text-wrap: balance;
+  }
+
+  .band-ink .sec-title {
+    max-width: none;
+  }
+
+  .sec-lead {
+    font-size: 0.9rem;
+    line-height: 1.5;
     max-width: none;
   }
 
@@ -1182,6 +1211,29 @@ kbd {
 
   .steps li:last-child {
     border-bottom: none;
+  }
+
+  .steps h3 {
+    font-family: var(--sans);
+    font-size: 1rem;
+    letter-spacing: -0.015em;
+    font-weight: 600;
+  }
+
+  .steps p {
+    font-size: 0.88rem;
+  }
+
+  .split-list strong {
+    font-family: var(--sans);
+    font-size: 0.95rem;
+    letter-spacing: -0.01em;
+    font-weight: 600;
+  }
+
+  .skill-rail li {
+    font-size: 0.88rem;
+    padding: 16px 14px;
   }
 
   .split,
@@ -1247,6 +1299,14 @@ kbd {
 
 /* Narrow phones (iPhone SE / mini) */
 @media (max-width: 400px) {
+  .brand {
+    font-size: 1.45rem;
+  }
+
+  .sec-title {
+    font-size: 1.22rem;
+  }
+
   .tab-full {
     display: none;
   }
