@@ -96,8 +96,8 @@
   mount.innerHTML = `
     <div class="demo" id="demo-root">
       <div class="tabs">
-        <div class="tab aws" data-tab="aws"><i class="dot"></i>AWS · RDS CloudWatch</div>
-        <div class="tab dd" data-tab="dd"><i class="dot"></i>Datadog · Logs</div>
+        <div class="tab aws" data-tab="aws"><i class="dot"></i><span class="tab-full">AWS · RDS CloudWatch</span><span class="tab-short">AWS</span></div>
+        <div class="tab dd" data-tab="dd"><i class="dot"></i><span class="tab-full">Datadog · Logs</span><span class="tab-short">Datadog</span></div>
         <div class="tab flick" data-tab="flick"><i class="dot"></i>Flickctx</div>
       </div>
       <div class="viewport">
