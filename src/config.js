@@ -24,22 +24,41 @@ function ensureConfigDir() {
   fs.mkdirSync(CONFIG_DIR, { recursive: true });
 }
 
+function readConfigFile() {
+  if (!fs.existsSync(CONFIG_PATH)) return {};
+  try {
+    return JSON.parse(fs.readFileSync(CONFIG_PATH, "utf8"));
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * Resolve API key with Flickctx-first priority so ambient corporate
+ * ANTHROPIC_API_KEY (e.g. LiteLLM gateway keys) cannot shadow a key the
+ * user saved via `flickctx config --api-key`.
+ *
+ * Priority: FLICKCTX_API_KEY → config.json apiKey → ANTHROPIC_API_KEY
+ */
+function resolveApiKey(fileApiKey = "") {
+  const flickctxEnv = process.env.FLICKCTX_API_KEY || "";
+  if (flickctxEnv) {
+    return { apiKey: flickctxEnv, apiKeySource: "FLICKCTX_API_KEY" };
+  }
+  if (fileApiKey) {
+    return { apiKey: fileApiKey, apiKeySource: "config" };
+  }
+  const anthropicEnv = process.env.ANTHROPIC_API_KEY || "";
+  if (anthropicEnv) {
+    return { apiKey: anthropicEnv, apiKeySource: "ANTHROPIC_API_KEY" };
+  }
+  return { apiKey: "", apiKeySource: "none" };
+}
+
 function loadConfig() {
   ensureConfigDir();
-  let file = {};
-  if (fs.existsSync(CONFIG_PATH)) {
-    try {
-      file = JSON.parse(fs.readFileSync(CONFIG_PATH, "utf8"));
-    } catch {
-      file = {};
-    }
-  }
-
-  const apiKey =
-    process.env.ANTHROPIC_API_KEY ||
-    process.env.FLICKCTX_API_KEY ||
-    file.apiKey ||
-    "";
+  const file = readConfigFile();
+  const { apiKey, apiKeySource } = resolveApiKey(file.apiKey || "");
 
   const projectPath =
     process.env.FLICKCTX_PROJECT || file.projectPath || process.cwd();
@@ -54,6 +73,7 @@ function loadConfig() {
     ...DEFAULTS,
     ...file,
     apiKey,
+    apiKeySource,
     projectPath: path.resolve(projectPath),
     searchRoots,
     maxRepos: Number(file.maxRepos || DEFAULTS.maxRepos),
@@ -66,9 +86,14 @@ function loadConfig() {
 
 function saveConfig(partial) {
   ensureConfigDir();
+  const file = readConfigFile();
   const current = loadConfig();
+  // Persist only the file-stored key — never write an env-resolved key back.
   const next = {
-    apiKey: partial.apiKey ?? current.apiKey,
+    apiKey:
+      partial.apiKey !== undefined && partial.apiKey !== null
+        ? partial.apiKey
+        : file.apiKey || "",
     model: partial.model ?? current.model,
     projectPath: partial.projectPath ?? current.projectPath,
     hotkey: partial.hotkey ?? current.hotkey,
@@ -93,4 +118,6 @@ module.exports = {
   DEFAULTS,
   loadConfig,
   saveConfig,
+  resolveApiKey,
+  readConfigFile,
 };

@@ -20,12 +20,16 @@ Usage:
   flickctx config --search-roots ~/code,~/Projects
   flickctx doctor          Check API key, project, local repos
 
-Env:
-  ANTHROPIC_API_KEY / FLICKCTX_API_KEY
+Env (API key priority):
+  FLICKCTX_API_KEY  →  config.json apiKey  →  ANTHROPIC_API_KEY
   FLICKCTX_PROJECT
+  FLICKCTX_PROXY_URL   (optional Anthropic-compatible /chat proxy)
 
 Config file:
   ~/.config/flickctx/config.json
+
+Note: a corporate ANTHROPIC_API_KEY (e.g. LiteLLM) will not override a key
+saved with \`flickctx config --api-key\`. Use FLICKCTX_API_KEY to force one.
 `);
 }
 
@@ -65,7 +69,24 @@ async function cmdDoctor(config) {
   console.log(`  project:    ${config.projectPath}`);
   console.log(`  model:      ${config.model}`);
   console.log(`  thinking:   ${config.thinking === false ? "off" : "on"}`);
-  console.log(`  api key:    ${config.apiKey ? "set (" + config.apiKey.slice(0, 8) + "…)" : "MISSING"}`);
+  if (config.apiKey) {
+    console.log(
+      `  api key:    set via ${config.apiKeySource} (${config.apiKey.slice(0, 8)}…)`
+    );
+    if (
+      config.apiKeySource !== "ANTHROPIC_API_KEY" &&
+      process.env.ANTHROPIC_API_KEY
+    ) {
+      console.log(
+        `  note:       ANTHROPIC_API_KEY is set in the environment but ignored (Flickctx prefers ${config.apiKeySource})`
+      );
+    }
+  } else {
+    console.log("  api key:    MISSING");
+  }
+  if (process.env.FLICKCTX_PROXY_URL) {
+    console.log(`  proxy:      ${process.env.FLICKCTX_PROXY_URL}`);
+  }
   console.log(`  git:        ${ctx.meta.git ? "yes" : "no"}`);
   console.log(`  claude:     ${ctx.meta.claude ? "yes" : "no"}`);
   console.log(`  opencode:   ${ctx.meta.opencode ? "yes" : "no"}`);

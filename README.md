@@ -16,13 +16,15 @@ See [ARCHITECTURE.md](./ARCHITECTURE.md).
 
 ```bash
 git clone https://github.com/Pegusus/flickctx.git
-cd flickctx
+cd flickctx   # skip if your shell is already inside the repo
 npm install
-export ANTHROPIC_API_KEY=sk-ant-...
-npx flickctx config --model claude-sonnet-4-5
+npx flickctx config --api-key sk-ant-... --model claude-sonnet-4-5
 npx flickctx config --search-roots "$HOME/code,$HOME/Projects,$HOME/Developer"
 npm start
 ```
+
+API key priority: `FLICKCTX_API_KEY` → `~/.config/flickctx/config.json` → `ANTHROPIC_API_KEY`.  
+A corporate `ANTHROPIC_API_KEY` (LiteLLM gateway, etc.) will **not** override a key saved with `flickctx config --api-key`. To force a one-off key: `FLICKCTX_API_KEY=sk-ant-... npm start`.
 
 1. Click **Mark** (or ⌘⇧F / Ctrl+Shift+F)
 2. Draw freehand around something
