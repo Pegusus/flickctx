@@ -28,6 +28,7 @@ npm start
 2. Draw freehand around something
 3. Type any question → **Send**
 4. Keep chatting about the same mark
+5. Ask “where is …” / “which button …” — Flickctx can draw highlight rings on your screen (Esc clears; **Show highlights** in the result panel reshown them)
 
 ### macOS Screen Recording
 

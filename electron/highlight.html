@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Flickctx highlights</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: transparent;
+        font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+        user-select: none;
+        pointer-events: none;
+      }
+      #layer {
+        position: fixed;
+        inset: 0;
+      }
+      .box {
+        position: absolute;
+        border: 2.5px solid #2ec4a8;
+        border-radius: 8px;
+        box-shadow:
+          0 0 0 1px rgba(0, 0, 0, 0.35),
+          0 0 18px rgba(46, 196, 168, 0.45);
+        background: rgba(46, 196, 168, 0.1);
+        animation: pop 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+      }
+      .label {
+        position: absolute;
+        left: 0;
+        top: -28px;
+        max-width: 220px;
+        padding: 4px 8px;
+        border-radius: 6px;
+        background: rgba(16, 18, 20, 0.92);
+        color: #e8f8f4;
+        font-size: 12px;
+        font-weight: 500;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        border: 1px solid rgba(46, 196, 168, 0.45);
+      }
+      .box:nth-child(1) {
+        animation-delay: 0.02s;
+      }
+      .box:nth-child(2) {
+        animation-delay: 0.08s;
+      }
+      .box:nth-child(3) {
+        animation-delay: 0.14s;
+      }
+      #toast {
+        position: fixed;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 8px 14px;
+        border-radius: 999px;
+        background: rgba(16, 18, 20, 0.92);
+        color: #dce8e4;
+        font-size: 12px;
+        border: 1px solid rgba(46, 196, 168, 0.35);
+        opacity: 0;
+        transition: opacity 0.25s ease;
+      }
+      #toast.on {
+        opacity: 1;
+      }
+      @keyframes pop {
+        from {
+          opacity: 0;
+          transform: scale(0.92);
+        }
+        to {
+          opacity: 1;
+          transform: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="layer"></div>
+    <div id="toast">Flickctx highlight · Esc to clear</div>
+    <script>
+      const layer = document.getElementById("layer");
+      const toast = document.getElementById("toast");
+      let clearTimer = null;
+
+      function render(items, displayOrigin) {
+        layer.innerHTML = "";
+        const ox = displayOrigin?.x || 0;
+        const oy = displayOrigin?.y || 0;
+        for (const h of items || []) {
+          const el = document.createElement("div");
+          el.className = "box";
+          el.style.left = Math.round(h.x - ox) + "px";
+          el.style.top = Math.round(h.y - oy) + "px";
+          el.style.width = Math.round(h.width) + "px";
+          el.style.height = Math.round(h.height) + "px";
+          if (h.label) {
+            const lab = document.createElement("div");
+            lab.className = "label";
+            lab.textContent = h.label;
+            el.appendChild(lab);
+          }
+          layer.appendChild(el);
+        }
+        toast.classList.add("on");
+        if (clearTimer) clearTimeout(clearTimer);
+        clearTimer = setTimeout(() => toast.classList.remove("on"), 2800);
+      }
+
+      window.flickctx.onHighlightShow((data) => {
+        render(data?.items || [], data?.origin || { x: 0, y: 0 });
+      });
+
+      window.flickctx.onHighlightClear(() => {
+        layer.innerHTML = "";
+        toast.classList.remove("on");
+      });
+
+      window.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") {
+          window.flickctx.dismissHighlights();
+        }
+      });
+    </script>
+  </body>
+</html>

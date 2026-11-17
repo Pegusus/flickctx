@@ -20,6 +20,7 @@ const { loadConfig, saveConfig } = require("../src/config");
 const { explainSelection } = require("../src/explain");
 const { captureFullScreenPng, tmpPng } = require("../src/capture");
 const { detectFrontmost } = require("../src/frontmost");
+const { toScreenHighlights } = require("../src/highlights");
 
 // So dialogs / menus say Flickctx (Screen Recording list still shows “Electron” for npm start)
 app.setName("Flickctx");
@@ -28,14 +29,21 @@ let tray = null;
 let overlayWindows = []; // one per display — required for multi-monitor + macOS Spaces
 let resultWindow = null;
 let launcherWindow = null;
+let highlightWindow = null;
 let busy = false;
 let lastImagePath = null;
 let lastContextImagePath = null;
 let lastFrontmost = null;
 let pendingFrontmost = null;
 let permissionPrompted = false;
+/** { displayId, screenRect, displayBounds } for the active mark */
+let lastMarkMeta = null;
+/** Last model highlight payload for reshow */
+let lastHighlightPayload = null;
 /** Short conversation memory for the current mark: [{ user, assistant }] */
 let conversationHistory = [];
+let highlightEscRegistered = false;
+let highlightGen = 0;
 
 function ensureMacScreenPermission({ forcePrompt = false } = {}) {
   if (process.platform !== "darwin") return true;
@@ -203,6 +211,7 @@ function createLauncher() {
 function showOverlay() {
   if (busy) return;
   ensureMacScreenPermission();
+  clearHighlights();
   // Snapshot frontmost app/URL *before* overlays steal focus
   try {
     pendingFrontmost = detectFrontmost();
@@ -385,6 +394,105 @@ function ensureResultWindow() {
   return resultWindow;
 }
 
+function clearHighlights() {
+  highlightGen += 1;
+  if (highlightEscRegistered) {
+    try {
+      globalShortcut.unregister("Escape");
+    } catch {
+      /* ignore */
+    }
+    highlightEscRegistered = false;
+    registerHotkey();
+  }
+  if (highlightWindow && !highlightWindow.isDestroyed()) {
+    highlightWindow.webContents.send("highlight:clear");
+    highlightWindow.hide();
+  }
+}
+
+function createHighlightWindow(displayBounds) {
+  if (highlightWindow && !highlightWindow.isDestroyed()) {
+    highlightWindow.destroy();
+  }
+  const win = new BrowserWindow({
+    x: displayBounds.x,
+    y: displayBounds.y,
+    width: displayBounds.width,
+    height: displayBounds.height,
+    frame: false,
+    transparent: true,
+    resizable: false,
+    movable: false,
+    minimizable: false,
+    maximizable: false,
+    fullscreenable: false,
+    skipTaskbar: true,
+    alwaysOnTop: true,
+    hasShadow: false,
+    show: false,
+    focusable: true,
+    type: process.platform === "darwin" ? "panel" : "toolbar",
+    webPreferences: {
+      preload: path.join(__dirname, "preload.js"),
+      contextIsolation: true,
+      nodeIntegration: false,
+      backgroundThrottling: false,
+    },
+  });
+  win.setAlwaysOnTop(true, "screen-saver");
+  win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+  win.setIgnoreMouseEvents(true, { forward: true });
+  if (process.platform === "darwin") {
+    try {
+      win.setWindowButtonVisibility(false);
+    } catch {
+      /* ignore */
+    }
+  }
+  win.loadFile(path.join(__dirname, "highlight.html"));
+  highlightWindow = win;
+  return win;
+}
+
+async function showHighlightsOnScreen(payload) {
+  if (!payload?.highlights?.length || !lastMarkMeta) {
+    clearHighlights();
+    return [];
+  }
+  const items = toScreenHighlights(payload, lastMarkMeta);
+  if (!items.length) {
+    clearHighlights();
+    return [];
+  }
+  lastHighlightPayload = payload;
+  const gen = ++highlightGen;
+  const bounds = lastMarkMeta.displayBounds;
+  const win = createHighlightWindow(bounds);
+  await new Promise((resolve) => {
+    if (win.webContents.isLoading()) {
+      win.webContents.once("did-finish-load", resolve);
+    } else {
+      resolve();
+    }
+  });
+  await new Promise((r) => setTimeout(r, 50));
+  if (gen !== highlightGen) return items;
+  win.showInactive();
+  win.webContents.send("highlight:show", {
+    items,
+    origin: { x: bounds.x, y: bounds.y },
+  });
+  if (!highlightEscRegistered) {
+    const ok = globalShortcut.register("Escape", () => clearHighlights());
+    highlightEscRegistered = Boolean(ok);
+  }
+  setTimeout(() => {
+    if (gen === highlightGen) clearHighlights();
+  }, 20000);
+  return items;
+}
+
 async function runExplain(imagePath, question = "") {
   const config = loadConfig();
   const win = ensureResultWindow();
@@ -440,6 +548,13 @@ async function runExplain(imagePath, question = "") {
         hintBits.push(fm.url.slice(0, 48));
       }
     }
+    let highlightCount = 0;
+    try {
+      const drawn = await showHighlightsOnScreen(result.highlights || null);
+      highlightCount = drawn.length;
+    } catch (err) {
+      console.warn("highlight overlay failed:", err.message || err);
+    }
     win.webContents.send("result:done", {
       ...result,
       imagePath,
@@ -448,6 +563,7 @@ async function runExplain(imagePath, question = "") {
       height,
       frontmostLabel: hintBits.join(" · ") || "",
       hasContextImage: Boolean(lastContextImagePath),
+      highlightCount,
     });
   } catch (err) {
     win.webContents.send("result:error", {
@@ -518,6 +634,18 @@ function registerIpc() {
       lastFrontmost = pendingFrontmost;
       pendingFrontmost = null;
       conversationHistory = []; // new mark = new chat thread
+      clearHighlights();
+      lastHighlightPayload = null;
+      lastMarkMeta = {
+        displayId: display.id,
+        screenRect: {
+          x: rect.x,
+          y: rect.y,
+          width: rect.width,
+          height: rect.height,
+        },
+        displayBounds: { ...display.bounds },
+      };
       const config = loadConfig();
       const win = ensureResultWindow();
       win.show();
@@ -587,6 +715,16 @@ function registerIpc() {
   ipcMain.on("result:open-config", () => {
     const c = loadConfig();
     shell.showItemInFolder(c.configPath);
+  });
+
+  ipcMain.on("highlight:dismiss", () => {
+    clearHighlights();
+  });
+
+  ipcMain.on("highlight:reshow", async () => {
+    if (lastHighlightPayload) {
+      await showHighlightsOnScreen(lastHighlightPayload);
+    }
   });
 }
 

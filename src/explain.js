@@ -2,6 +2,7 @@ const fs = require("fs");
 const path = require("path");
 const { gatherContext } = require("./context");
 const { toolSchemas, runTool } = require("./tools");
+const { extractHighlightsBlock } = require("./highlights");
 
 /**
  * Flickctx brain — generic vision agent + visible reasoning.
@@ -19,7 +20,17 @@ rules (in order):
 7. LOCAL CONTEXT is optional. use list_local_repos / grep only if the mark looks related. never force an unrelated local project.
 8. if the crop is blank/unreadable, say so clearly instead of inventing.
 9. be concrete. short markdown ok. no filler about missing git/claude sessions.
-10. don't invent file paths or repos that aren't in tool results or provided context.`;
+10. don't invent file paths or repos that aren't in tool results or provided context.
+11. SCREEN HIGHLIGHTS — when the user asks where something is, how to do a step, which button/control to use, or when pointing at a visible UI element clearly helps: AFTER your normal answer, append ONE fenced block exactly like:
+
+\`\`\`flickctx-highlights
+{"space":"primary","highlights":[{"x":0.20,"y":0.35,"w":0.14,"h":0.08,"label":"Settings"}]}
+\`\`\`
+
+- space "primary" = coords on the marked crop (default). use "display" only for targets clearly outside the mark but visible in the full-display image.
+- x,y,w,h are normalized 0–1 (origin top-left). keep boxes tight on the real control.
+- at most 5 highlights. skip the block entirely if nothing visible can be pointed at.
+- never put the fence in the middle of the prose answer.`
 
 function buildUserPrompt(question) {
   const q = (question || "").trim();
@@ -417,12 +428,17 @@ async function explainSelection({
     thinkingBudgetTokens: thinkingBudgetTokens || 8000,
   });
 
+  const { cleanText, payload: highlightPayload } = extractHighlightsBlock(
+    result.text || ""
+  );
+
   const followUpPrompt = question
-    ? `I marked something on my screen and asked: ${question}\n\nFlickctx said:\n\n${result.text}\n\nContinue from this.`
-    : `I marked something on my screen. Flickctx said:\n\n${result.text}\n\nContinue from this.`;
+    ? `I marked something on my screen and asked: ${question}\n\nFlickctx said:\n\n${cleanText}\n\nContinue from this.`
+    : `I marked something on my screen. Flickctx said:\n\n${cleanText}\n\nContinue from this.`;
 
   return {
-    explanation: result.text,
+    explanation: cleanText,
+    highlights: highlightPayload,
     reasoning: result.reasoning || "",
     followUpPrompt,
     usage: result.usage,

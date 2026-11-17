@@ -13,6 +13,7 @@ Flickctx is a desktop companion that captures a freehand-marked region of your s
 | Vision prep | Resize long edge (~1600) + JPEG compress for the API |
 | Agent | Claude Messages API: primary crop + optional full-display + hint + question + tools |
 | Chat | Multi-turn history keeps the same mark attached |
+| Highlight | Optional `flickctx-highlights` JSON → click-through overlay rings on the display (where / which-button asks) |
 
 ## Request shape
 

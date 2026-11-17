@@ -8,6 +8,7 @@
     "flickctx": "./bin/flickctx.js"
   },
   "scripts": {
+    "test": "node src/highlights.test.js",
     "start": "electron .",
     "cli": "node bin/flickctx.js",
     "test:context": "node scripts/test-context.js"

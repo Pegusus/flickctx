@@ -290,6 +290,13 @@
       #footer button {
         flex: 1;
       }
+      #footer button.hidden {
+        display: none;
+      }
+      #reshowHighlights {
+        border-color: rgba(46, 196, 168, 0.45);
+        color: #9eefe0;
+      }
     </style>
   </head>
   <body>
@@ -321,6 +328,7 @@
     </div>
     <div id="footer" class="hidden">
       <button id="copy" class="primary">Copy last answer</button>
+      <button id="reshowHighlights" class="hidden">Show highlights</button>
       <button id="copyPrompt">Copy agent prompt</button>
     </div>
     <script>
@@ -333,6 +341,7 @@
       const markPreview = document.getElementById("mark-preview");
       const markImg = document.getElementById("mark-img");
       const markDims = document.getElementById("mark-dims");
+      const reshowHighlights = document.getElementById("reshowHighlights");
       let last = null;
       let pendingImagePath = null;
       let busy = false;
@@ -529,6 +538,10 @@
       document.getElementById("copy").onclick = () => {
         if (last?.explanation) window.flickctx.copyText(last.explanation);
       };
+      reshowHighlights.onclick = () => {
+        window.flickctx.showHighlightsAgain &&
+          window.flickctx.showHighlightsAgain();
+      };
       document.getElementById("copyPrompt").onclick = () => {
         if (last?.followUpPrompt)
           window.flickctx.copyText(last.followUpPrompt);
@@ -616,8 +629,11 @@
         }
         if (data.model) bits.push(data.model);
         if (data.thinkingEnabled) bits.push("thinking");
+        if (data.highlightCount) bits.push(`highlights:${data.highlightCount}`);
         meta.textContent = bits.join(" · ");
         footer.classList.remove("hidden");
+        if (data.highlightCount > 0) reshowHighlights.classList.remove("hidden");
+        else reshowHighlights.classList.add("hidden");
         composer.classList.remove("hidden");
         setBusy(false);
         questionEl.focus();

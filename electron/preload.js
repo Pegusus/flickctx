@@ -26,4 +26,12 @@ contextBridge.exposeInMainWorld("flickctx", {
   onResultError: (cb) => {
     ipcRenderer.on("result:error", (_e, data) => cb(data));
   },
+  dismissHighlights: () => ipcRenderer.send("highlight:dismiss"),
+  showHighlightsAgain: () => ipcRenderer.send("highlight:reshow"),
+  onHighlightShow: (cb) => {
+    ipcRenderer.on("highlight:show", (_e, data) => cb(data));
+  },
+  onHighlightClear: (cb) => {
+    ipcRenderer.on("highlight:clear", () => cb());
+  },
 });
