@@ -3,6 +3,12 @@ const path = require("path");
 const { gatherContext } = require("./context");
 const { toolSchemas, runTool } = require("./tools");
 const { extractHighlightsBlock } = require("./highlights");
+const {
+  authModeForToken,
+  buildAuthHeaders,
+  resolveClaudeCodeAuth,
+  withClaudeCodeSystem,
+} = require("./claudeAuth");
 
 /**
  * Flickctx brain — generic vision agent + visible reasoning.
@@ -70,21 +76,23 @@ function proxyBase() {
   ).replace(/\/$/, "");
 }
 
-async function postMessages({ apiKey, body }) {
+async function postMessages({ apiKey, authMode, body }) {
   const base = proxyBase();
   const url = base ? `${base}/chat` : "https://api.anthropic.com/v1/messages";
-  const headers = {
-    "content-type": "application/json",
-  };
-  if (!base) {
-    headers["x-api-key"] = apiKey;
-    headers["anthropic-version"] = "2023-06-01";
+  const mode = authMode || authModeForToken(apiKey);
+  const headers = base
+    ? { "content-type": "application/json" }
+    : buildAuthHeaders({ token: apiKey, authMode: mode });
+
+  const payload = { ...body };
+  if (!base && mode === "oauth") {
+    payload.system = withClaudeCodeSystem(body.system, "oauth");
   }
 
   const res = await fetch(url, {
     method: "POST",
     headers,
-    body: JSON.stringify(body),
+    body: JSON.stringify(payload),
   });
   const raw = await res.text();
   let data;
@@ -112,6 +120,7 @@ function supportsThinking(model) {
 
 async function runAgent({
   apiKey,
+  authMode,
   model,
   imageBase64,
   mediaType,
@@ -222,7 +231,7 @@ async function runAgent({
 
     let data;
     try {
-      data = await postMessages({ apiKey, body });
+      data = await postMessages({ apiKey, authMode, body });
     } catch (err) {
       // If thinking isn't supported for this model/account, retry without it
       const msg = String(err.message || err);
@@ -321,6 +330,8 @@ function mediaTypeFor(filePath) {
 
 async function explainSelection({
   apiKey,
+  authMode,
+  apiKeySource,
   model,
   projectPath,
   imagePath,
@@ -343,9 +354,33 @@ async function explainSelection({
   maxImageEdge,
   jpegQuality,
 }) {
-  if (!apiKey && !proxyBase()) {
+  let token = apiKey || "";
+  let mode = authMode || authModeForToken(token);
+  let source = apiKeySource || "";
+
+  // Refresh Claude Code OAuth when we're using the attached login (or have no key yet).
+  const fromClaudeCode =
+    !token ||
+    String(source).startsWith("claude_code") ||
+    source === "CLAUDE_CODE_OAUTH_TOKEN" ||
+    source === "ANTHROPIC_AUTH_TOKEN";
+  if (fromClaudeCode) {
+    try {
+      const cc = await resolveClaudeCodeAuth();
+      if (cc?.token) {
+        token = cc.token;
+        mode = cc.authMode;
+        source = cc.apiKeySource;
+      }
+    } catch (err) {
+      if (!token) throw err;
+      // Keep the cached token if refresh failed but we still have one.
+    }
+  }
+
+  if (!token && !proxyBase()) {
     throw new Error(
-      "Missing API key. Set ANTHROPIC_API_KEY or run: flickctx config --api-key sk-ant-... (or set FLICKCTX_PROXY_URL for the optional worker proxy)"
+      "Missing credentials. Log in with Claude Code (`claude`), set FLICKCTX_API_KEY / ANTHROPIC_API_KEY, or run: flickctx config --api-key sk-ant-... (or set FLICKCTX_PROXY_URL)"
     );
   }
 
@@ -410,7 +445,8 @@ async function explainSelection({
   });
 
   const result = await runAgent({
-    apiKey,
+    apiKey: token,
+    authMode: mode,
     model,
     imageBase64: primary.base64,
     mediaType: primary.mediaType,

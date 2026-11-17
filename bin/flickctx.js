@@ -17,19 +17,27 @@ Usage:
   flickctx repos           List local git repos Flickctx can see
   flickctx config          Show config
   flickctx config --api-key KEY --project PATH --model MODEL
+  flickctx config --clear-api-key
   flickctx config --search-roots ~/code,~/Projects
   flickctx doctor          Check API key, project, local repos
 
-Env (API key priority):
-  FLICKCTX_API_KEY  →  config.json apiKey  →  ANTHROPIC_API_KEY
+Env / auth priority:
+  FLICKCTX_API_KEY
+  → config.json apiKey
+  → CLAUDE_CODE_OAUTH_TOKEN / ANTHROPIC_AUTH_TOKEN
+  → Claude Code login (~/.claude or macOS Keychain)
+  → ANTHROPIC_API_KEY
+
   FLICKCTX_PROJECT
   FLICKCTX_PROXY_URL   (optional Anthropic-compatible /chat proxy)
 
 Config file:
   ~/.config/flickctx/config.json
 
-Note: a corporate ANTHROPIC_API_KEY (e.g. LiteLLM) will not override a key
-saved with \`flickctx config --api-key\`. Use FLICKCTX_API_KEY to force one.
+If you're logged into Claude Code (\`claude\`), Flickctx can use that
+subscription OAuth — no Console API key required. A corporate
+ANTHROPIC_API_KEY (e.g. LiteLLM) will not override a Flickctx config key
+or an attached Claude Code login.
 `);
 }
 
@@ -39,6 +47,7 @@ function parseArgs(argv) {
     image: null,
     project: null,
     apiKey: null,
+    clearApiKey: false,
     model: null,
     searchRoots: null,
     json: false,
@@ -47,8 +56,14 @@ function parseArgs(argv) {
     const a = argv[i];
     if (a === "--image" || a === "-i") args.image = argv[++i];
     else if (a === "--project" || a === "-p") args.project = argv[++i];
-    else if (a === "--api-key") args.apiKey = argv[++i];
-    else if (a === "--model") args.model = argv[++i];
+    else if (a === "--api-key") {
+      args.apiKey = argv[++i] ?? "";
+      args.hasApiKeyFlag = true;
+    } else if (a === "--clear-api-key") {
+      args.clearApiKey = true;
+      args.hasApiKeyFlag = true;
+      args.apiKey = "";
+    } else if (a === "--model") args.model = argv[++i];
     else if (a === "--search-roots") args.searchRoots = argv[++i];
     else if (a === "--json") args.json = true;
     else if (a === "-h" || a === "--help") args.help = true;
@@ -70,9 +85,13 @@ async function cmdDoctor(config) {
   console.log(`  model:      ${config.model}`);
   console.log(`  thinking:   ${config.thinking === false ? "off" : "on"}`);
   if (config.apiKey) {
+    const mode = config.authMode === "oauth" ? "oauth" : "api-key";
     console.log(
-      `  api key:    set via ${config.apiKeySource} (${config.apiKey.slice(0, 8)}…)`
+      `  auth:       ${mode} via ${config.apiKeySource} (${config.apiKey.slice(0, 8)}…)`
     );
+    if (config.subscriptionType) {
+      console.log(`  plan:       ${config.subscriptionType}`);
+    }
     if (
       config.apiKeySource !== "ANTHROPIC_API_KEY" &&
       process.env.ANTHROPIC_API_KEY
@@ -82,7 +101,7 @@ async function cmdDoctor(config) {
       );
     }
   } else {
-    console.log("  api key:    MISSING");
+    console.log("  auth:       MISSING (run `claude` login, or flickctx config --api-key)");
   }
   if (process.env.FLICKCTX_PROXY_URL) {
     console.log(`  proxy:      ${process.env.FLICKCTX_PROXY_URL}`);
@@ -110,6 +129,8 @@ async function cmdExplain(config, imagePath, question = "") {
   process.stderr.write("Gathering local repos + context, calling Claude…\n");
   const result = await explainSelection({
     apiKey: config.apiKey,
+    authMode: config.authMode,
+    apiKeySource: config.apiKeySource,
     model: config.model,
     projectPath: config.projectPath,
     imagePath,
@@ -178,9 +199,14 @@ async function main() {
   }
 
   if (cmd === "config") {
-    if (args.apiKey || args.project || args.model || args.searchRoots) {
+    if (
+      args.hasApiKeyFlag ||
+      args.project ||
+      args.model ||
+      args.searchRoots
+    ) {
       const saved = saveConfig({
-        apiKey: args.apiKey || undefined,
+        apiKey: args.hasApiKeyFlag ? args.apiKey : undefined,
         projectPath: args.project || undefined,
         model: args.model || undefined,
         searchRoots: args.searchRoots
@@ -195,7 +221,9 @@ async function main() {
             model: saved.model,
             hotkey: saved.hotkey,
             searchRoots: saved.searchRoots,
-            apiKey: saved.apiKey ? "(set)" : "(missing)",
+            auth: saved.apiKey
+              ? `${saved.authMode} via ${saved.apiKeySource}`
+              : "(missing)",
           },
           null,
           2
@@ -211,7 +239,9 @@ async function main() {
             hotkey: config.hotkey,
             searchRoots: config.searchRoots,
             maxRepos: config.maxRepos,
-            apiKey: config.apiKey ? "(set)" : "(missing)",
+            auth: config.apiKey
+              ? `${config.authMode} via ${config.apiKeySource}`
+              : "(missing)",
           },
           null,
           2

@@ -295,12 +295,14 @@ export function InstallSection() {
           <h2 className="sec-title">Install & configure</h2>
           <pre className={styles.installPre}>{`git clone https://github.com/Pegusus/flickctx.git
 cd flickctx && npm install
+# logged into Claude Code? skip the api-key line
 npx flickctx config --api-key sk-ant-… --model claude-sonnet-4-5
 npx flickctx config --search-roots "$HOME/code,$HOME/Projects"
 npm start`}</pre>
           <p className={styles.hint}>
-            Or export <code>ANTHROPIC_API_KEY</code>. Claude Code / OpenCode
-            context is detected automatically. Then{" "}
+            Uses your Claude Code login automatically when no Console key is
+            set. Or pass <code>--api-key</code> / <code>ANTHROPIC_API_KEY</code>.
+            Local Claude Code / OpenCode context is detected too. Then{" "}
             <kbd>⌘⇧F</kbd> / <kbd>Ctrl+Shift+F</kbd> — draw, ask, keep chatting.
           </p>
           <div className={styles.installActions}>

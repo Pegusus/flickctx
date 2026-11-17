@@ -18,13 +18,17 @@ See [ARCHITECTURE.md](./ARCHITECTURE.md).
 git clone https://github.com/Pegusus/flickctx.git
 cd flickctx   # skip if your shell is already inside the repo
 npm install
+# Option A — use your Claude Code login (Pro/Max subscription), no Console key:
+#   already ran `claude` /login on this machine? just start.
+# Option B — Console API key:
 npx flickctx config --api-key sk-ant-... --model claude-sonnet-4-5
 npx flickctx config --search-roots "$HOME/code,$HOME/Projects,$HOME/Developer"
 npm start
 ```
 
-API key priority: `FLICKCTX_API_KEY` → `~/.config/flickctx/config.json` → `ANTHROPIC_API_KEY`.  
-A corporate `ANTHROPIC_API_KEY` (LiteLLM gateway, etc.) will **not** override a key saved with `flickctx config --api-key`. To force a one-off key: `FLICKCTX_API_KEY=sk-ant-... npm start`.
+Auth priority: `FLICKCTX_API_KEY` → config `--api-key` → Claude Code login (`claude` / Keychain / `~/.claude/.credentials.json`) → `ANTHROPIC_API_KEY`.  
+If Claude Code is logged in, Flickctx uses that OAuth session automatically. A corporate `ANTHROPIC_API_KEY` (LiteLLM, etc.) will **not** override a Flickctx config key or an attached Claude Code login.  
+To prefer Claude Code after saving a Console key: `npx flickctx config --clear-api-key`.
 
 1. Click **Mark** (or ⌘⇧F / Ctrl+Shift+F)
 2. Draw freehand around something

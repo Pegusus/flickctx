@@ -505,6 +505,8 @@ async function runExplain(imagePath, question = "") {
   try {
     const result = await explainSelection({
       apiKey: config.apiKey,
+      authMode: config.authMode,
+      apiKeySource: config.apiKeySource,
       model: config.model,
       projectPath: config.projectPath,
       imagePath,

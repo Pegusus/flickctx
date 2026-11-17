@@ -2,6 +2,10 @@ const fs = require("fs");
 const os = require("os");
 const path = require("path");
 const { defaultSearchRoots, expandHome } = require("./repos");
+const {
+  authModeForToken,
+  readStoredCredentials,
+} = require("./claudeAuth");
 
 const CONFIG_DIR = path.join(os.homedir(), ".config", "flickctx");
 const CONFIG_PATH = path.join(CONFIG_DIR, "config.json");
@@ -33,32 +37,61 @@ function readConfigFile() {
   }
 }
 
+function fromToken(token, apiKeySource) {
+  return {
+    apiKey: token,
+    apiKeySource,
+    authMode: authModeForToken(token),
+  };
+}
+
 /**
- * Resolve API key with Flickctx-first priority so ambient corporate
- * ANTHROPIC_API_KEY (e.g. LiteLLM gateway keys) cannot shadow a key the
- * user saved via `flickctx config --api-key`.
+ * Resolve credentials with Flickctx-first priority.
  *
- * Priority: FLICKCTX_API_KEY → config.json apiKey → ANTHROPIC_API_KEY
+ * Priority:
+ *   FLICKCTX_API_KEY
+ *   → config.json apiKey
+ *   → CLAUDE_CODE_OAUTH_TOKEN
+ *   → ANTHROPIC_AUTH_TOKEN
+ *   → Claude Code login (~/.claude / macOS Keychain)
+ *   → ANTHROPIC_API_KEY
+ *
+ * Claude Code login ranks above ambient ANTHROPIC_API_KEY so a corporate
+ * LiteLLM/gateway export cannot block a local `claude /login` session, and
+ * so Flickctx can run on a Max/Pro subscription without a Console API key.
  */
 function resolveApiKey(fileApiKey = "") {
-  const flickctxEnv = process.env.FLICKCTX_API_KEY || "";
-  if (flickctxEnv) {
-    return { apiKey: flickctxEnv, apiKeySource: "FLICKCTX_API_KEY" };
+  const flickctxEnv = (process.env.FLICKCTX_API_KEY || "").trim();
+  if (flickctxEnv) return fromToken(flickctxEnv, "FLICKCTX_API_KEY");
+
+  if (fileApiKey) return fromToken(fileApiKey, "config");
+
+  const oauthSetup = (process.env.CLAUDE_CODE_OAUTH_TOKEN || "").trim();
+  if (oauthSetup) return fromToken(oauthSetup, "CLAUDE_CODE_OAUTH_TOKEN");
+
+  const authToken = (process.env.ANTHROPIC_AUTH_TOKEN || "").trim();
+  if (authToken) return fromToken(authToken, "ANTHROPIC_AUTH_TOKEN");
+
+  const stored = readStoredCredentials();
+  if (stored?.accessToken) {
+    return {
+      apiKey: stored.accessToken,
+      apiKeySource: stored.source || "claude_code",
+      authMode: "oauth",
+      subscriptionType: stored.subscriptionType || "",
+    };
   }
-  if (fileApiKey) {
-    return { apiKey: fileApiKey, apiKeySource: "config" };
-  }
-  const anthropicEnv = process.env.ANTHROPIC_API_KEY || "";
-  if (anthropicEnv) {
-    return { apiKey: anthropicEnv, apiKeySource: "ANTHROPIC_API_KEY" };
-  }
-  return { apiKey: "", apiKeySource: "none" };
+
+  const anthropicEnv = (process.env.ANTHROPIC_API_KEY || "").trim();
+  if (anthropicEnv) return fromToken(anthropicEnv, "ANTHROPIC_API_KEY");
+
+  return { apiKey: "", apiKeySource: "none", authMode: "none" };
 }
 
 function loadConfig() {
   ensureConfigDir();
   const file = readConfigFile();
-  const { apiKey, apiKeySource } = resolveApiKey(file.apiKey || "");
+  const resolved = resolveApiKey(file.apiKey || "");
 
   const projectPath =
     process.env.FLICKCTX_PROJECT || file.projectPath || process.cwd();
@@ -72,8 +105,10 @@ function loadConfig() {
   return {
     ...DEFAULTS,
     ...file,
-    apiKey,
-    apiKeySource,
+    apiKey: resolved.apiKey,
+    apiKeySource: resolved.apiKeySource,
+    authMode: resolved.authMode,
+    subscriptionType: resolved.subscriptionType || "",
     projectPath: path.resolve(projectPath),
     searchRoots,
     maxRepos: Number(file.maxRepos || DEFAULTS.maxRepos),
@@ -88,7 +123,7 @@ function saveConfig(partial) {
   ensureConfigDir();
   const file = readConfigFile();
   const current = loadConfig();
-  // Persist only the file-stored key — never write an env-resolved key back.
+  // Persist only the file-stored key — never write an env/Claude-Code token back.
   const next = {
     apiKey:
       partial.apiKey !== undefined && partial.apiKey !== null
