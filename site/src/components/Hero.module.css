@@ -1,31 +1,35 @@
 .hero {
-  display: grid;
-  grid-template-columns: minmax(220px, 300px) minmax(0, 1fr);
-  gap: 0;
+  display: flex;
+  flex-direction: column;
   min-height: calc(100dvh - var(--header-h));
   min-width: 0;
   max-width: 100%;
   border-bottom: 1px solid var(--rule);
+  overflow: clip;
 }
 
 .rail {
-  padding: 40px var(--pad-x) 36px;
-  border-right: 1px solid var(--rule);
+  padding: 22px var(--pad-x) 18px;
   display: flex;
   flex-direction: column;
-  justify-content: flex-end;
-  gap: 18px;
-  background: rgba(255, 255, 255, 0.28);
+  align-items: flex-start;
+  gap: 12px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0.22));
+  border-bottom: 1px solid var(--rule);
+  flex-shrink: 0;
   min-width: 0;
+  max-width: 100%;
 }
 
 .brand {
   margin: 0;
   font-family: var(--font-display), "Segoe UI", sans-serif;
   font-weight: 800;
-  font-size: clamp(2.4rem, 4vw, 3.4rem);
-  letter-spacing: -0.04em;
-  line-height: 1;
+  font-size: clamp(2.4rem, 5.5vw, 3.6rem);
+  letter-spacing: -0.045em;
+  line-height: 0.95;
+  max-width: 100%;
 }
 
 .brand span {
@@ -35,22 +39,23 @@
 .line {
   margin: 0;
   color: var(--mute);
-  font-size: 0.98rem;
+  font-size: clamp(0.95rem, 1.5vw, 1.08rem);
   line-height: 1.45;
-  max-width: 22rem;
+  max-width: 38rem;
 }
 
 .actions {
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
   gap: 8px;
-  margin-top: 8px;
+  margin-top: 2px;
 }
 
 .theater {
-  display: grid;
-  grid-template-rows: 1fr auto;
-  min-height: 520px;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
   min-width: 0;
   max-width: 100%;
   background: #d9dde1;
@@ -58,9 +63,12 @@
 
 .stage {
   position: relative;
-  min-height: 0;
+  flex: 1 1 auto;
+  min-height: min(58vh, 620px);
   min-width: 0;
+  max-width: 100%;
   background: var(--screen);
+  overflow: hidden;
 }
 
 .caption {
@@ -72,30 +80,26 @@
   background: #f4f5f6;
   border-top: 1px solid var(--rule);
   min-height: 2.5em;
+  flex-shrink: 0;
 }
 
 @media (max-width: 900px) {
   .hero {
-    grid-template-columns: 1fr;
     min-height: auto;
   }
 
   .rail {
-    border-right: none;
-    border-bottom: 1px solid var(--rule);
-    padding: 22px var(--pad-x) 18px;
-    justify-content: flex-start;
-    gap: 14px;
+    padding: 20px var(--pad-x) 16px;
+    gap: 12px;
   }
 
   .brand {
     /* Syne reads ultra-wide on phones — use Plex for natural proportions */
     font-family: var(--font-sans), "Segoe UI", sans-serif;
     font-weight: 600;
-    font-size: 1.75rem;
+    font-size: 1.85rem;
     letter-spacing: -0.025em;
-    line-height: 1.15;
-    max-width: none;
+    line-height: 1.1;
   }
 
   .line {
@@ -104,19 +108,21 @@
     max-width: 34ch;
   }
 
-  .actions .btn {
+  .actions {
     width: 100%;
+  }
+
+  .actions :global(.btn) {
+    flex: 1 1 auto;
     min-height: 44px;
     padding: 10px 14px;
     font-size: 0.75rem;
-  }
-
-  .theater {
-    min-height: 0;
-    grid-template-rows: auto auto;
+    justify-content: center;
   }
 
   .stage {
+    flex: none;
+    min-height: 0;
     height: auto;
   }
 
