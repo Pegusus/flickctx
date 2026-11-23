@@ -114,21 +114,33 @@ function ensureMacScreenPermission({ forcePrompt = false } = {}) {
 }
 
 function trayIcon() {
-  // 32×32 black “target” — macOS menu-bar template (tinted by the system).
-  const img = nativeImage.createFromBuffer(
-    Buffer.from(
-      "iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAZ0lEQVR42u2WUQ4AIAhCu/+l6QT9KAlzsPnn8q1MOSeKasIjJEVHYFAMaXEKBEgx2mgUiO4hbQjGNVIBWM9IJa/kgAWARl4AdgB8bUL5N7QcROOjWL6MLNaxhSGxsGQWptTClkc7dQFhhjLcUkRsfQAAAABJRU5ErkJggg==",
-      "base64"
-    )
-  );
-  if (process.platform === "darwin") {
+  // Prefer on-disk assets (git-tracked under assets/). Use a teal ring so the
+  // status item is visible on both light and dark menu bars. The earlier
+  // embedded PNG was effectively empty, so the menu-bar icon never appeared.
+  const fromFile = [
+    path.join(__dirname, "..", "assets", "trayIcon.png"),
+    path.join(__dirname, "trayIcon.png"),
+  ];
+  for (const file of fromFile) {
     try {
-      img.setTemplateImage(true);
+      if (fs.existsSync(file)) {
+        const img = nativeImage.createFromPath(file);
+        if (!img.isEmpty()) {
+          return img.resize({ width: 18, height: 18 });
+        }
+      }
     } catch {
-      /* ignore */
+      /* try next */
     }
   }
-  return img;
+
+  // Teal 32×32 ring fallback (embedded).
+  const png32 = Buffer.from(
+    "iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABNklEQVR42s2XLQ6EMBCFSaqxHAGBRqMRXIE1HKPBovEkOC6B5wZcAbOKG+wOySMhQEv52e2IzzSdvtfp9M95vXvHJneCBeEC8Q8Dk0hIpIQkSqICJdpS9BFPGpgGi4mCaImB+CgY0KdAjLhrIMDMOo2oig6xwVUDEdI7XhCfGTFGdNbAFNDcEF7TqEyo0l49KD5T7S3HXsHJg7Qf1Y1uOeS6MNfB8UHBmW5ZXWHGKgMC2+eu+JGJYpmFZUCIPfyEuM5EC62NgVRxyKgG9wgfeCdMDNDaGJAnZj+JJkQGErSZZkGuDQic5yYGPAjmRA1ytHmGBsq5DuZOrmbv780+g3AParT5hgYqaPIxYH0JrBchi21o/SCyfhRbv4xYXMfWHyQsnmQsHqUsnuUsPiYsvmZsPqc/4Qup0/d0IRpshQAAAABJRU5ErkJggg==",
+    "base64"
+  );
+  const img = nativeImage.createFromBuffer(png32);
+  return img.isEmpty() ? img : img.resize({ width: 18, height: 18 });
 }
 
 function formatHotkeyLabel(accelerator) {
@@ -1218,13 +1230,33 @@ function registerIpc() {
 }
 
 function buildTray() {
-  tray = new Tray(trayIcon());
-  tray.setToolTip("Flickctx");
+  const icon = trayIcon();
+  tray = new Tray(icon.isEmpty() ? nativeImage.createEmpty() : icon);
+  tray.setToolTip("Flickctx — click to Mark or open chat");
+  if (process.platform === "darwin") {
+    try {
+      tray.setIgnoreDoubleClickEvents(true);
+    } catch {
+      /* ignore */
+    }
+    // Always show a short title so the status item is findable even if the
+    // bitmap fails to paint (common with empty/broken tray PNGs).
+    try {
+      tray.setTitle(icon.isEmpty() ? "Flickctx" : " Fx");
+    } catch {
+      /* ignore */
+    }
+  }
   // Menu-bar status item: click opens our dropdown under the icon.
   // Do not setContextMenu on macOS — it swallows click events.
   tray.on("click", () => showTrayMenu());
   tray.on("right-click", () => showTrayMenu());
   tray.on("double-click", () => showOverlay());
+  console.log(
+    icon.isEmpty()
+      ? "Flickctx tray: text-only status item (icon missing)"
+      : "Flickctx tray: menu-bar status item ready"
+  );
 }
 
 function registerHotkey() {
@@ -1246,6 +1278,9 @@ if (!gotLock) {
 
   app.whenReady().then(async () => {
     registerIpc();
+    // Create the menu-bar icon *before* hiding the Dock — otherwise a failed
+    // tray leaves the user with no way to reach the app.
+    buildTray();
     if (process.platform === "darwin" && app.dock) {
       try {
         app.dock.hide();
@@ -1253,7 +1288,6 @@ if (!gotLock) {
         /* ignore */
       }
     }
-    buildTray();
     registerHotkey();
     trayMenuWindow = createTrayMenuWindow();
     resultWindow = createResultWindow();
