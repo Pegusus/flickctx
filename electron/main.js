@@ -179,9 +179,26 @@ function createOverlays() {
 const LAUNCHER_EXPANDED = { width: 300, height: 44 };
 const LAUNCHER_COLLAPSED = { width: 118, height: 36 };
 let launcherExpanded = false;
+/** Remember chat visibility across a Mark gesture so cancel can restore it. */
+let resultOpenBeforeMark = false;
 
 function primaryWorkArea() {
   return screen.getPrimaryDisplay().workArea;
+}
+
+/**
+ * Keep floating UI on every macOS Space / virtual desktop.
+ * Must be re-applied after show/focus — becoming the key window can drop
+ * NSWindowCollectionBehaviorCanJoinAllSpaces on some Electron/macOS builds.
+ */
+function pinAcrossSpaces(win) {
+  if (!win || win.isDestroyed()) return;
+  try {
+    win.setAlwaysOnTop(true, "screen-saver");
+    win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+  } catch {
+    /* ignore */
+  }
 }
 
 function launcherBounds(expanded = launcherExpanded) {
@@ -216,16 +233,14 @@ function setLauncherExpanded(expanded) {
   if (!launcherWindow || launcherWindow.isDestroyed()) return;
   launcherWindow.setBounds(launcherBounds(launcherExpanded));
   launcherWindow.showInactive();
-  launcherWindow.setAlwaysOnTop(true, "screen-saver");
-  launcherWindow.setVisibleOnAllWorkspaces(true, {
-    visibleOnFullScreen: true,
-  });
+  pinAcrossSpaces(launcherWindow);
   launcherWindow.webContents.send(
     "launcher:mode",
     launcherExpanded ? "expanded" : "collapsed"
   );
   if (resultWindow && !resultWindow.isDestroyed() && resultWindow.isVisible()) {
     placeResultWindow(resultWindow);
+    pinAcrossSpaces(resultWindow);
   }
 }
 
@@ -248,9 +263,11 @@ function createResultWindow() {
     alwaysOnTop: true,
     skipTaskbar: true,
     show: false,
+    focusable: true,
+    fullscreenable: false,
     backgroundColor: "#111318",
-    // panel keeps the chat on every macOS Space / desktop
-    type: process.platform === "darwin" ? "panel" : undefined,
+    // panel = join every macOS Space (same as the Mark chip)
+    type: process.platform === "darwin" ? "panel" : "toolbar",
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
@@ -258,8 +275,7 @@ function createResultWindow() {
       backgroundThrottling: false,
     },
   });
-  win.setAlwaysOnTop(true, "screen-saver");
-  win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+  pinAcrossSpaces(win);
   if (process.platform === "darwin") {
     try {
       win.setWindowButtonVisibility(false);
@@ -267,6 +283,9 @@ function createResultWindow() {
       /* ignore */
     }
   }
+  // Re-pin when the window becomes key / shown — Spaces stickiness can drop.
+  win.on("show", () => pinAcrossSpaces(win));
+  win.on("focus", () => pinAcrossSpaces(win));
   win.loadFile(path.join(__dirname, "result.html"));
   return win;
 }
@@ -296,8 +315,7 @@ function createLauncher() {
       backgroundThrottling: false,
     },
   });
-  win.setAlwaysOnTop(true, "screen-saver");
-  win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+  pinAcrossSpaces(win);
   if (process.platform === "darwin") {
     try {
       win.setWindowButtonVisibility(false);
@@ -305,6 +323,8 @@ function createLauncher() {
       /* ignore */
     }
   }
+  win.on("show", () => pinAcrossSpaces(win));
+  win.on("focus", () => pinAcrossSpaces(win));
   win.loadFile(path.join(__dirname, "launcher.html"));
   win.webContents.on("did-finish-load", () => {
     win.webContents.send("launcher:mode", "collapsed");
@@ -322,18 +342,21 @@ function showOverlay() {
   } catch {
     pendingFrontmost = null;
   }
+  resultOpenBeforeMark = Boolean(
+    resultWindow && !resultWindow.isDestroyed() && resultWindow.isVisible()
+  );
   if (launcherWindow && !launcherWindow.isDestroyed()) {
     launcherWindow.hide();
   }
   if (resultWindow && !resultWindow.isDestroyed()) {
     resultWindow.hide();
   }
-  // overlays cover the screen; chip returns after mark / cancel
+  // overlays cover the screen; chip (+ chat if it was open) return after
   // Recreate each time so newly plugged monitors / Spaces are covered
   const wins = createOverlays();
   for (const win of wins) {
     win.show();
-    win.setAlwaysOnTop(true, "screen-saver");
+    pinAcrossSpaces(win);
     win.webContents.send("overlay:reset");
   }
   // Focus the overlay on the cursor's display
@@ -355,6 +378,10 @@ function showOverlay() {
 function hideOverlay() {
   destroyOverlays();
   showLauncherChip();
+  if (resultOpenBeforeMark) {
+    resultOpenBeforeMark = false;
+    showResultWindow();
+  }
 }
 
 async function captureDisplayPng(display) {
@@ -496,18 +523,20 @@ function ensureResultWindow() {
     resultWindow = createResultWindow();
   }
   placeResultWindow(resultWindow);
-  resultWindow.setAlwaysOnTop(true, "screen-saver");
-  resultWindow.setVisibleOnAllWorkspaces(true, {
-    visibleOnFullScreen: true,
-  });
+  pinAcrossSpaces(resultWindow);
   return resultWindow;
 }
 
 function showResultWindow() {
   const win = ensureResultWindow();
   showLauncherChip();
+  placeResultWindow(win);
   win.show();
+  pinAcrossSpaces(win);
   win.focus();
+  // Focus can clear “join all Spaces” — pin again after becoming key.
+  pinAcrossSpaces(win);
+  pinAcrossSpaces(launcherWindow);
   return win;
 }
 
@@ -821,6 +850,7 @@ function registerIpc() {
   ipcMain.on("overlay:complete", async (_e, rect) => {
     // Ignore duplicate completes from other display overlays
     if (busy) {
+      resultOpenBeforeMark = false;
       hideOverlay();
       return;
     }
@@ -829,6 +859,8 @@ function registerIpc() {
       return;
     }
     busy = true;
+    // New mark opens a fresh chat — don't restore the previous panel.
+    resultOpenBeforeMark = false;
     hideOverlay();
     try {
       // Capture after overlay hides so the dimmer isn't in the shot
@@ -992,10 +1024,8 @@ function buildTray() {
       click: () => setLauncherExpanded(true),
     },
     {
-      label: "Show last result",
-      click: () => {
-        if (resultWindow && !resultWindow.isDestroyed()) showResultWindow();
-      },
+      label: "Show chat",
+      click: () => showResultWindow(),
     },
     {
       label: "Fix Screen Recording permission…",

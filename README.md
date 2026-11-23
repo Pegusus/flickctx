@@ -31,7 +31,7 @@ npm start
 **No API key?** After Mark, choose **Claude Code** or **OpenCode**, then a session — Flickctx sends the screenshot + question into that chat, so the session’s models/keys/context are used. Built-in Flickctx still needs a key or Claude login.
 
 1. Use the **top-right Flickctx chip** (stays on every macOS Space) — click to expand, then **Mark** (or ⌘⇧F / Ctrl+Shift+F). Collapse with **–**.
-2. Draw freehand around something
+2. Draw freehand around something — the **chat panel** also stays on every Space so you can keep talking while switching tabs/desktops.
 3. Pick Claude Code / OpenCode / Flickctx, then a session — remembered for later marks (**Route** to change)
 4. Type any question → **Send**
 5. Ask “where is …” on Flickctx built-in for on-screen highlight rings
