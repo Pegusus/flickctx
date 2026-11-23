@@ -69,8 +69,7 @@
   text-underline-offset: 2px;
 }
 
-.archLink code,
-:global(.sec-lead) code {
+.archLink code {
   font-family: var(--font-mono), ui-monospace, monospace;
   font-size: 0.85em;
   background: #eee;
