@@ -66,13 +66,6 @@
   max-width: 22ch;
 }
 
-.archNote {
-  margin: 1rem 0 0;
-  font-size: 0.8125rem;
-  color: var(--mute);
-  max-width: 40rem;
-  line-height: 1.5;
-}
 
 .installPre {
   margin: 1.25rem 0 1rem;

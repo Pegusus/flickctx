@@ -50,7 +50,7 @@ export function ArchitectureSection() {
       <div className={`container ${styles.archWide}`}>
         <Reveal>
           <p className="kicker">Technical design</p>
-          <h2 className="sec-title">How Flickctx is built.</h2>
+          <h2 className="sec-title">How Flickctx works under the hood.</h2>
           <p className="sec-lead">
             An Electron main process owns floating windows over IPC. A local
             capture pipeline hands the mark to a session CLI bridge — Claude
@@ -58,10 +58,6 @@ export function ArchitectureSection() {
             window.
           </p>
           <ArchDiagram />
-          <p className={styles.archNote}>
-            Session routes use the CLI you already authenticated. Nothing extra
-            to configure in Flickctx.
-          </p>
         </Reveal>
       </div>
     </section>
@@ -76,8 +72,8 @@ export function SessionsSection() {
           <p className="kicker">Session routing</p>
           <h2 className="sec-title">Use the session you already opened.</h2>
           <p className="sec-lead">
-            OpenCode and Claude Code keep their own models and project context.
-            Flickctx just marks the screen and streams into that session.
+            Pick the OpenCode or Claude Code session you already opened.
+            Flickctx marks the screen and streams into that chat.
           </p>
         </Reveal>
         <Reveal cascade>

@@ -206,7 +206,7 @@ export function ArchDiagram() {
             Spawn CLI with the marked crop · stream-json / --thinking
           </text>
           <text x="60" y="492" className={styles.p}>
-            Uses that session’s auth, models, and project context
+            Continues that session’s models and project context
           </text>
         </g>
 

@@ -30,7 +30,7 @@ const STEPS: Step[] = [
   {
     id: "aws-mark",
     panel: "aws",
-    caption: "Mark AWS. Crop becomes the vision focus.",
+    caption: "Mark AWS. Crop becomes the focus.",
     ms: 1800,
     mark: true,
     draw: true,
