@@ -22,8 +22,13 @@
 
 html {
   margin: 0;
-  scroll-behavior: smooth;
+  /* Smooth only after first paint — avoids refresh jumping to last scroll */
+  scroll-behavior: auto;
   -webkit-text-size-adjust: 100%;
+}
+
+html.is-ready {
+  scroll-behavior: smooth;
 }
 
 html,

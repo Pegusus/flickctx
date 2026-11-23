@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Instrument_Sans, JetBrains_Mono } from "next/font/google";
+import { ScrollTop } from "@/components/ScrollTop";
 import "./globals.css";
 
 const sans = Instrument_Sans({
@@ -43,7 +44,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${sans.variable} ${mono.variable}`}>
-      <body>{children}</body>
+      <body>
+        <ScrollTop />
+        {children}
+      </body>
     </html>
   );
 }
