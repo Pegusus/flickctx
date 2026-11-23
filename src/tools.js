@@ -12,6 +12,12 @@ const {
   formatSkillsCatalog,
   readSkill,
 } = require("./skills");
+const { resolveWithinRoots } = require("./paths");
+const { assertPublicHttpUrl } = require("./net");
+
+function allowedRoots(env = {}) {
+  return [...(env.searchRoots || []), env.projectPath].filter(Boolean);
+}
 
 function run(cmd, args, cwd) {
   try {
@@ -127,15 +133,33 @@ async function webSearch(query, maxResults = 5) {
 }
 
 async function fetchUrl(url, maxChars = 12000) {
+  const check = assertPublicHttpUrl(url);
+  if (!check.ok) return { url, error: check.error };
+
   try {
-    const res = await fetch(url, {
-      headers: { "user-agent": "Flickctx/0.1" },
-      redirect: "follow",
-    });
+    // manual redirect so each hop is re-validated (SSRF)
+    let current = check.url;
+    let res;
+    for (let hop = 0; hop < 5; hop++) {
+      res = await fetch(current, {
+        headers: { "user-agent": "Flickctx/0.2" },
+        redirect: "manual",
+      });
+      if (res.status >= 300 && res.status < 400) {
+        const loc = res.headers.get("location");
+        if (!loc) break;
+        const next = new URL(loc, current).toString();
+        const again = assertPublicHttpUrl(next);
+        if (!again.ok) return { url: next, error: again.error };
+        current = again.url;
+        continue;
+      }
+      break;
+    }
     const ctype = res.headers.get("content-type") || "";
     const text = await res.text();
     if (!ctype.includes("html") && !ctype.includes("text") && !ctype.includes("json")) {
-      return { url, note: `non-text content-type: ${ctype}`, text: text.slice(0, 500) };
+      return { url: current, note: `non-text content-type: ${ctype}`, text: text.slice(0, 500) };
     }
     const cleaned = text
       .replace(/<script[\s\S]*?<\/script>/gi, " ")
@@ -143,7 +167,7 @@ async function fetchUrl(url, maxChars = 12000) {
       .replace(/<[^>]+>/g, " ")
       .replace(/\s+/g, " ")
       .trim();
-    return { url, status: res.status, text: cleaned.slice(0, maxChars) };
+    return { url: current, status: res.status, text: cleaned.slice(0, maxChars) };
   } catch (err) {
     return { url, error: err.message || String(err) };
   }
@@ -294,33 +318,45 @@ async function runTool(name, input, env) {
     };
   }
   if (name === "read_local_file") {
-    const p = path.resolve(input.path);
-    const text = safeRead(p, input.max_chars || 40_000);
-    if (text == null) return { path: p, error: "unreadable or missing" };
-    return { path: p, text };
+    const gated = resolveWithinRoots(input.path, allowedRoots(env), {
+      mustExist: true,
+    });
+    if (!gated.ok) return { path: input.path, error: gated.error };
+    const text = safeRead(gated.path, input.max_chars || 40_000);
+    if (text == null) return { path: gated.path, error: "unreadable or missing" };
+    return { path: gated.path, text };
   }
   if (name === "grep_local") {
-    const root = path.resolve(input.root);
+    const gated = resolveWithinRoots(input.root, allowedRoots(env));
+    if (!gated.ok) return { root: input.root, error: gated.error };
     const pattern = String(input.pattern || "");
     if (!pattern) return { error: "pattern required" };
     let out = "";
     if (run("which", ["rg"])) {
-      const args = ["-n", "--no-heading", "--max-count", "40", pattern, root];
+      const args = [
+        "-n",
+        "--no-heading",
+        "--max-count",
+        "40",
+        pattern,
+        gated.path,
+      ];
       if (input.glob) args.unshift("--glob", input.glob);
       out = run("rg", args);
     } else {
-      const args = ["-R", "-n", "-I", pattern, root];
+      const args = ["-R", "-n", "-I", pattern, gated.path];
       out = run("grep", args);
     }
     return {
-      root,
+      root: gated.path,
       pattern,
       matches: (out || "(no matches)").slice(0, 12000),
     };
   }
   if (name === "repo_details") {
-    const p = path.resolve(input.path);
-    return deepenRepo(p);
+    const gated = resolveWithinRoots(input.path, allowedRoots(env));
+    if (!gated.ok) return { path: input.path, error: gated.error };
+    return deepenRepo(gated.path);
   }
   if (name === "list_skills") {
     const all = formatSkillsCatalog(listSkills());
@@ -346,6 +382,4 @@ async function runTool(name, input, env) {
 module.exports = {
   toolSchemas,
   runTool,
-  webSearch,
-  fetchUrl,
 };

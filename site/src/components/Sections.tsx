@@ -59,6 +59,10 @@ export function ArchitectureSection() {
             same chat window.
           </p>
           <ArchDiagram />
+          <p className={styles.archNote}>
+            Local tools stay inside configured project roots. The optional
+            Worker proxy requires a shared secret — not an open endpoint.
+          </p>
         </Reveal>
       </div>
     </section>

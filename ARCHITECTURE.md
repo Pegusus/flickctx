@@ -66,7 +66,26 @@ Used when Route = Flickctx (needs Console key, Claude login, or `FLICKCTX_PROXY_
 
 ## Optional proxy
 
-`worker/` is a small Cloudflare Worker that forwards `/chat` to Anthropic’s Messages API. Set `FLICKCTX_PROXY_URL` so machines never store the API key.
+`worker/` is a small Cloudflare Worker that forwards `/chat` to Anthropic’s Messages API. Set `FLICKCTX_PROXY_URL` and matching `FLICKCTX_PROXY_SECRET` (header `x-flickctx-proxy-secret`) so machines never store the API key and the Worker is not an open proxy.
+
+## Open-source / platform stack
+
+| Piece | Where |
+|-------|--------|
+| Electron | `electron/` multi-window shell |
+| Node.js | `src/` capture, sessions, explain, tools |
+| screenshot-desktop | display capture |
+| DuckDuckGo HTML | `web_search` |
+| ripgrep (optional) | `grep_local` |
+| Cloudflare Workers | `worker/` proxy |
+| Next.js | `site/` landing |
+
+## Security
+
+- Path sandbox: `src/paths.js` gates local file/repo tools to search roots + project path.
+- Network: `src/net.js` blocks private/metadata hosts for `fetch_url` (manual redirects).
+- IPC: `pickConfigPatch` — renderer cannot write `apiKey`.
+- Worker: requires `FLICKCTX_PROXY_SECRET`.
 
 ## Key files
 

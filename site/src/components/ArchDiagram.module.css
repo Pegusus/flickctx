@@ -16,17 +16,68 @@
   stroke: #c5c9ce;
   stroke-dasharray: 1;
   stroke-dashoffset: 1;
-  transition: stroke-dashoffset 0.9s var(--ease);
+  transition: stroke-dashoffset 0.85s var(--ease);
 }
 
-.in .wire path {
+.in .w1 {
   stroke-dashoffset: 0;
+  transition-delay: 0.05s;
+}
+.in .w2 {
+  stroke-dashoffset: 0;
+  transition-delay: 0.1s;
+}
+.in .w3 {
+  stroke-dashoffset: 0;
+  transition-delay: 0.15s;
+}
+.in .w4 {
+  stroke-dashoffset: 0;
+  transition-delay: 0.2s;
+}
+.in .w5 {
+  stroke-dashoffset: 0;
+  transition-delay: 0.12s;
+}
+.in .w6 {
+  stroke-dashoffset: 0;
+  transition-delay: 0.35s;
+}
+.in .w7 {
+  stroke-dashoffset: 0;
+  transition-delay: 0.4s;
+}
+.in .w8,
+.in .w9,
+.in .w10 {
+  stroke-dashoffset: 0;
+  transition-delay: 0.55s;
+}
+.in .w11,
+.in .w12 {
+  stroke-dashoffset: 0;
+  transition-delay: 0.7s;
 }
 
 .stream {
   stroke: var(--accent) !important;
-  stroke-opacity: 0.55;
-  stroke-dasharray: 4 3;
+  stroke-opacity: 0.65;
+  stroke-dasharray: 6 5 !important;
+  stroke-dashoffset: 0 !important;
+  opacity: 0;
+  transition: opacity 0.5s var(--ease) 0.55s;
+}
+
+.in .stream {
+  opacity: 1;
+  animation: streamFlow 1.4s linear infinite;
+  animation-delay: 0.7s;
+}
+
+@keyframes streamFlow {
+  to {
+    stroke-dashoffset: -22;
+  }
 }
 
 .annot text {
@@ -35,7 +86,7 @@
   font-family: var(--font-mono), ui-monospace, monospace;
   letter-spacing: 0.04em;
   opacity: 0;
-  transition: opacity 0.5s var(--ease) 0.35s;
+  transition: opacity 0.5s var(--ease) 0.4s;
 }
 
 .in .annot text {
@@ -55,6 +106,21 @@
   stroke: var(--accent);
   stroke-width: 1.5;
   fill: #f3faf8;
+}
+
+.in .boxAccent rect {
+  animation: accentPulse 2.8s ease-in-out infinite;
+  animation-delay: 1s;
+}
+
+@keyframes accentPulse {
+  0%,
+  100% {
+    stroke-opacity: 1;
+  }
+  50% {
+    stroke-opacity: 0.45;
+  }
 }
 
 .boxMuted rect {
@@ -98,38 +164,42 @@
 .in .n2 {
   opacity: 1;
   transform: none;
-  transition-delay: 0.1s;
+  transition-delay: 0.12s;
 }
 .in .n3 {
   opacity: 1;
   transform: none;
-  transition-delay: 0.18s;
-}
-.in .n3 .step {
-  opacity: 1;
-  transform: none;
-}
-.in .n3 .step:nth-child(3) {
   transition-delay: 0.22s;
 }
-.in .n3 .step:nth-child(4) {
+.in .s1 {
+  opacity: 1;
+  transform: none;
   transition-delay: 0.28s;
 }
-.in .n3 .step:nth-child(5) {
+.in .s2 {
+  opacity: 1;
+  transform: none;
   transition-delay: 0.34s;
 }
-.in .n3 .step:nth-child(6) {
+.in .s3 {
+  opacity: 1;
+  transform: none;
   transition-delay: 0.4s;
+}
+.in .s4 {
+  opacity: 1;
+  transform: none;
+  transition-delay: 0.46s;
 }
 .in .n4 {
   opacity: 1;
   transform: none;
-  transition-delay: 0.28s;
+  transition-delay: 0.52s;
 }
 .in .n5 {
   opacity: 1;
   transform: none;
-  transition-delay: 0.38s;
+  transition-delay: 0.62s;
 }
 
 .cap {
@@ -137,11 +207,68 @@
   font-size: 0.8125rem;
   color: var(--mute);
   opacity: 0;
-  transition: opacity 0.5s var(--ease) 0.45s;
+  transition: opacity 0.5s var(--ease) 0.55s;
 }
 
 .in .cap {
   opacity: 1;
+}
+
+.stack {
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--rule);
+  opacity: 0;
+  transform: translateY(6px);
+  transition:
+    opacity 0.55s var(--ease) 0.65s,
+    transform 0.55s var(--ease) 0.65s;
+}
+
+.in .stack {
+  opacity: 1;
+  transform: none;
+}
+
+.stackLabel {
+  margin: 0 0 0.65rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--mute);
+}
+
+.stack ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.45rem 1rem;
+}
+
+.stack li {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  font-size: 0.8125rem;
+}
+
+.stack strong {
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.stack span {
+  color: var(--mute);
+  font-size: 0.75rem;
+}
+
+@media (max-width: 560px) {
+  .stack ul {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -151,10 +278,13 @@
   .boxMuted,
   .step,
   .annot text,
-  .cap {
+  .cap,
+  .stack,
+  .stream {
     opacity: 1;
     transform: none;
-    stroke-dashoffset: 0;
+    stroke-dashoffset: 0 !important;
     transition: none;
+    animation: none !important;
   }
 }

@@ -22,7 +22,7 @@ function tmpPng(prefix = "flickctx") {
  * Interactive region capture using OS tools when Electron overlay is unavailable.
  * macOS: screencapture -i
  * Wayland: grim + slurp
- * X11: scrot / maim / import
+ * X11: scrot / maim
  */
 function captureRegionCli() {
   const out = tmpPng();
@@ -73,14 +73,8 @@ async function captureFullScreenPng() {
   return out;
 }
 
-function cropPngWithSharpOrFallback() {
-  // Cropping is handled in Electron via canvas; CLI path uses native region tools.
-  return null;
-}
-
 module.exports = {
   captureRegionCli,
   captureFullScreenPng,
   tmpPng,
-  cropPngWithSharpOrFallback,
 };

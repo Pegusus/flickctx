@@ -83,6 +83,10 @@ async function postMessages({ apiKey, authMode, body }) {
   const headers = base
     ? { "content-type": "application/json" }
     : buildAuthHeaders({ token: apiKey, authMode: mode });
+  const proxySecret = (process.env.FLICKCTX_PROXY_SECRET || "").trim();
+  if (base && proxySecret) {
+    headers["x-flickctx-proxy-secret"] = proxySecret;
+  }
 
   const payload = { ...body };
   if (!base && mode === "oauth") {
@@ -458,6 +462,7 @@ async function explainSelection({
     conversationHistory: conversationHistory || [],
     toolEnv: {
       searchRoots: searchRoots || ctx.meta.searchRoots || [],
+      projectPath: projectPath || ctx.projectPath || "",
       maxRepos: maxRepos || 80,
     },
     thinking: thinking !== false,

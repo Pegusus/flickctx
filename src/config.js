@@ -122,40 +122,68 @@ function loadConfig() {
   };
 }
 
+/** Keys a renderer may patch via IPC — never includes apiKey. */
+const IPC_CONFIG_KEYS = [
+  "model",
+  "hotkey",
+  "projectPath",
+  "searchRoots",
+  "maxRepos",
+  "scanLocalRepos",
+  "thinking",
+  "thinkingBudgetTokens",
+  "preferredRoute",
+  "preferredSession",
+  "rememberSessionRoute",
+  "maxTranscriptChars",
+  "maxDiffChars",
+];
+
+function pickConfigPatch(partial, keys = IPC_CONFIG_KEYS) {
+  const out = {};
+  if (!partial || typeof partial !== "object") return out;
+  for (const key of keys) {
+    if (Object.prototype.hasOwnProperty.call(partial, key)) {
+      out[key] = partial[key];
+    }
+  }
+  return out;
+}
+
 function saveConfig(partial) {
   ensureConfigDir();
   const file = readConfigFile();
   const current = loadConfig();
+  const patch = partial || {};
   // Persist only the file-stored key — never write an env/Claude-Code token back.
   const next = {
     apiKey:
-      partial.apiKey !== undefined && partial.apiKey !== null
-        ? partial.apiKey
+      patch.apiKey !== undefined && patch.apiKey !== null
+        ? patch.apiKey
         : file.apiKey || "",
-    model: partial.model ?? current.model,
-    projectPath: partial.projectPath ?? current.projectPath,
-    hotkey: partial.hotkey ?? current.hotkey,
+    model: patch.model ?? current.model,
+    projectPath: patch.projectPath ?? current.projectPath,
+    hotkey: patch.hotkey ?? current.hotkey,
     maxTranscriptChars:
-      partial.maxTranscriptChars ?? current.maxTranscriptChars,
-    maxDiffChars: partial.maxDiffChars ?? current.maxDiffChars,
-    searchRoots: partial.searchRoots ?? current.searchRoots,
-    maxRepos: partial.maxRepos ?? current.maxRepos,
-    scanLocalRepos:
-      partial.scanLocalRepos ?? current.scanLocalRepos,
-    thinking: partial.thinking ?? current.thinking,
+      patch.maxTranscriptChars ?? current.maxTranscriptChars,
+    maxDiffChars: patch.maxDiffChars ?? current.maxDiffChars,
+    searchRoots: patch.searchRoots ?? current.searchRoots,
+    maxRepos: patch.maxRepos ?? current.maxRepos,
+    scanLocalRepos: patch.scanLocalRepos ?? current.scanLocalRepos,
+    thinking: patch.thinking ?? current.thinking,
     thinkingBudgetTokens:
-      partial.thinkingBudgetTokens ?? current.thinkingBudgetTokens,
+      patch.thinkingBudgetTokens ?? current.thinkingBudgetTokens,
     preferredRoute:
-      partial.preferredRoute !== undefined
-        ? partial.preferredRoute
+      patch.preferredRoute !== undefined
+        ? patch.preferredRoute
         : file.preferredRoute || DEFAULTS.preferredRoute,
     preferredSession:
-      partial.preferredSession !== undefined
-        ? partial.preferredSession
+      patch.preferredSession !== undefined
+        ? patch.preferredSession
         : file.preferredSession || null,
     rememberSessionRoute:
-      partial.rememberSessionRoute !== undefined
-        ? Boolean(partial.rememberSessionRoute)
+      patch.rememberSessionRoute !== undefined
+        ? Boolean(patch.rememberSessionRoute)
         : file.rememberSessionRoute === undefined
           ? DEFAULTS.rememberSessionRoute
           : Boolean(file.rememberSessionRoute),
@@ -168,8 +196,10 @@ module.exports = {
   CONFIG_DIR,
   CONFIG_PATH,
   DEFAULTS,
+  IPC_CONFIG_KEYS,
   loadConfig,
   saveConfig,
+  pickConfigPatch,
   resolveApiKey,
   readConfigFile,
 };

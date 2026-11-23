@@ -1,7 +1,8 @@
 /**
  * Flickctx Proxy Worker — forwards /chat to Anthropic Messages API.
  *
- * Proxies Anthropic (and optional extras) so keys don't need to live in the app.
+ * Set FLICKCTX_PROXY_SECRET (wrangler secret) and send the same value as
+ * header `x-flickctx-proxy-secret` from the app (env FLICKCTX_PROXY_SECRET).
  *
  * Routes:
  *   POST /chat  → Anthropic Messages API
@@ -9,6 +10,7 @@
 
 interface Env {
   ANTHROPIC_API_KEY: string;
+  FLICKCTX_PROXY_SECRET?: string;
 }
 
 export default {
@@ -25,6 +27,9 @@ export default {
     if (request.method !== "POST") {
       return new Response("Method not allowed", { status: 405 });
     }
+
+    const authError = requireProxySecret(request, env);
+    if (authError) return withCors(authError);
 
     try {
       if (url.pathname === "/chat") {
@@ -44,11 +49,33 @@ export default {
   },
 };
 
+function requireProxySecret(request: Request, env: Env): Response | null {
+  const expected = (env.FLICKCTX_PROXY_SECRET || "").trim();
+  if (!expected) {
+    // Misconfigured deploy — refuse rather than open-proxy the API key.
+    return new Response(
+      JSON.stringify({
+        error:
+          "Worker missing FLICKCTX_PROXY_SECRET. Set with: wrangler secret put FLICKCTX_PROXY_SECRET",
+      }),
+      { status: 503, headers: { "content-type": "application/json" } }
+    );
+  }
+  const got = (request.headers.get("x-flickctx-proxy-secret") || "").trim();
+  if (!got || got !== expected) {
+    return new Response(JSON.stringify({ error: "unauthorized" }), {
+      status: 401,
+      headers: { "content-type": "application/json" },
+    });
+  }
+  return null;
+}
+
 function corsHeaders() {
   return {
     "access-control-allow-origin": "*",
     "access-control-allow-methods": "POST, OPTIONS",
-    "access-control-allow-headers": "content-type",
+    "access-control-allow-headers": "content-type, x-flickctx-proxy-secret",
   };
 }
 

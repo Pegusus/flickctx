@@ -2,55 +2,43 @@
 
 Mark anything on your screen. Ask anything. Get a direct answer.
 
-**Landing page:** https://flickctx.vercel.app · Next.js source in [`site/`](./site/)  
-**Static mirror (GitHub Pages):** https://pegusus.github.io/flickctx/ · [`website/`](./website/) / [`docs/`](./docs/)
+**Landing:** https://flickctx.vercel.app · Next.js in [`site/`](./site/)  
+**Design:** [ARCHITECTURE.md](./ARCHITECTURE.md)
 
 **Mark → Route (OpenCode / Claude Code / built-in) → Chat**  
 Screenshot + question continue in the session you pick (or Flickctx built-in vision).
-
-Same path for AWS, Datadog, GCP, IDE, docs — whatever you circle.
-
-See [ARCHITECTURE.md](./ARCHITECTURE.md).
 
 ## Quick start
 
 ```bash
 git clone https://github.com/Pegusus/flickctx.git
-cd flickctx   # skip if your shell is already inside the repo
+cd flickctx
 npm install
-# Option A — route into an OpenCode / Claude Code session (uses THAT session’s configs; no Flickctx API key):
-#   have `opencode` or `claude` on PATH with existing sessions, then just start.
-# Option B — Claude Code login for Flickctx built-in:
-#   already ran `claude` /login? start without a Console key.
-# Option C — Console API key:
-npx flickctx config --api-key sk-ant-... --model claude-sonnet-4-5
-npx flickctx config --search-roots "$HOME/code,$HOME/Projects,$HOME/Developer"
+# Session route (no Flickctx API key): have `opencode` or `claude` on PATH.
+# Built-in: Claude Code login, Console key, or FLICKCTX_PROXY_URL + secret.
 npm start
 ```
 
-**No API key?** After Mark, choose **Claude Code** or **OpenCode**, then a session — Flickctx sends the screenshot + question into that chat, so the session’s models/keys/context are used. Built-in Flickctx still needs a key or Claude login.
-
-1. After `npm start`, use the **top-right Mark bar** (stays across Spaces) or the menu-bar **Flickctx** item. Or press ⌘⇧F / Ctrl+Shift+F.
-2. On the Mark bar tap **Route** → Claude Code / OpenCode → pick a saved session or **+ New**, then **Chat** (or Mark first).
-3. Draw freehand around something — follow-ups stream live into that session. Route is remembered until you change it.
-4. Type any question → **Send**. **Quit** on the bar exits Flickctx.
-5. Ask “where is …” on Flickctx built-in for on-screen highlight rings
+1. Use the **Mark bar** (all Spaces) or menu-bar **Flickctx**, or press ⌘⇧F / Ctrl+Shift+F.
+2. **Route** → Claude Code / OpenCode → session or **+ New**, then **Mark** / **Chat**.
+3. Draw freehand. Thinking + answer stream into the chat panel.
+4. Follow-ups stay on the same mark and route.
 
 ### macOS Screen Recording
 
-`npm start` shows up as **Electron** in  
+`npm start` shows as **Electron** in  
 System Settings → Privacy & Security → Screen Recording. Enable it, then restart.
 
 ## Optional: Cloudflare proxy
-
-Keep the API key off each machine by proxying Anthropic through a Worker:
 
 ```bash
 cd worker
 npm install
 npx wrangler secret put ANTHROPIC_API_KEY
+npx wrangler secret put FLICKCTX_PROXY_SECRET
 npx wrangler deploy
 export FLICKCTX_PROXY_URL=https://your-worker.workers.dev
+export FLICKCTX_PROXY_SECRET=same-shared-secret
 ```
 
 ## CLI
@@ -63,16 +51,23 @@ npx flickctx explain -i shot.png
 npx flickctx mark
 ```
 
-## What the agent can use
+## Stack
 
-- The marked screenshot (primary), JPEG-resized for the API
-- Full-display context image (secondary) for surrounding UI
-- Frontmost app / browser URL hint (when detectable)
-- Your question (verbatim)
-- Short conversation history
-- Ambient local repo catalog (when relevant)
-- On-demand product skills (`skills/`: aws, datadog, gcp, …) via `list_skills` / `read_skill` — not preloaded into every chat
-- Tools: `web_search`, `fetch_url`, `list_local_repos`, `read_local_file`, `grep_local`, `repo_details`, `list_skills`, `read_skill`
+| Piece | Role |
+|-------|------|
+| **Electron** + **Node.js** | Desktop shell, IPC, capture, agents |
+| **screenshot-desktop** | Display capture |
+| **DuckDuckGo HTML** | `web_search` without an API key |
+| **ripgrep** (optional) | Fast `grep_local` |
+| **Cloudflare Workers** | Optional Anthropic proxy (`worker/`) |
+| **Next.js** | Marketing site (`site/`) |
+
+## Security notes
+
+- Local tools (`read_local_file`, `grep_local`, `repo_details`) are sandboxed to configured search roots / project path.
+- `fetch_url` only allows public `http(s)` and blocks private / metadata hosts (redirects re-checked).
+- Renderer IPC cannot set `apiKey`.
+- The Worker requires `FLICKCTX_PROXY_SECRET` — never deploy an open proxy.
 
 ## License
 

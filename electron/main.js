@@ -16,7 +16,7 @@ const {
 const fs = require("fs");
 const path = require("path");
 const { execFileSync } = require("child_process");
-const { loadConfig, saveConfig } = require("../src/config");
+const { loadConfig, saveConfig, pickConfigPatch } = require("../src/config");
 const { explainSelection } = require("../src/explain");
 const { captureFullScreenPng, tmpPng } = require("../src/capture");
 const { detectFrontmost } = require("../src/frontmost");
@@ -29,7 +29,7 @@ app.setName("Flickctx");
 let tray = null;
 let overlayWindows = []; // one per display — required for multi-monitor + macOS Spaces
 let resultWindow = null;
-let launcherWindow = null; // optional legacy; primary UI is menu-bar tray
+let launcherWindow = null; // Mark bar (pinned across Spaces); tray is the menu-bar twin
 let trayMenuWindow = null;
 let highlightWindow = null;
 let busy = false;
@@ -429,11 +429,6 @@ function ensureLauncher() {
     launcherWindow = createLauncher();
   }
   return launcherWindow;
-}
-
-function showLauncherChip() {
-  ensureLauncher();
-  setLauncherExpanded(false);
 }
 
 function showLauncherBar() {
@@ -1065,7 +1060,8 @@ function registerIpc() {
   });
 
   ipcMain.handle("config:set", (_e, partial) => {
-    const saved = saveConfig(partial || {});
+    // Renderer cannot set apiKey (or other secrets) over IPC.
+    const saved = saveConfig(pickConfigPatch(partial || {}));
     return {
       projectPath: saved.projectPath,
       model: saved.model,
