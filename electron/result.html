@@ -340,6 +340,13 @@
         margin-top: 4px; font-size: 11px; color: var(--muted);
         white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
       }
+      .route-item.provider .top span:first-child { font-size: 13px; }
+      .route-back {
+        margin-bottom: 8px; padding: 6px 10px; width: auto;
+        border-radius: 8px; border: 1px solid var(--line);
+        background: transparent; color: var(--muted); font-size: 11px;
+      }
+      .route-back:hover { color: var(--text); border-color: rgba(94, 234, 212, 0.35); }
       #route-remember {
         display: flex; align-items: center; gap: 8px;
         margin-top: 10px; font-size: 11px; color: var(--muted);
@@ -368,10 +375,10 @@
       <div class="dims" id="mark-dims"></div>
     </div>
     <div id="route-picker">
-      <div class="label">Continue in which session?</div>
-      <p class="hint">
-        No Flickctx API key needed for OpenCode / Claude Code — pick a session
-        that already has your configs. Or use Flickctx built-in.
+      <div class="label" id="route-picker-label">Continue where?</div>
+      <p class="hint" id="route-picker-hint">
+        First pick Claude Code or OpenCode (uses that tool’s configs — no
+        Flickctx API key), then choose a session. Or use Flickctx built-in.
       </p>
       <div id="route-list"></div>
       <label id="route-remember">
@@ -409,6 +416,8 @@
       const reshowHighlights = document.getElementById("reshowHighlights");
       const routePicker = document.getElementById("route-picker");
       const routeList = document.getElementById("route-list");
+      const routePickerLabel = document.getElementById("route-picker-label");
+      const routePickerHint = document.getElementById("route-picker-hint");
       const rememberRoute = document.getElementById("rememberRoute");
       const routeChip = document.getElementById("routeChip");
       let last = null;
@@ -417,6 +426,8 @@
       let messages = []; // {role, text, reasoning?}
       let activeRoute = null;
       let pendingSessions = [];
+      let pendingSessionMeta = {};
+      let pickerProvider = null; // null | 'claude' | 'opencode'
 
       function setRouteChip(route) {
         activeRoute = route || null;
@@ -436,42 +447,133 @@
 
       function hideRoutePicker() {
         routePicker.classList.remove("visible");
+        pickerProvider = null;
       }
 
-      function showRoutePicker(data) {
-        pendingSessions = Array.isArray(data?.sessions) ? data.sessions : [];
-        rememberRoute.checked = data?.sessionMeta?.rememberSessionRoute !== false;
+      function shortHome(dir) {
+        return dir ? String(dir).replace(/^\/Users\/[^/]+/, "~") : "";
+      }
+
+      function renderProviderStep() {
+        pickerProvider = null;
+        routePickerLabel.textContent = "Continue where?";
+        routePickerHint.textContent =
+          "First pick Claude Code or OpenCode, then a session. Or use Flickctx built-in.";
         routeList.innerHTML = "";
+
+        const counts = pendingSessionMeta.counts || {};
+        const claudeCount =
+          typeof counts.claude === "number"
+            ? counts.claude
+            : pendingSessions.filter((s) => s.provider === "claude").length;
+        const opencodeCount =
+          typeof counts.opencode === "number"
+            ? counts.opencode
+            : pendingSessions.filter((s) => s.provider === "opencode").length;
+        const claudeOk = pendingSessionMeta.claudeAvailable !== false;
+        const opencodeOk = pendingSessionMeta.opencodeAvailable !== false;
+
+        const providers = [
+          {
+            id: "claude",
+            title: "Claude Code",
+            prov: "claude",
+            available: claudeOk,
+            count: claudeCount,
+            empty: "No Claude Code sessions found on this machine yet.",
+            sub: (n) =>
+              n
+                ? n + " recent session" + (n === 1 ? "" : "s") + " · uses Claude login / configs"
+                : "Open Claude Code and start a chat, then come back",
+          },
+          {
+            id: "opencode",
+            title: "OpenCode",
+            prov: "opencode",
+            available: opencodeOk,
+            count: opencodeCount,
+            empty: "No OpenCode sessions found on this machine yet.",
+            sub: (n) =>
+              n
+                ? n + " recent session" + (n === 1 ? "" : "s") + " · uses OpenCode auth / models"
+                : "Open OpenCode and start a chat, then come back",
+          },
+        ];
+
+        for (const p of providers) {
+          const btn = document.createElement("button");
+          btn.className = "route-item provider";
+          btn.disabled = !p.available && p.count === 0;
+          btn.innerHTML =
+            `<div class="top"><span>${p.title}</span><span class="prov">${p.prov}</span></div>` +
+            `<div class="sub">${escapeHtml(
+              !p.available && p.count === 0
+                ? p.id === "claude"
+                  ? "claude CLI not detected · install or open Claude Code first"
+                  : "opencode CLI not detected · install or open OpenCode first"
+                : p.sub(p.count)
+            )}</div>`;
+          btn.onclick = () => renderSessionStep(p.id);
+          routeList.appendChild(btn);
+        }
+
         const builtIn = document.createElement("button");
-        builtIn.className = "route-item";
+        builtIn.className = "route-item provider";
         builtIn.innerHTML =
           `<div class="top"><span>Flickctx built-in</span><span class="prov">flickctx</span></div>` +
           `<div class="sub">Needs API key / Claude login · vision agent in this window</div>`;
         builtIn.onclick = () => pickRoute({ provider: "flickctx" });
         routeList.appendChild(builtIn);
-        if (!pendingSessions.length) {
+      }
+
+      function renderSessionStep(provider) {
+        pickerProvider = provider;
+        const label = provider === "claude" ? "Claude Code" : "OpenCode";
+        const sessions = pendingSessions.filter((s) => s.provider === provider);
+        routePickerLabel.textContent = "Pick a " + label + " session";
+        routePickerHint.textContent =
+          "Follow-ups go into this session with its configs — no Flickctx API key.";
+        routeList.innerHTML = "";
+
+        const back = document.createElement("button");
+        back.className = "route-back";
+        back.type = "button";
+        back.textContent = "← Back to Claude / OpenCode";
+        back.onclick = () => renderProviderStep();
+        routeList.appendChild(back);
+
+        if (!sessions.length) {
           const empty = document.createElement("div");
           empty.className = "hint";
-          empty.style.marginTop = "8px";
           empty.textContent =
-            "No OpenCode / Claude Code sessions found. Open one in those tools, or use built-in.";
+            "No " +
+            label +
+            " sessions found. Start one in " +
+            label +
+            ", then tap Route again — or go back and pick another option.";
           routeList.appendChild(empty);
-        } else {
-          for (const s of pendingSessions) {
-            const btn = document.createElement("button");
-            btn.className = "route-item";
-            const prov = s.provider === "claude" ? "claude" : "opencode";
-            const dir = s.directory
-              ? s.directory.replace(/^\/Users\/[^/]+/, "~")
-              : "";
-            const sub = [dir, s.preview].filter(Boolean).join(" · ");
-            btn.innerHTML =
-              `<div class="top"><span>${escapeHtml(s.title || s.id)}</span><span class="prov">${prov}</span></div>` +
-              (sub ? `<div class="sub">${escapeHtml(sub)}</div>` : "");
-            btn.onclick = () => pickRoute(s);
-            routeList.appendChild(btn);
-          }
+          return;
         }
+
+        for (const s of sessions) {
+          const btn = document.createElement("button");
+          btn.className = "route-item";
+          const dir = shortHome(s.directory);
+          const sub = [dir, s.preview].filter(Boolean).join(" · ");
+          btn.innerHTML =
+            `<div class="top"><span>${escapeHtml(s.title || s.id)}</span><span class="prov">${provider}</span></div>` +
+            (sub ? `<div class="sub">${escapeHtml(sub)}</div>` : "");
+          btn.onclick = () => pickRoute(s);
+          routeList.appendChild(btn);
+        }
+      }
+
+      function showRoutePicker(data) {
+        pendingSessions = Array.isArray(data?.sessions) ? data.sessions : [];
+        pendingSessionMeta = data?.sessionMeta || {};
+        rememberRoute.checked =
+          pendingSessionMeta.rememberSessionRoute !== false;
+        renderProviderStep();
         routePicker.classList.add("visible");
         composer.classList.add("hidden");
       }
@@ -753,10 +855,10 @@
           showRoutePicker(data);
           messages = [{
             role: "system",
-            text: "Region captured. Choose an OpenCode / Claude Code session (uses that session’s configs — no Flickctx API key) or Flickctx built-in.",
+            text: "Region captured. First choose Claude Code or OpenCode, then a session (uses that tool’s configs — no Flickctx API key), or Flickctx built-in.",
           }];
           renderChat();
-          meta.textContent = "Pick a session to continue";
+          meta.textContent = "Pick Claude Code or OpenCode";
         } else {
           setRouteChip(data.route);
           hideRoutePicker();
@@ -788,8 +890,9 @@
         showRoutePicker(data || {});
         messages.push({
           role: "system",
-          text: "Pick a different session for this mark.",
+          text: "Pick Claude Code or OpenCode, then a session for this mark.",
         });
+        meta.textContent = "Pick Claude Code or OpenCode";
         renderChat();
       });
 

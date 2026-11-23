@@ -30,9 +30,9 @@ export function HowSection() {
               <div>
                 <h3>Route</h3>
                 <p>
-                  Pick an OpenCode or Claude Code session (uses that session’s
-                  keys/models) or Flickctx built-in. Remembered until you change
-                  Route.
+                  Choose Claude Code or OpenCode, then a session (uses that
+                  tool’s keys/models), or Flickctx built-in. Remembered until
+                  you change Route.
                 </p>
               </div>
             </li>
@@ -65,9 +65,9 @@ export function SessionsSection() {
                 No Flickctx API key? Use the OpenCode session you already opened.
               </h2>
               <p className="sec-lead">
-                After a mark, Flickctx lists your recent OpenCode and Claude Code
-                chats. Pick one and the screenshot + question continue there —
-                with that session’s provider config and context.
+                After a mark, pick Claude Code or OpenCode first, then a recent
+                session. The screenshot + question continue there — with that
+                session’s provider config and context.
               </p>
             </div>
             <ul className={styles.splitList}>

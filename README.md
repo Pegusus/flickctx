@@ -28,11 +28,11 @@ npx flickctx config --search-roots "$HOME/code,$HOME/Projects,$HOME/Developer"
 npm start
 ```
 
-**No API key?** After Mark, pick an **OpenCode** or **Claude Code** session — Flickctx sends the screenshot + question into that chat, so the session’s models/keys/context are used. Built-in Flickctx still needs a key or Claude login.
+**No API key?** After Mark, choose **Claude Code** or **OpenCode**, then a session — Flickctx sends the screenshot + question into that chat, so the session’s models/keys/context are used. Built-in Flickctx still needs a key or Claude login.
 
 1. Click **Mark** (or ⌘⇧F / Ctrl+Shift+F)
 2. Draw freehand around something
-3. Pick a session (OpenCode / Claude Code / Flickctx) — remembered for later marks (**Route** to change)
+3. Pick Claude Code / OpenCode / Flickctx, then a session — remembered for later marks (**Route** to change)
 4. Type any question → **Send**
 5. Ask “where is …” on Flickctx built-in for on-screen highlight rings
 
