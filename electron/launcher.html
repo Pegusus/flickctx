@@ -94,13 +94,18 @@
         flex: 1;
         min-width: 0;
       }
-      #collapse {
+      #collapse,
+      #quit {
         border-color: rgba(154, 163, 178, 0.35);
         background: transparent;
         color: #9aa3b2;
         padding: 4px 8px;
         font-size: 14px;
         line-height: 1;
+      }
+      #quit:hover {
+        border-color: rgba(251, 113, 133, 0.55);
+        color: #fb7185;
       }
     </style>
   </head>
@@ -114,12 +119,14 @@
       <button id="mark" type="button">Mark</button>
       <div id="hint">mark anything · ask anything</div>
       <button id="collapse" type="button" title="Collapse to corner">–</button>
+      <button id="quit" type="button" title="Quit Flickctx">×</button>
     </div>
     <script>
       const body = document.body;
       const chip = document.getElementById("chip");
       const mark = document.getElementById("mark");
       const collapse = document.getElementById("collapse");
+      const quit = document.getElementById("quit");
 
       function setExpanded(on) {
         body.classList.toggle("expanded", Boolean(on));
@@ -140,6 +147,7 @@
         }
       };
       mark.onclick = () => window.flickctx.mark();
+      quit.onclick = () => window.flickctx.quitApp && window.flickctx.quitApp();
 
       if (window.flickctx?.onLauncherMode) {
         window.flickctx.onLauncherMode((mode) => {

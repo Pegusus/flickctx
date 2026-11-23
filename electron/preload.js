@@ -4,6 +4,7 @@ contextBridge.exposeInMainWorld("flickctx", {
   getConfig: () => ipcRenderer.invoke("config:get"),
   setConfig: (partial) => ipcRenderer.invoke("config:set", partial),
   mark: () => ipcRenderer.send("app:mark"),
+  quitApp: () => ipcRenderer.send("app:quit"),
   trayAction: (action) => ipcRenderer.send("tray:action", action),
   trayMenuBlur: () => ipcRenderer.send("tray:blur"),
   onTrayMenuMeta: (cb) => {

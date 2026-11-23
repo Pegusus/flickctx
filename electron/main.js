@@ -211,7 +211,7 @@ function createOverlays() {
   return overlayWindows;
 }
 
-const LAUNCHER_EXPANDED = { width: 300, height: 44 };
+const LAUNCHER_EXPANDED = { width: 340, height: 44 };
 const LAUNCHER_COLLAPSED = { width: 118, height: 36 };
 let launcherExpanded = false;
 /** Remember chat visibility across a Mark gesture so cancel can restore it. */
@@ -1025,6 +1025,7 @@ function registerIpc() {
   });
 
   ipcMain.on("app:mark", () => showOverlay());
+  ipcMain.on("app:quit", () => app.quit());
 
   ipcMain.on("overlay:cancel", () => {
     hideOverlay();

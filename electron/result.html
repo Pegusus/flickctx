@@ -371,7 +371,8 @@
         <button id="routeChip" class="hidden" title="Change Claude Code / OpenCode session">Route</button>
         <button id="clear" title="Clear this chat">Clear</button>
         <button id="cfg" title="Open config">Config</button>
-        <button id="close">Close</button>
+        <button id="close" title="Hide chat">Close</button>
+        <button id="quitApp" title="Quit Flickctx">Quit</button>
       </div>
     </div>
     <div id="meta">Mark a region, then keep chatting about it.</div>
@@ -902,6 +903,8 @@
 
       document.getElementById("close").onclick = () =>
         window.flickctx.closeResult();
+      document.getElementById("quitApp").onclick = () =>
+        window.flickctx.quitApp && window.flickctx.quitApp();
       document.getElementById("cfg").onclick = () =>
         window.flickctx.openConfig();
       routeChip.onclick = () => {
