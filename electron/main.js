@@ -344,8 +344,9 @@ async function captureDisplayPng(display) {
   }
 
   // Last resort: scrot / import full screen
+  // Use the module-level execFileSync — a local const here would TDZ-shadow
+  // the earlier screencapture call in this same function.
   const out = tmpPng("flickctx-display");
-  const { execFileSync } = require("child_process");
   try {
     execFileSync("scrot", [out], { stdio: "ignore" });
     return out;
