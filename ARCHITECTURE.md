@@ -1,6 +1,6 @@
 # Flickctx architecture
 
-Flickctx is a local Electron companion: mark a region on screen, then continue in an **OpenCode** or **Claude Code** session (that session’s keys, models, and context — no Flickctx API key), or use the **Flickctx built-in** vision chat.
+Flickctx is a local Electron companion: mark a region on screen, then continue in an **OpenCode** or **Claude Code** session — that session’s auth, models, and context.
 
 ## Technical design
 
@@ -9,31 +9,28 @@ Electron main process
   ├─ Launcher / Tray / Overlay×N / Chat / Highlights   (IPC)
   └─ Capture pipeline
        screen → crop JPEG → frontmost + context frame
-            ├─ Session bridge  →  claude / opencode CLI (stream)
-            └─ Built-in agent  →  Anthropic API (+ tools / skills)
-                    └─ both stream → Chat window (result:stream)
+            └─ Session bridge  →  claude / opencode CLI (stream)
+                    └─ stream → Chat window (result:stream)
 ```
-
-Capture always runs in-process. **Deliver** then forks: session routes spawn CLIs; built-in calls the API.
 
 ## Current flow
 
 | Step | What happens |
 |------|----------------|
 | Discover | Mark bar (all Spaces) + menu-bar **Flickctx** + hotkey `⌘⇧F` / `Ctrl+Shift+F` |
-| Route | Pick **Claude Code** or **OpenCode**, then a saved session or **+ New** — or **Flickctx built-in**. Route is remembered until you change it |
+| Route | Pick **Claude Code** or **OpenCode**, then a saved session or **+ New**. Remembered until you change it |
 | Mark | Per-display overlay; freehand stroke → bounding box |
 | Capture | Screenshot of that display, crop to the mark; keep full display as secondary context |
 | Environment | Frontmost app (+ browser URL when available) snapped before overlay steals focus |
-| Ask | Raw user question (no special-case prompts) |
-| Deliver | **Session route:** write the crop to a temp image and stream into `claude` / `opencode` (`--resume` / `--session`, thinking + answer streamed into the chat UI). **Built-in:** Claude Messages API with crop + context + tools |
+| Ask | Raw user question |
+| Deliver | Write the crop to a temp image and stream into `claude` / `opencode` (`--resume` / `--session`; thinking + answer into the chat UI) |
 | Chat | Follow-ups stay on the same mark and the same route |
 
-## Session routing (primary path)
+## Session routing
 
 ```
 Mark bar / hotkey
-  → Route: Claude Code | OpenCode | Flickctx
+  → Route: Claude Code | OpenCode
   → session list (or + New)
   → freehand mark + question
   → src/sessions.js sendToAgentSession
@@ -42,50 +39,17 @@ Mark bar / hotkey
   → electron/result.html streams thinking + answer
 ```
 
-No Flickctx API key is required for Claude Code / OpenCode routes — those CLIs use whatever auth and models that session already has.
-
-## Built-in vision path
-
-```
-system: generic companion instructions (vision-first)
-messages: [
-  ...history...,
-  user: [
-    primary crop (JPEG),
-    optional full-display context (JPEG),
-    optional frontmost app/URL hint,
-    raw question,
-    optional ambient local context
-  ]
-]
-tools: [ web_search, fetch_url, list_local_repos, read_local_file, grep_local,
-         repo_details, list_skills, read_skill ]
-```
-
-Used when Route = Flickctx (needs Console key, Claude login, or `FLICKCTX_PROXY_URL`).
-
-## Optional proxy
-
-`worker/` is a small Cloudflare Worker that forwards `/chat` to Anthropic’s Messages API. Set `FLICKCTX_PROXY_URL` and matching `FLICKCTX_PROXY_SECRET` (header `x-flickctx-proxy-secret`) so machines never store the API key and the Worker is not an open proxy.
+Those CLIs use whatever auth and models that session already has.
 
 ## Open-source / platform stack
 
 | Piece | Where |
 |-------|--------|
 | Electron | `electron/` multi-window shell |
-| Node.js | `src/` capture, sessions, explain, tools |
+| Node.js | `src/` capture, sessions, bridge |
 | screenshot-desktop | display capture |
-| DuckDuckGo HTML | `web_search` |
-| ripgrep (optional) | `grep_local` |
-| Cloudflare Workers | `worker/` proxy |
+| Claude Code / OpenCode | host CLIs |
 | Next.js | `site/` landing |
-
-## Security
-
-- Path sandbox: `src/paths.js` gates local file/repo tools to search roots + project path.
-- Network: `src/net.js` blocks private/metadata hosts for `fetch_url` (manual redirects).
-- IPC: `pickConfigPatch` — renderer cannot write `apiKey`.
-- Worker: requires `FLICKCTX_PROXY_SECRET`.
 
 ## Key files
 
@@ -93,9 +57,5 @@ Used when Route = Flickctx (needs Console key, Claude login, or `FLICKCTX_PROXY_
 - `electron/launcher.html` — Mark / Route / Chat / Quit chip
 - `electron/result.html` — chat UI, streaming, Markdown (incl. tables)
 - `src/sessions.js` — discover Claude / OpenCode sessions; stream marks into them
-- `src/explain.js` — built-in agent loop (vision + tools + thinking)
-- `src/tools.js` / `src/skills.js` — web + local + on-demand product skills
-- `src/repos.js` / `src/context.js` — ambient local context
-- `skills/` — thin AWS / Datadog / GCP / … references (loaded only when useful)
-- `site/` — marketing landing (Vercel; Root Directory should be `site`)
-- `worker/` — Anthropic proxy
+- `src/capture.js` / `src/image.js` / `src/frontmost.js` — capture pipeline
+- `site/` — marketing landing (Vercel)

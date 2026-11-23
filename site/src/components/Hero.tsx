@@ -33,8 +33,8 @@ export function Hero() {
           Flick<span>ctx</span>
         </p>
         <p className={styles.line}>
-          Mark anything on your screen. Continue in OpenCode or Claude Code —
-          no Flickctx API key — or use built-in vision chat.
+          Mark anything on your screen. Continue in the OpenCode or Claude Code
+          session you already have open.
         </p>
         <div className={styles.actions}>
           <a

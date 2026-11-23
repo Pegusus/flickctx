@@ -11,8 +11,7 @@ export function HowSection() {
           <h2 className="sec-title">Mark. Route. Chat.</h2>
           <p className="sec-lead">
             Circle what matters on any screen. Send it into the OpenCode or
-            Claude Code session that already has your configs — or stay on
-            Flickctx built-in.
+            Claude Code session that already has your configs and context.
           </p>
         </Reveal>
         <Reveal cascade>
@@ -27,7 +26,7 @@ export function HowSection() {
             <li>
               <h3>Route</h3>
               <p>
-                Claude Code, OpenCode, or Flickctx. Pick a session or + New.
+                Claude Code or OpenCode. Pick a saved session or + New.
                 Remembered until you change it.
               </p>
             </li>
@@ -53,15 +52,15 @@ export function ArchitectureSection() {
           <p className="kicker">Technical design</p>
           <h2 className="sec-title">How Flickctx is built.</h2>
           <p className="sec-lead">
-            An Electron main process owns floating windows over IPC. One local
-            capture pipeline feeds two deliver engines: a session CLI bridge, or
-            a built-in vision agent with tools. Answers stream back into the
-            same chat window.
+            An Electron main process owns floating windows over IPC. A local
+            capture pipeline hands the mark to a session CLI bridge — Claude
+            Code or OpenCode — and streams the reply back into the same chat
+            window.
           </p>
           <ArchDiagram />
           <p className={styles.archNote}>
-            Local tools stay inside configured project roots. The optional
-            Worker proxy requires a shared secret — not an open endpoint.
+            Session routes use the CLI you already authenticated. Nothing extra
+            to configure in Flickctx.
           </p>
         </Reveal>
       </div>
@@ -77,8 +76,8 @@ export function SessionsSection() {
           <p className="kicker">Session routing</p>
           <h2 className="sec-title">Use the session you already opened.</h2>
           <p className="sec-lead">
-            No Flickctx API key for OpenCode or Claude Code routes — those
-            sessions keep their own keys, models, and project context.
+            OpenCode and Claude Code keep their own models and project context.
+            Flickctx just marks the screen and streams into that session.
           </p>
         </Reveal>
         <Reveal cascade>
@@ -95,12 +94,6 @@ export function SessionsSection() {
               <span>
                 <code>claude -p --resume</code> into an existing conversation,
                 or start + New
-              </span>
-            </li>
-            <li>
-              <strong>Flickctx built-in</strong>
-              <span>
-                Local vision chat with a Console key, Claude login, or proxy
               </span>
             </li>
           </ul>
@@ -122,37 +115,6 @@ export function DesktopSection() {
             away. Grant Screen Recording to <strong>Electron</strong>, then
             restart.
           </p>
-        </Reveal>
-      </div>
-    </section>
-  );
-}
-
-export function ConfigSection() {
-  return (
-    <section className="section" id="config">
-      <div className="container">
-        <Reveal>
-          <p className="kicker">Built-in only</p>
-          <h2 className="sec-title">Optional key and model.</h2>
-          <p className="sec-lead">
-            Session routes need nothing extra. For Flickctx built-in:
-          </p>
-          <ul className={styles.splitList}>
-            <li>
-              <strong>Key</strong>
-              <span>
-                <code>flickctx config --api-key</code> or{" "}
-                <code>ANTHROPIC_API_KEY</code>
-              </span>
-            </li>
-            <li>
-              <strong>Model</strong>
-              <span>
-                <code>flickctx config --model claude-sonnet-4-5</code>
-              </span>
-            </li>
-          </ul>
         </Reveal>
       </div>
     </section>

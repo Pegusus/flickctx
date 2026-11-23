@@ -75,7 +75,7 @@ const STEPS: Step[] = [
   {
     id: "route",
     panel: "route",
-    caption: "Route → OpenCode or Claude Code. No Flickctx API key.",
+    caption: "Route → OpenCode or Claude Code session.",
     ms: 3200,
     mark: false,
     draw: false,
@@ -331,10 +331,6 @@ export function IncidentDemo({
               <li>
                 <span>Claude Code</span>
                 <em>checkout-debug</em>
-              </li>
-              <li>
-                <span>Flickctx built-in</span>
-                <em>vision chat</em>
               </li>
             </ul>
           </div>

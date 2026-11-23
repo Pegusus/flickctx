@@ -20,12 +20,12 @@ const mono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: "Flickctx — mark screen, route to a session, keep chatting",
   description:
-    "Mark anything on screen. Route into an OpenCode or Claude Code session — no Flickctx API key — or use built-in vision chat.",
+    "Mark anything on screen. Route into an OpenCode or Claude Code session and keep chatting with that session’s context.",
   metadataBase: new URL("https://flickctx.vercel.app"),
   openGraph: {
     title: "Flickctx",
     description:
-      "Mark anything on screen. Route into an OpenCode or Claude Code session — no Flickctx API key — or use built-in vision chat.",
+      "Mark anything on screen. Route into an OpenCode or Claude Code session and keep chatting with that session’s context.",
     type: "website",
   },
 };

@@ -5,11 +5,9 @@ import styles from "./ArchDiagram.module.css";
 
 const STACK = [
   { name: "Electron", role: "desktop shell · IPC · multi-window" },
-  { name: "Node.js", role: "main process · capture · agents" },
+  { name: "Node.js", role: "main process · capture · session bridge" },
   { name: "screenshot-desktop", role: "display capture" },
-  { name: "DuckDuckGo", role: "web_search (no API key)" },
-  { name: "ripgrep", role: "optional local grep" },
-  { name: "Cloudflare Workers", role: "optional API proxy" },
+  { name: "Claude Code / OpenCode", role: "session CLIs you already use" },
   { name: "Next.js", role: "this landing site" },
 ];
 
@@ -45,25 +43,17 @@ export function ArchDiagram() {
     >
       <svg
         className={styles.svg}
-        viewBox="0 0 880 640"
+        viewBox="0 0 880 580"
         role="img"
         aria-labelledby="arch-title arch-desc"
       >
         <title id="arch-title">Flickctx technical design</title>
         <desc id="arch-desc">
           Electron main process orchestrates floating windows over IPC, runs a
-          capture pipeline, then delivers either through a session CLI bridge or
-          a built-in vision agent with local tools.
+          capture pipeline, then delivers the mark into a Claude Code or
+          OpenCode session and streams the reply back to chat.
         </desc>
 
-        <defs>
-          <linearGradient id="streamGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#0f766e" stopOpacity="0.15" />
-            <stop offset="100%" stopColor="#0f766e" stopOpacity="0.7" />
-          </linearGradient>
-        </defs>
-
-        {/* Wires */}
         <g className={styles.wire} fill="none" strokeWidth="1.2">
           <path className={styles.w1} d="M110 118 V148" pathLength={1} />
           <path className={styles.w2} d="M290 118 V148" pathLength={1} />
@@ -72,14 +62,13 @@ export function ArchDiagram() {
           <path className={styles.w5} d="M110 118 H690" pathLength={1} />
           <path className={styles.w6} d="M290 212 V240" pathLength={1} />
           <path className={styles.w7} d="M440 280 V308" pathLength={1} />
-          <path className={styles.w8} d="M220 380 V408" pathLength={1} />
-          <path className={styles.w9} d="M660 380 V408" pathLength={1} />
-          <path className={styles.w10} d="M220 394 H660" pathLength={1} />
+          <path className={styles.w8} d="M440 380 V408" pathLength={1} />
           <path className={styles.w11} d="M220 508 V536" pathLength={1} />
           <path className={styles.w12} d="M660 508 V536" pathLength={1} />
+          <path className={styles.w10} d="M220 522 H660" pathLength={1} />
           <path
             className={styles.stream}
-            d="M470 212 V228 H820 V470 H780"
+            d="M470 212 V228 H820 V460 H780"
             pathLength={1}
           />
         </g>
@@ -164,7 +153,7 @@ export function ArchDiagram() {
             Capture pipeline
           </text>
           <text x="60" y="288" className={styles.p}>
-            Always local. Same crop feeds both deliver engines.
+            Always local. Crop + context feed the session bridge.
           </text>
 
           <g className={`${styles.step} ${styles.s1}`}>
@@ -206,58 +195,43 @@ export function ArchDiagram() {
         </g>
 
         <g className={`${styles.box} ${styles.n4}`}>
-          <rect x="40" y="408" width="360" height="100" rx="6" />
+          <rect x="40" y="408" width="800" height="100" rx="6" />
           <text x="60" y="436" className={styles.h}>
             Session bridge
           </text>
           <text x="60" y="456" className={styles.p}>
-            Discover Claude / OpenCode sessions
+            Discover Claude Code / OpenCode sessions on this machine
           </text>
           <text x="60" y="474" className={styles.p}>
-            Spawn CLI · stream-json / --thinking
+            Spawn CLI with the marked crop · stream-json / --thinking
           </text>
           <text x="60" y="492" className={styles.p}>
-            Uses that session’s keys &amp; models
-          </text>
-        </g>
-        <g className={`${styles.box} ${styles.n4}`}>
-          <rect x="480" y="408" width="360" height="100" rx="6" />
-          <text x="500" y="436" className={styles.h}>
-            Built-in vision agent
-          </text>
-          <text x="500" y="456" className={styles.p}>
-            Messages API loop · crop + context
-          </text>
-          <text x="500" y="474" className={styles.p}>
-            Tools: search · fetch · repos · grep · skills
-          </text>
-          <text x="500" y="492" className={styles.p}>
-            Key · Claude login · or Worker proxy
+            Uses that session’s auth, models, and project context
           </text>
         </g>
 
         <g className={`${styles.boxMuted} ${styles.n5}`}>
           <rect x="40" y="536" width="360" height="72" rx="6" />
           <text x="60" y="566" className={styles.h}>
-            Host CLIs
+            Claude Code
           </text>
           <text x="60" y="586" className={styles.p}>
-            claude -p --resume · opencode run --session
+            claude -p --resume · stream-json
           </text>
         </g>
         <g className={`${styles.boxMuted} ${styles.n5}`}>
           <rect x="480" y="536" width="360" height="72" rx="6" />
           <text x="500" y="566" className={styles.h}>
-            Model endpoint
+            OpenCode
           </text>
           <text x="500" y="586" className={styles.p}>
-            Anthropic API · optional Cloudflare Worker
+            opencode run --session · --thinking
           </text>
         </g>
       </svg>
 
       <figcaption className={styles.cap}>
-        One capture pipeline, two deliver engines. Chat streams back over IPC.
+        Capture locally, deliver into your session CLI, stream back over IPC.
       </figcaption>
 
       <div className={styles.stack}>
