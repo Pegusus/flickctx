@@ -7,10 +7,11 @@ export function HowSection() {
       <div className="container">
         <Reveal>
           <p className="kicker">How it works</p>
-          <h2 className="sec-title">Mark. Ask. Keep going.</h2>
+          <h2 className="sec-title">Mark. Route. Keep going.</h2>
           <p className="sec-lead">
-            One hotkey. Freehand around what matters. Type any question —
-            pricing, a diagram, a console, a stack trace. Same path every time.
+            One hotkey. Freehand around what matters. Then continue in the
+            OpenCode or Claude Code session that already has your configs — or
+            stay on Flickctx built-in.
           </p>
           <ol className={styles.steps}>
             <li>
@@ -27,10 +28,11 @@ export function HowSection() {
             <li>
               <span className={styles.n}>02</span>
               <div>
-                <h3>Ask</h3>
+                <h3>Route</h3>
                 <p>
-                  Your question goes in verbatim. No per-question prompt tricks —
-                  the model sees the pixels and reasons.
+                  Pick an OpenCode or Claude Code session (uses that session’s
+                  keys/models) or Flickctx built-in. Remembered until you change
+                  Route.
                 </p>
               </div>
             </li>
@@ -39,12 +41,58 @@ export function HowSection() {
               <div>
                 <h3>Chat</h3>
                 <p>
-                  Follow-ups stay on the same mark. Compare tabs, open a
-                  diagram, or pull matching code from a local repo.
+                  Follow-ups stay on the same mark and the same agent session —
+                  project context is already there.
                 </p>
               </div>
             </li>
           </ol>
+        </Reveal>
+      </div>
+    </section>
+  );
+}
+
+export function SessionsSection() {
+  return (
+    <section className="section quiet" id="sessions">
+      <div className="container">
+        <Reveal>
+          <div className={styles.split}>
+            <div className={styles.copy}>
+              <p className="kicker">Session routing</p>
+              <h2 className="sec-title">
+                No Flickctx API key? Use the OpenCode session you already opened.
+              </h2>
+              <p className="sec-lead">
+                After a mark, Flickctx lists your recent OpenCode and Claude Code
+                chats. Pick one and the screenshot + question continue there —
+                with that session’s provider config and context.
+              </p>
+            </div>
+            <ul className={styles.splitList}>
+              <li>
+                <strong>OpenCode</strong>
+                <span>
+                  <code>opencode run --session</code> + the marked image file —
+                  your OpenCode auth/models apply
+                </span>
+              </li>
+              <li>
+                <strong>Claude Code</strong>
+                <span>
+                  <code>claude -p --resume</code> into an existing conversation
+                </span>
+              </li>
+              <li>
+                <strong>Flickctx built-in</strong>
+                <span>
+                  Overlay vision agent when you want a quick answer without an
+                  IDE session (needs key or Claude login)
+                </span>
+              </li>
+            </ul>
+          </div>
         </Reveal>
       </div>
     </section>

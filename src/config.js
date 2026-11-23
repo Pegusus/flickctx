@@ -22,6 +22,9 @@ const DEFAULTS = {
   scanLocalRepos: true,
   thinking: true,
   thinkingBudgetTokens: 8000,
+  preferredRoute: "ask",
+  preferredSession: null,
+  rememberSessionRoute: true,
 };
 
 function ensureConfigDir() {
@@ -142,6 +145,20 @@ function saveConfig(partial) {
     thinking: partial.thinking ?? current.thinking,
     thinkingBudgetTokens:
       partial.thinkingBudgetTokens ?? current.thinkingBudgetTokens,
+    preferredRoute:
+      partial.preferredRoute !== undefined
+        ? partial.preferredRoute
+        : file.preferredRoute || DEFAULTS.preferredRoute,
+    preferredSession:
+      partial.preferredSession !== undefined
+        ? partial.preferredSession
+        : file.preferredSession || null,
+    rememberSessionRoute:
+      partial.rememberSessionRoute !== undefined
+        ? Boolean(partial.rememberSessionRoute)
+        : file.rememberSessionRoute === undefined
+          ? DEFAULTS.rememberSessionRoute
+          : Boolean(file.rememberSessionRoute),
   };
   fs.writeFileSync(CONFIG_PATH, JSON.stringify(next, null, 2) + "\n");
   return loadConfig();

@@ -5,6 +5,7 @@ import {
   DesktopSection,
   HowSection,
   InstallSection,
+  SessionsSection,
   SiteFooter,
   SkillsSection,
   ToolsSection,
@@ -19,6 +20,7 @@ export default function HomePage() {
       <main>
         <Hero />
         <HowSection />
+        <SessionsSection />
         <VisionSection />
         <CrossSection />
         <SkillsSection />

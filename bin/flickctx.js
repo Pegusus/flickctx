@@ -20,6 +20,7 @@ Usage:
   flickctx config --clear-api-key
   flickctx config --search-roots ~/code,~/Projects
   flickctx doctor          Check API key, project, local repos
+  flickctx sessions        List recent Claude Code / OpenCode sessions
 
 Env / auth priority:
   FLICKCTX_API_KEY
@@ -253,6 +254,29 @@ async function main() {
 
   if (cmd === "doctor") {
     await cmdDoctor(config);
+    return;
+  }
+
+  if (cmd === "sessions") {
+    const { listAgentSessions } = require("../src/sessions");
+    const listed = listAgentSessions({ limit: 20 });
+    console.log(
+      `Claude CLI: ${listed.claudeAvailable ? "yes" : "no"} · OpenCode CLI: ${
+        listed.opencodeAvailable ? "yes" : "no"
+      }`
+    );
+    console.log(`Found ${listed.sessions.length} sessions:\n`);
+    for (const s of listed.sessions) {
+      const when = s.mtime
+        ? new Date(s.mtime).toISOString().replace("T", " ").slice(0, 16)
+        : "";
+      console.log(
+        `- [${s.provider}] ${s.title || s.id}` +
+          (when ? `  (${when})` : "") +
+          (s.directory ? `\n    ${s.directory}` : "") +
+          `\n    id=${s.id}`
+      );
+    }
     return;
   }
 

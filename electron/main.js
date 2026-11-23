@@ -21,6 +21,7 @@ const { explainSelection } = require("../src/explain");
 const { captureFullScreenPng, tmpPng } = require("../src/capture");
 const { detectFrontmost } = require("../src/frontmost");
 const { toScreenHighlights } = require("../src/highlights");
+const { listAgentSessions, sendToAgentSession } = require("../src/sessions");
 
 // So dialogs / menus say Flickctx (Screen Recording list still shows “Electron” for npm start)
 app.setName("Flickctx");
@@ -42,8 +43,29 @@ let lastMarkMeta = null;
 let lastHighlightPayload = null;
 /** Short conversation memory for the current mark: [{ user, assistant }] */
 let conversationHistory = [];
+/** Bound chat route for the current mark: null | {provider:'flickctx'} | session */
+let activeRoute = null;
 let highlightEscRegistered = false;
 let highlightGen = 0;
+
+function resolveInitialRoute(config) {
+  if (
+    config.rememberSessionRoute &&
+    config.preferredSession &&
+    config.preferredSession.provider &&
+    config.preferredSession.provider !== "ask"
+  ) {
+    if (config.preferredSession.provider === "flickctx") {
+      return {
+        provider: "flickctx",
+        id: "flickctx",
+        title: "Flickctx built-in",
+      };
+    }
+    return { ...config.preferredSession };
+  }
+  return null;
+}
 
 function ensureMacScreenPermission({ forcePrompt = false } = {}) {
   if (process.platform !== "darwin") return true;
@@ -498,32 +520,46 @@ async function runExplain(imagePath, question = "") {
   const win = ensureResultWindow();
   win.show();
   win.focus();
+  const route = activeRoute;
   win.webContents.send("result:loading", {
     projectPath: config.projectPath,
+    route: route
+      ? { provider: route.provider, id: route.id, title: route.title }
+      : null,
   });
 
   try {
-    const result = await explainSelection({
-      apiKey: config.apiKey,
-      authMode: config.authMode,
-      apiKeySource: config.apiKeySource,
-      model: config.model,
-      projectPath: config.projectPath,
-      imagePath,
-      contextImagePath: lastContextImagePath,
-      frontmost: lastFrontmost,
-      question,
-      maxTranscriptChars: config.maxTranscriptChars,
-      maxDiffChars: config.maxDiffChars,
-      searchRoots: config.searchRoots,
-      maxRepos: config.maxRepos,
-      scanLocalRepos: config.scanLocalRepos,
-      conversationHistory,
-      thinking: config.thinking !== false,
-      thinkingBudgetTokens: config.thinkingBudgetTokens || 8000,
-      maxImageEdge: config.maxImageEdge || 1600,
-      jpegQuality: config.jpegQuality || 80,
-    });
+    let result;
+    if (route && route.provider && route.provider !== "flickctx") {
+      // OpenCode / Claude Code use their own auth — no Flickctx API key needed.
+      result = await sendToAgentSession({
+        session: route,
+        question,
+        imagePath,
+      });
+    } else {
+      result = await explainSelection({
+        apiKey: config.apiKey,
+        authMode: config.authMode,
+        apiKeySource: config.apiKeySource,
+        model: config.model,
+        projectPath: config.projectPath,
+        imagePath,
+        contextImagePath: lastContextImagePath,
+        frontmost: lastFrontmost,
+        question,
+        maxTranscriptChars: config.maxTranscriptChars,
+        maxDiffChars: config.maxDiffChars,
+        searchRoots: config.searchRoots,
+        maxRepos: config.maxRepos,
+        scanLocalRepos: config.scanLocalRepos,
+        conversationHistory,
+        thinking: config.thinking !== false,
+        thinkingBudgetTokens: config.thinkingBudgetTokens || 8000,
+        maxImageEdge: config.maxImageEdge || 1600,
+        jpegQuality: config.jpegQuality || 80,
+      });
+    }
     conversationHistory.push({
       user: question || "look at what i marked and explain it.",
       assistant: result.explanation || "",
@@ -551,11 +587,13 @@ async function runExplain(imagePath, question = "") {
       }
     }
     let highlightCount = 0;
-    try {
-      const drawn = await showHighlightsOnScreen(result.highlights || null);
-      highlightCount = drawn.length;
-    } catch (err) {
-      console.warn("highlight overlay failed:", err.message || err);
+    if (!result.route || result.route.provider === "flickctx") {
+      try {
+        const drawn = await showHighlightsOnScreen(result.highlights || null);
+        highlightCount = drawn.length;
+      } catch (err) {
+        console.warn("highlight overlay failed:", err.message || err);
+      }
     }
     win.webContents.send("result:done", {
       ...result,
@@ -566,6 +604,13 @@ async function runExplain(imagePath, question = "") {
       frontmostLabel: hintBits.join(" · ") || "",
       hasContextImage: Boolean(lastContextImagePath),
       highlightCount,
+      route: route
+        ? {
+            provider: route.provider,
+            id: route.id,
+            title: route.title || route.id,
+          }
+        : { provider: "flickctx", id: "flickctx", title: "Flickctx built-in" },
     });
   } catch (err) {
     win.webContents.send("result:error", {
@@ -583,6 +628,10 @@ function registerIpc() {
       hotkey: c.hotkey,
       hasApiKey: Boolean(c.apiKey),
       configPath: c.configPath,
+      preferredRoute: c.preferredRoute,
+      preferredSession: c.preferredSession,
+      rememberSessionRoute: c.rememberSessionRoute !== false,
+      activeRoute,
     };
   });
 
@@ -594,6 +643,54 @@ function registerIpc() {
       hotkey: saved.hotkey,
       hasApiKey: Boolean(saved.apiKey),
     };
+  });
+
+  ipcMain.handle("sessions:list", () => {
+    try {
+      return listAgentSessions({ limit: 20 });
+    } catch (err) {
+      return {
+        sessions: [],
+        counts: {},
+        claudeAvailable: false,
+        opencodeAvailable: false,
+        error: err.message || String(err),
+      };
+    }
+  });
+
+  ipcMain.handle("sessions:set-route", (_e, payload) => {
+    const remember = payload?.remember !== false;
+    if (!payload || payload.provider === "flickctx") {
+      activeRoute = {
+        provider: "flickctx",
+        id: "flickctx",
+        title: "Flickctx built-in",
+      };
+    } else if (
+      payload.provider === "claude" ||
+      payload.provider === "opencode"
+    ) {
+      activeRoute = {
+        provider: payload.provider,
+        id: payload.id,
+        title: payload.title || payload.id,
+        directory: payload.directory || "",
+        sessionFile: payload.sessionFile || "",
+      };
+    } else {
+      activeRoute = null;
+    }
+    if (remember && activeRoute) {
+      saveConfig({
+        preferredSession: activeRoute,
+        preferredRoute: activeRoute.provider,
+        rememberSessionRoute: true,
+      });
+    } else if (payload?.remember === false) {
+      saveConfig({ rememberSessionRoute: false });
+    }
+    return { route: activeRoute };
   });
 
   ipcMain.on("app:mark", () => showOverlay());
@@ -649,6 +746,18 @@ function registerIpc() {
         displayBounds: { ...display.bounds },
       };
       const config = loadConfig();
+      activeRoute = resolveInitialRoute(config);
+      let sessionCatalog = {
+        sessions: [],
+        counts: {},
+        claudeAvailable: false,
+        opencodeAvailable: false,
+      };
+      try {
+        sessionCatalog = listAgentSessions({ limit: 20 });
+      } catch (err) {
+        console.warn("session list failed:", err.message || err);
+      }
       const win = ensureResultWindow();
       win.show();
       win.focus();
@@ -671,6 +780,15 @@ function registerIpc() {
         projectPath: config.projectPath,
         frontmostLabel: hintBits.join(" · ") || "",
         hasContextImage: true,
+        route: activeRoute,
+        needsRoutePick: !activeRoute,
+        sessions: sessionCatalog.sessions || [],
+        sessionMeta: {
+          counts: sessionCatalog.counts || {},
+          claudeAvailable: Boolean(sessionCatalog.claudeAvailable),
+          opencodeAvailable: Boolean(sessionCatalog.opencodeAvailable),
+          rememberSessionRoute: config.rememberSessionRoute !== false,
+        },
       });
     } catch (err) {
       const win = ensureResultWindow();
@@ -693,6 +811,26 @@ function registerIpc() {
       });
       return;
     }
+    if (!activeRoute) {
+      const win = ensureResultWindow();
+      win.show();
+      let sessionCatalog = { sessions: [] };
+      try {
+        sessionCatalog = listAgentSessions({ limit: 20 });
+      } catch {
+        /* ignore */
+      }
+      win.webContents.send("result:pick-route", {
+        imagePath,
+        sessions: sessionCatalog.sessions || [],
+        sessionMeta: {
+          counts: sessionCatalog.counts || {},
+          claudeAvailable: Boolean(sessionCatalog.claudeAvailable),
+          opencodeAvailable: Boolean(sessionCatalog.opencodeAvailable),
+        },
+      });
+      return;
+    }
     if (busy) return;
     busy = true;
     try {
@@ -708,6 +846,28 @@ function registerIpc() {
 
   ipcMain.on("result:clear-chat", () => {
     conversationHistory = [];
+  });
+
+  ipcMain.on("result:change-route", () => {
+    activeRoute = null;
+    const config = loadConfig();
+    let sessionCatalog = { sessions: [], counts: {} };
+    try {
+      sessionCatalog = listAgentSessions({ limit: 20 });
+    } catch {
+      /* ignore */
+    }
+    const win = ensureResultWindow();
+    win.webContents.send("result:pick-route", {
+      imagePath: lastImagePath,
+      sessions: sessionCatalog.sessions || [],
+      sessionMeta: {
+        counts: sessionCatalog.counts || {},
+        claudeAvailable: Boolean(sessionCatalog.claudeAvailable),
+        opencodeAvailable: Boolean(sessionCatalog.opencodeAvailable),
+        rememberSessionRoute: config.rememberSessionRoute !== false,
+      },
+    });
   });
 
   ipcMain.on("result:copy", (_e, text) => {

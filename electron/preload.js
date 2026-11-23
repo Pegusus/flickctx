@@ -11,11 +11,17 @@ contextBridge.exposeInMainWorld("flickctx", {
   closeResult: () => ipcRenderer.send("result:close"),
   copyText: (text) => ipcRenderer.send("result:copy", text),
   openConfig: () => ipcRenderer.send("result:open-config"),
+  listSessions: () => ipcRenderer.invoke("sessions:list"),
+  setRoute: (payload) => ipcRenderer.invoke("sessions:set-route", payload),
+  changeRoute: () => ipcRenderer.send("result:change-route"),
   onOverlayReset: (cb) => {
     ipcRenderer.on("overlay:reset", () => cb());
   },
   onResultReadyAsk: (cb) => {
     ipcRenderer.on("result:ready-ask", (_e, data) => cb(data));
+  },
+  onResultPickRoute: (cb) => {
+    ipcRenderer.on("result:pick-route", (_e, data) => cb(data));
   },
   onResultLoading: (cb) => {
     ipcRenderer.on("result:loading", (_e, data) => cb(data));

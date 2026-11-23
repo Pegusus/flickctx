@@ -18,23 +18,23 @@ See [ARCHITECTURE.md](./ARCHITECTURE.md).
 git clone https://github.com/Pegusus/flickctx.git
 cd flickctx   # skip if your shell is already inside the repo
 npm install
-# Option A — use your Claude Code login (Pro/Max subscription), no Console key:
-#   already ran `claude` /login on this machine? just start.
-# Option B — Console API key:
+# Option A — route into an OpenCode / Claude Code session (uses THAT session’s configs; no Flickctx API key):
+#   have `opencode` or `claude` on PATH with existing sessions, then just start.
+# Option B — Claude Code login for Flickctx built-in:
+#   already ran `claude` /login? start without a Console key.
+# Option C — Console API key:
 npx flickctx config --api-key sk-ant-... --model claude-sonnet-4-5
 npx flickctx config --search-roots "$HOME/code,$HOME/Projects,$HOME/Developer"
 npm start
 ```
 
-Auth priority: `FLICKCTX_API_KEY` → config `--api-key` → Claude Code login (`claude` / Keychain / `~/.claude/.credentials.json`) → `ANTHROPIC_API_KEY`.  
-If Claude Code is logged in, Flickctx uses that OAuth session automatically. A corporate `ANTHROPIC_API_KEY` (LiteLLM, etc.) will **not** override a Flickctx config key or an attached Claude Code login.  
-To prefer Claude Code after saving a Console key: `npx flickctx config --clear-api-key`.
+**No API key?** After Mark, pick an **OpenCode** or **Claude Code** session — Flickctx sends the screenshot + question into that chat, so the session’s models/keys/context are used. Built-in Flickctx still needs a key or Claude login.
 
 1. Click **Mark** (or ⌘⇧F / Ctrl+Shift+F)
 2. Draw freehand around something
-3. Type any question → **Send**
-4. Keep chatting about the same mark
-5. Ask “where is …” / “which button …” — Flickctx can draw highlight rings on your screen (Esc clears; **Show highlights** in the result panel reshown them)
+3. Pick a session (OpenCode / Claude Code / Flickctx) — remembered for later marks (**Route** to change)
+4. Type any question → **Send**
+5. Ask “where is …” on Flickctx built-in for on-screen highlight rings
 
 ### macOS Screen Recording
 

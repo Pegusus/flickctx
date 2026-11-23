@@ -5,7 +5,7 @@ import styles from "./SiteHeader.module.css";
 
 const LINKS = [
   { href: "#how", label: "How", mobile: false },
-  { href: "#vision", label: "Vision", mobile: false },
+  { href: "#sessions", label: "Sessions", mobile: false },
   { href: "#config", label: "Config", mobile: false },
   { href: "#install", label: "Install", mobile: true },
   {
@@ -20,7 +20,7 @@ export function SiteHeader() {
   const [active, setActive] = useState("");
 
   useEffect(() => {
-    const ids = ["how", "vision", "skills", "tools", "config", "install"];
+    const ids = ["how", "sessions", "vision", "skills", "tools", "config", "install"];
     const els = ids
       .map((id) => document.getElementById(id))
       .filter(Boolean) as HTMLElement[];

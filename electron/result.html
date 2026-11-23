@@ -293,9 +293,61 @@
       #footer button.hidden {
         display: none;
       }
+
       #reshowHighlights {
         border-color: rgba(46, 196, 168, 0.45);
         color: #9eefe0;
+      }
+      #route-picker {
+        display: none;
+        padding: 12px 14px;
+        border-bottom: 1px solid var(--line);
+        background: #0d0f14;
+        flex-shrink: 0;
+        max-height: 42vh;
+        overflow: auto;
+      }
+      #route-picker.visible { display: block; }
+      #route-picker .label {
+        font-size: 10px;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin-bottom: 8px;
+      }
+      #route-picker .hint {
+        font-size: 12px;
+        color: var(--muted);
+        margin: 0 0 10px;
+        line-height: 1.4;
+      }
+      #route-list { display: flex; flex-direction: column; gap: 6px; }
+      .route-item {
+        text-align: left; width: 100%; padding: 10px 12px;
+        border-radius: 10px; border: 1px solid var(--line);
+        background: var(--bot); color: var(--text);
+      }
+      .route-item:hover { border-color: rgba(94, 234, 212, 0.45); }
+      .route-item .top {
+        display: flex; justify-content: space-between; gap: 8px;
+        font-size: 12px; font-weight: 600;
+      }
+      .route-item .prov {
+        color: var(--accent); font-family: ui-monospace, monospace;
+        font-size: 10px; font-weight: 500; text-transform: uppercase;
+      }
+      .route-item .sub {
+        margin-top: 4px; font-size: 11px; color: var(--muted);
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      }
+      #route-remember {
+        display: flex; align-items: center; gap: 8px;
+        margin-top: 10px; font-size: 11px; color: var(--muted);
+      }
+      #route-remember input { accent-color: var(--accent); }
+      #routeChip {
+        border-color: rgba(94, 234, 212, 0.35);
+        color: var(--accent);
       }
     </style>
   </head>
@@ -303,6 +355,7 @@
     <div id="chrome">
       <div id="brand">Flick<span>ctx</span></div>
       <div id="actions">
+        <button id="routeChip" class="hidden" title="Change Claude Code / OpenCode session">Route</button>
         <button id="clear" title="Clear this chat">Clear</button>
         <button id="cfg" title="Open config">Config</button>
         <button id="close">Close</button>
@@ -313,6 +366,18 @@
       <div class="label">Marked snippet sent to the model</div>
       <img id="mark-img" alt="Marked region preview" />
       <div class="dims" id="mark-dims"></div>
+    </div>
+    <div id="route-picker">
+      <div class="label">Continue in which session?</div>
+      <p class="hint">
+        No Flickctx API key needed for OpenCode / Claude Code — pick a session
+        that already has your configs. Or use Flickctx built-in.
+      </p>
+      <div id="route-list"></div>
+      <label id="route-remember">
+        <input type="checkbox" id="rememberRoute" checked />
+        Remember this choice for next marks
+      </label>
     </div>
     <div id="chat"></div>
     <div id="composer" class="hidden">
@@ -342,10 +407,107 @@
       const markImg = document.getElementById("mark-img");
       const markDims = document.getElementById("mark-dims");
       const reshowHighlights = document.getElementById("reshowHighlights");
+      const routePicker = document.getElementById("route-picker");
+      const routeList = document.getElementById("route-list");
+      const rememberRoute = document.getElementById("rememberRoute");
+      const routeChip = document.getElementById("routeChip");
       let last = null;
       let pendingImagePath = null;
       let busy = false;
       let messages = []; // {role, text, reasoning?}
+      let activeRoute = null;
+      let pendingSessions = [];
+
+      function setRouteChip(route) {
+        activeRoute = route || null;
+        if (!route) {
+          routeChip.classList.add("hidden");
+          routeChip.textContent = "Route";
+          return;
+        }
+        routeChip.classList.remove("hidden");
+        routeChip.textContent =
+          route.provider === "flickctx"
+            ? "Flickctx"
+            : (route.provider === "claude" ? "Claude" : "OpenCode") +
+              " · " +
+              String(route.title || route.id || "").slice(0, 28);
+      }
+
+      function hideRoutePicker() {
+        routePicker.classList.remove("visible");
+      }
+
+      function showRoutePicker(data) {
+        pendingSessions = Array.isArray(data?.sessions) ? data.sessions : [];
+        rememberRoute.checked = data?.sessionMeta?.rememberSessionRoute !== false;
+        routeList.innerHTML = "";
+        const builtIn = document.createElement("button");
+        builtIn.className = "route-item";
+        builtIn.innerHTML =
+          `<div class="top"><span>Flickctx built-in</span><span class="prov">flickctx</span></div>` +
+          `<div class="sub">Needs API key / Claude login · vision agent in this window</div>`;
+        builtIn.onclick = () => pickRoute({ provider: "flickctx" });
+        routeList.appendChild(builtIn);
+        if (!pendingSessions.length) {
+          const empty = document.createElement("div");
+          empty.className = "hint";
+          empty.style.marginTop = "8px";
+          empty.textContent =
+            "No OpenCode / Claude Code sessions found. Open one in those tools, or use built-in.";
+          routeList.appendChild(empty);
+        } else {
+          for (const s of pendingSessions) {
+            const btn = document.createElement("button");
+            btn.className = "route-item";
+            const prov = s.provider === "claude" ? "claude" : "opencode";
+            const dir = s.directory
+              ? s.directory.replace(/^\/Users\/[^/]+/, "~")
+              : "";
+            const sub = [dir, s.preview].filter(Boolean).join(" · ");
+            btn.innerHTML =
+              `<div class="top"><span>${escapeHtml(s.title || s.id)}</span><span class="prov">${prov}</span></div>` +
+              (sub ? `<div class="sub">${escapeHtml(sub)}</div>` : "");
+            btn.onclick = () => pickRoute(s);
+            routeList.appendChild(btn);
+          }
+        }
+        routePicker.classList.add("visible");
+        composer.classList.add("hidden");
+      }
+
+      async function pickRoute(session) {
+        if (busy) return;
+        const remember = Boolean(rememberRoute.checked);
+        const payload =
+          session.provider === "flickctx"
+            ? { provider: "flickctx", remember }
+            : {
+                provider: session.provider,
+                id: session.id,
+                title: session.title,
+                directory: session.directory || "",
+                sessionFile: session.sessionFile || "",
+                remember,
+              };
+        const res = await window.flickctx.setRoute(payload);
+        setRouteChip(res?.route || payload);
+        hideRoutePicker();
+        composer.classList.remove("hidden");
+        messages = [{
+          role: "system",
+          text:
+            activeRoute?.provider === "flickctx"
+              ? "Using Flickctx built-in. Ask about the marked snippet."
+              : `Routing into ${activeRoute.provider} · ${activeRoute.title || activeRoute.id}. Uses that session’s configs — no Flickctx API key required.`,
+        }];
+        renderChat();
+        meta.textContent =
+          activeRoute?.provider === "flickctx"
+            ? "Route · Flickctx built-in"
+            : `Route · ${activeRoute.provider} · ${activeRoute.title || activeRoute.id}`;
+        questionEl.focus();
+      }
 
       function showMarkPreview(data) {
         if (data?.previewDataUrl) {
@@ -355,7 +517,11 @@
           if (data.width && data.height) bits.push(data.width + "×" + data.height);
           if (data.bytes) bits.push(Math.round(data.bytes / 1024) + " KB");
           if (data.imageBytes) bits.push(Math.round(data.imageBytes / 1024) + " KB");
-          bits.push("attached to Claude");
+          bits.push(
+            activeRoute?.provider === "flickctx" || !activeRoute
+              ? "Flickctx"
+              : activeRoute.provider + " session"
+          );
           markDims.textContent = bits.join(" · ");
         } else {
           markPreview.classList.remove("visible");
@@ -460,7 +626,15 @@
             el.innerHTML =
               `<div class="role">You</div>` + escapeHtml(m.text);
           } else {
-            let html = `<div class="role">Flickctx</div>`;
+            let html = `<div class="role">${
+              activeRoute && activeRoute.provider !== "flickctx"
+                ? escapeHtml(
+                    (activeRoute.provider === "claude" ? "Claude Code" : "OpenCode") +
+                      " · " +
+                      String(activeRoute.title || activeRoute.id || "").slice(0, 40)
+                  )
+                : "Flickctx"
+            }</div>`;
             if (m.reasoning && String(m.reasoning).trim()) {
               html +=
                 `<details class="reasoning">` +
@@ -492,10 +666,16 @@
 
       function submit(question) {
         if (!pendingImagePath || busy) return;
-        const q = (question || "").trim();
-        if (!q && messages.some((m) => m.role === "assistant" && !m.pending && !m.error)) {
-          // follow-up empty ignored; first explain still allowed via Explain mark
+        if (!activeRoute) {
+          messages = [{
+            role: "system",
+            text: "Pick an OpenCode / Claude Code session (or Flickctx built-in) first.",
+          }];
+          renderChat();
+          routePicker.classList.add("visible");
+          return;
         }
+        const q = (question || "").trim();
         if (q) {
           messages.push({ role: "user", text: q });
         } else {
@@ -503,7 +683,10 @@
         }
         messages.push({
           role: "assistant",
-          text: "Thinking…",
+          text:
+            activeRoute.provider === "flickctx"
+              ? "Thinking…"
+              : `Sending to ${activeRoute.provider}…`,
           pending: true,
         });
         renderChat();
@@ -519,6 +702,10 @@
         window.flickctx.closeResult();
       document.getElementById("cfg").onclick = () =>
         window.flickctx.openConfig();
+      routeChip.onclick = () => {
+        if (busy) return;
+        window.flickctx.changeRoute && window.flickctx.changeRoute();
+      };
       document.getElementById("clear").onclick = () => {
         if (busy) return;
         messages = pendingImagePath
@@ -560,25 +747,50 @@
         pendingImagePath = data.imagePath;
         setBusy(false);
         footer.classList.add("hidden");
-        composer.classList.remove("hidden");
         showMarkPreview(data);
-        messages = [
-          {
+        if (data.needsRoutePick || !data.route) {
+          setRouteChip(null);
+          showRoutePicker(data);
+          messages = [{
+            role: "system",
+            text: "Region captured. Choose an OpenCode / Claude Code session (uses that session’s configs — no Flickctx API key) or Flickctx built-in.",
+          }];
+          renderChat();
+          meta.textContent = "Pick a session to continue";
+        } else {
+          setRouteChip(data.route);
+          hideRoutePicker();
+          composer.classList.remove("hidden");
+          messages = [{
             role: "system",
             text:
-              "Region captured (preview above). Ask about that exact snippet — follow-ups keep the same image.",
-          },
-        ];
+              data.route.provider === "flickctx"
+                ? "Region captured. Using Flickctx built-in — ask about the snippet."
+                : `Region captured. Continuing in ${data.route.provider} · ${data.route.title || data.route.id}.`,
+          }];
+          renderChat();
+          const metaBits = [];
+          metaBits.push(
+            data.route.provider === "flickctx"
+              ? "Flickctx"
+              : data.route.provider + " · " + (data.route.title || data.route.id)
+          );
+          if (data.frontmostLabel) metaBits.push(data.frontmostLabel);
+          if (data.hasContextImage) metaBits.push("full-screen context");
+          meta.textContent = "Mark attached · " + metaBits.join(" · ");
+          questionEl.value = "";
+          questionEl.focus();
+        }
+      });
+
+      window.flickctx.onResultPickRoute((data) => {
+        setRouteChip(null);
+        showRoutePicker(data || {});
+        messages.push({
+          role: "system",
+          text: "Pick a different session for this mark.",
+        });
         renderChat();
-        const metaBits = [];
-        if (data.frontmostLabel) metaBits.push(data.frontmostLabel);
-        if (data.hasContextImage) metaBits.push("full-screen context");
-        if (data?.projectPath) metaBits.push(data.projectPath);
-        meta.textContent = metaBits.length
-          ? "Mark attached · " + metaBits.join(" · ")
-          : "Mark attached — continue chatting";
-        questionEl.value = "";
-        questionEl.focus();
       });
 
       window.flickctx.onResultLoading((data) => {
@@ -614,7 +826,13 @@
         else messages.push(assistantMsg);
         renderChat();
         const bits = [];
-        bits.push("vision");
+        if (data.route?.provider && data.route.provider !== "flickctx") {
+          setRouteChip(data.route);
+          bits.push(data.route.provider);
+          bits.push(String(data.route.title || data.route.id || "").slice(0, 32));
+        } else {
+          bits.push("vision");
+        }
         if (data.frontmostLabel) bits.push(data.frontmostLabel);
         if (data.hasContextImage) bits.push("+context");
         const vp = data.contextMeta?.visionPrimary;

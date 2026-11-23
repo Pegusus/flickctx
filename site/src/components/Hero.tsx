@@ -15,8 +15,8 @@ export function Hero() {
           Flick<span>ctx</span>
         </p>
         <p className={styles.line}>
-          Mark anything on your screen. Ask anything. Keep chatting — pricing,
-          diagrams, dashboards, code, docs. Same path every time.
+          Mark anything on your screen. Continue in an OpenCode or Claude Code
+          session — no Flickctx API key needed — or use built-in vision chat.
         </p>
         <div className={styles.actions}>
           <a
