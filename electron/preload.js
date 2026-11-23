@@ -12,8 +12,13 @@ contextBridge.exposeInMainWorld("flickctx", {
   },
   setLauncherExpanded: (expanded) =>
     ipcRenderer.send("launcher:set-expanded", Boolean(expanded)),
+  openRouteMenu: () => ipcRenderer.send("launcher:open-route-menu"),
+  openChat: () => ipcRenderer.send("launcher:open-chat"),
   onLauncherMode: (cb) => {
     ipcRenderer.on("launcher:mode", (_e, mode) => cb(mode));
+  },
+  onLauncherRoute: (cb) => {
+    ipcRenderer.on("launcher:route", (_e, data) => cb(data));
   },
   cancelOverlay: () => ipcRenderer.send("overlay:cancel"),
   completeOverlay: (rect) => ipcRenderer.send("overlay:complete", rect),

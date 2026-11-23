@@ -211,11 +211,151 @@ function createOverlays() {
   return overlayWindows;
 }
 
-const LAUNCHER_EXPANDED = { width: 340, height: 44 };
+const LAUNCHER_EXPANDED = { width: 460, height: 44 };
 const LAUNCHER_COLLAPSED = { width: 118, height: 36 };
 let launcherExpanded = false;
 /** Remember chat visibility across a Mark gesture so cancel can restore it. */
 let resultOpenBeforeMark = false;
+
+function routeChipLabel(route) {
+  if (!route || !route.provider) return "Route";
+  if (route.provider === "flickctx") return "Flickctx";
+  const name = route.provider === "claude" ? "Claude" : "OpenCode";
+  if (route.isNew || route.id === "new") return `${name} · new`;
+  const title = String(route.title || route.id || "").slice(0, 18);
+  return title ? `${name} · ${title}` : name;
+}
+
+function broadcastLauncherRoute() {
+  if (!launcherWindow || launcherWindow.isDestroyed()) return;
+  launcherWindow.webContents.send("launcher:route", {
+    route: activeRoute,
+    label: routeChipLabel(activeRoute),
+  });
+}
+
+function applyActiveRoute(route, { remember = true } = {}) {
+  activeRoute = route || null;
+  if (remember && activeRoute) {
+    saveConfig({
+      preferredSession: activeRoute,
+      preferredRoute: activeRoute.provider,
+      rememberSessionRoute: true,
+    });
+  }
+  broadcastLauncherRoute();
+  return activeRoute;
+}
+
+function buildSessionSubmenu(provider, sessions) {
+  const label = provider === "claude" ? "Claude Code" : "OpenCode";
+  const items = [
+    {
+      label: `+ New ${label} session`,
+      click: () => {
+        const config = loadConfig();
+        applyActiveRoute({
+          provider,
+          id: "new",
+          isNew: true,
+          title: `New ${label} session`,
+          directory: config.projectPath || process.cwd(),
+        });
+        const win = showResultWindow();
+        win.webContents.send("result:route-set", { route: activeRoute });
+      },
+    },
+    { type: "separator" },
+  ];
+  const list = Array.isArray(sessions) ? sessions.slice(0, 24) : [];
+  if (!list.length) {
+    items.push({
+      label: "No saved sessions yet",
+      enabled: false,
+    });
+  } else {
+    for (const s of list) {
+      const title = String(s.title || s.id || "session").slice(0, 48);
+      const dir = s.directory
+        ? ` — ${String(s.directory).replace(/^\/Users\/[^/]+/, "~").slice(0, 28)}`
+        : "";
+      items.push({
+        label: title + dir,
+        click: () => {
+          applyActiveRoute({
+            provider,
+            id: s.id,
+            title: s.title || s.id,
+            directory: s.directory || "",
+            sessionFile: s.sessionFile || "",
+            isNew: false,
+          });
+          const win = showResultWindow();
+          win.webContents.send("result:route-set", { route: activeRoute });
+        },
+      });
+    }
+  }
+  return items;
+}
+
+function openLauncherRouteMenu() {
+  let catalog = { byProvider: { claude: [], opencode: [] } };
+  try {
+    catalog = listAgentSessions({ limit: 40 });
+  } catch (err) {
+    console.warn("route menu session list failed:", err.message || err);
+  }
+  const menu = Menu.buildFromTemplate([
+    {
+      label: "Claude Code",
+      submenu: buildSessionSubmenu(
+        "claude",
+        catalog.byProvider?.claude || []
+      ),
+    },
+    {
+      label: "OpenCode",
+      submenu: buildSessionSubmenu(
+        "opencode",
+        catalog.byProvider?.opencode || []
+      ),
+    },
+    { type: "separator" },
+    {
+      label: "Flickctx built-in",
+      click: () => {
+        applyActiveRoute({
+          provider: "flickctx",
+          id: "flickctx",
+          title: "Flickctx built-in",
+        });
+        const win = showResultWindow();
+        win.webContents.send("result:route-set", { route: activeRoute });
+      },
+    },
+    {
+      label: "Clear route",
+      click: () => {
+        applyActiveRoute(null, { remember: false });
+        saveConfig({ rememberSessionRoute: false });
+      },
+    },
+  ]);
+
+  if (launcherWindow && !launcherWindow.isDestroyed()) {
+    const b = launcherWindow.getBounds();
+    menu.popup({
+      window: launcherWindow,
+      x: Math.max(8, b.width - 220),
+      y: b.height - 4,
+    });
+  } else if (tray) {
+    tray.popUpContextMenu(menu);
+  } else {
+    menu.popup();
+  }
+}
 
 function primaryWorkArea() {
   return screen.getPrimaryDisplay().workArea;
@@ -277,6 +417,7 @@ function setLauncherExpanded(expanded) {
     "launcher:mode",
     launcherExpanded ? "expanded" : "collapsed"
   );
+  broadcastLauncherRoute();
   if (resultWindow && !resultWindow.isDestroyed() && resultWindow.isVisible()) {
     placeResultWindow(resultWindow);
     pinAcrossSpaces(resultWindow);
@@ -843,22 +984,17 @@ async function runExplain(imagePath, question = "") {
       result.route.id &&
       result.route.id !== "new"
     ) {
-      activeRoute = {
-        ...(activeRoute || {}),
-        provider: result.route.provider,
-        id: result.route.id,
-        title: result.route.title || result.route.id,
-        directory: result.route.directory || activeRoute?.directory || "",
-        isNew: false,
-      };
-      const cfg = loadConfig();
-      if (cfg.rememberSessionRoute !== false) {
-        saveConfig({
-          preferredSession: activeRoute,
-          preferredRoute: activeRoute.provider,
-          rememberSessionRoute: true,
-        });
-      }
+      applyActiveRoute(
+        {
+          ...(activeRoute || {}),
+          provider: result.route.provider,
+          id: result.route.id,
+          title: result.route.title || result.route.id,
+          directory: result.route.directory || activeRoute?.directory || "",
+          isNew: false,
+        },
+        { remember: loadConfig().rememberSessionRoute !== false }
+      );
     }
     let width = null;
     let height = null;
@@ -980,45 +1116,51 @@ function registerIpc() {
 
   ipcMain.handle("sessions:set-route", (_e, payload) => {
     const remember = payload?.remember !== false;
-    if (!payload || payload.provider === "flickctx") {
-      activeRoute = {
-        provider: "flickctx",
-        id: "flickctx",
-        title: "Flickctx built-in",
-      };
+    if (!payload) {
+      applyActiveRoute(null, { remember: false });
+      if (payload?.remember === false) {
+        saveConfig({ rememberSessionRoute: false });
+      }
+      return { route: activeRoute };
+    }
+    if (payload.provider === "flickctx") {
+      applyActiveRoute(
+        {
+          provider: "flickctx",
+          id: "flickctx",
+          title: "Flickctx built-in",
+        },
+        { remember }
+      );
     } else if (
       payload.provider === "claude" ||
       payload.provider === "opencode"
     ) {
-      const isNew = Boolean(payload.isNew) || payload.id === "new" || !payload.id;
+      const isNew =
+        Boolean(payload.isNew) || payload.id === "new" || !payload.id;
       const config = loadConfig();
-      activeRoute = {
-        provider: payload.provider,
-        id: isNew ? "new" : payload.id,
-        title:
-          payload.title ||
-          (isNew
-            ? payload.provider === "claude"
-              ? "New Claude Code session"
-              : "New OpenCode session"
-            : payload.id),
-        directory:
-          payload.directory ||
-          config.projectPath ||
-          process.cwd(),
-        sessionFile: payload.sessionFile || "",
-        isNew,
-      };
+      applyActiveRoute(
+        {
+          provider: payload.provider,
+          id: isNew ? "new" : payload.id,
+          title:
+            payload.title ||
+            (isNew
+              ? payload.provider === "claude"
+                ? "New Claude Code session"
+                : "New OpenCode session"
+              : payload.id),
+          directory:
+            payload.directory || config.projectPath || process.cwd(),
+          sessionFile: payload.sessionFile || "",
+          isNew,
+        },
+        { remember }
+      );
     } else {
-      activeRoute = null;
+      applyActiveRoute(null, { remember: false });
     }
-    if (remember && activeRoute) {
-      saveConfig({
-        preferredSession: activeRoute,
-        preferredRoute: activeRoute.provider,
-        rememberSessionRoute: true,
-      });
-    } else if (payload?.remember === false) {
+    if (payload?.remember === false) {
       saveConfig({ rememberSessionRoute: false });
     }
     return { route: activeRoute };
@@ -1122,6 +1264,17 @@ function registerIpc() {
 
   ipcMain.on("launcher:set-expanded", (_e, expanded) => {
     setLauncherExpanded(Boolean(expanded));
+  });
+
+  ipcMain.on("launcher:open-route-menu", () => {
+    openLauncherRouteMenu();
+  });
+
+  ipcMain.on("launcher:open-chat", () => {
+    const win = showResultWindow();
+    if (activeRoute) {
+      win.webContents.send("result:route-set", { route: activeRoute });
+    }
   });
 
   ipcMain.on("tray:blur", () => {
@@ -1433,7 +1586,9 @@ if (!gotLock) {
     trayMenuWindow = createTrayMenuWindow();
     resultWindow = createResultWindow();
     // Always-on Mark bar + menu-bar “Flickctx” title.
+    activeRoute = resolveInitialRoute(loadConfig());
     showLauncherBar();
+    broadcastLauncherRoute();
     screen.on("display-metrics-changed", () => {
       if (launcherWindow && !launcherWindow.isDestroyed()) {
         setLauncherExpanded(launcherExpanded);

@@ -52,7 +52,7 @@
       #bar {
         display: none;
         align-items: center;
-        gap: 8px;
+        gap: 6px;
         padding: 0 8px 0 12px;
         border-radius: 12px;
       }
@@ -77,7 +77,7 @@
         background: rgba(94, 234, 212, 0.12);
         color: #5eead4;
         border-radius: 8px;
-        padding: 6px 12px;
+        padding: 6px 10px;
         font-size: 12px;
         cursor: pointer;
         white-space: nowrap;
@@ -85,14 +85,17 @@
       button:hover {
         border-color: rgba(94, 234, 212, 0.6);
       }
-      #hint {
-        font-size: 10px;
-        color: #9aa3b2;
-        white-space: nowrap;
+      #route {
+        max-width: 140px;
         overflow: hidden;
         text-overflow: ellipsis;
-        flex: 1;
-        min-width: 0;
+        border-color: rgba(154, 163, 178, 0.4);
+        background: #0d0f14;
+        color: #e8eaef;
+      }
+      #route.has-route {
+        border-color: rgba(94, 234, 212, 0.45);
+        color: #5eead4;
       }
       #collapse,
       #quit {
@@ -100,7 +103,7 @@
         background: transparent;
         color: #9aa3b2;
         padding: 4px 8px;
-        font-size: 14px;
+        font-size: 13px;
         line-height: 1;
       }
       #quit:hover {
@@ -116,20 +119,33 @@
     </div>
     <div id="bar">
       <div id="brand">Flick<span>ctx</span></div>
-      <button id="mark" type="button">Mark</button>
-      <div id="hint">mark anything · ask anything</div>
-      <button id="collapse" type="button" title="Collapse to corner">–</button>
-      <button id="quit" type="button" title="Quit Flickctx">×</button>
+      <button id="mark" type="button" title="Mark a screen region">Mark</button>
+      <button id="route" type="button" title="Pick Claude Code / OpenCode session">
+        Route
+      </button>
+      <button id="chat" type="button" title="Open chat">Chat</button>
+      <button id="collapse" type="button" title="Collapse">–</button>
+      <button id="quit" type="button" title="Quit Flickctx">Quit</button>
     </div>
     <script>
       const body = document.body;
       const chip = document.getElementById("chip");
       const mark = document.getElementById("mark");
+      const routeBtn = document.getElementById("route");
+      const chat = document.getElementById("chat");
       const collapse = document.getElementById("collapse");
       const quit = document.getElementById("quit");
 
       function setExpanded(on) {
         body.classList.toggle("expanded", Boolean(on));
+      }
+
+      function setRouteLabel(label, hasRoute) {
+        routeBtn.textContent = label || "Route";
+        routeBtn.classList.toggle("has-route", Boolean(hasRoute));
+        routeBtn.title = hasRoute
+          ? "Change Claude Code / OpenCode session"
+          : "Pick Claude Code / OpenCode session";
       }
 
       chip.onclick = () => {
@@ -147,11 +163,20 @@
         }
       };
       mark.onclick = () => window.flickctx.mark();
+      routeBtn.onclick = () =>
+        window.flickctx.openRouteMenu && window.flickctx.openRouteMenu();
+      chat.onclick = () =>
+        window.flickctx.openChat && window.flickctx.openChat();
       quit.onclick = () => window.flickctx.quitApp && window.flickctx.quitApp();
 
       if (window.flickctx?.onLauncherMode) {
         window.flickctx.onLauncherMode((mode) => {
           setExpanded(mode === "expanded");
+        });
+      }
+      if (window.flickctx?.onLauncherRoute) {
+        window.flickctx.onLauncherRoute((data) => {
+          setRouteLabel(data?.label, Boolean(data?.route));
         });
       }
     </script>

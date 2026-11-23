@@ -30,10 +30,10 @@ npm start
 
 **No API key?** After Mark, choose **Claude Code** or **OpenCode**, then a session — Flickctx sends the screenshot + question into that chat, so the session’s models/keys/context are used. Built-in Flickctx still needs a key or Claude login.
 
-1. After `npm start`, look in the **macOS menu bar (top-right)** for the word **Flickctx** — click it for Mark / chat / new session. A Mark bar also sits under it. Or press ⌘⇧F / Ctrl+Shift+F.
-2. Draw freehand around something — the **chat panel** stays on every Space so you can keep talking while switching tabs/desktops.
-3. Pick Claude Code / OpenCode / Flickctx — **+ New session** or an existing one — then chat (streamed live). Remembered until you change **Route**
-4. Type any question → **Send**
+1. After `npm start`, use the **top-right Mark bar** (stays across Spaces) or the menu-bar **Flickctx** item. Or press ⌘⇧F / Ctrl+Shift+F.
+2. On the Mark bar tap **Route** → Claude Code / OpenCode → pick a saved session or **+ New**, then **Chat** (or Mark first).
+3. Draw freehand around something — follow-ups stream live into that session. Route is remembered until you change it.
+4. Type any question → **Send**. **Quit** on the bar exits Flickctx.
 5. Ask “where is …” on Flickctx built-in for on-screen highlight rings
 
 ### macOS Screen Recording
