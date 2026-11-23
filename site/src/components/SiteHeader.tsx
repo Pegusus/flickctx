@@ -6,7 +6,6 @@ import styles from "./SiteHeader.module.css";
 const LINKS = [
   { href: "#how", label: "How", mobile: false },
   { href: "#sessions", label: "Sessions", mobile: false },
-  { href: "#config", label: "Config", mobile: false },
   { href: "#install", label: "Install", mobile: true },
   {
     href: "https://github.com/Pegusus/flickctx",
@@ -18,7 +17,6 @@ const LINKS = [
 
 export function SiteHeader() {
   const [active, setActive] = useState("");
-  const [progress, setProgress] = useState(0);
 
   useEffect(() => {
     const ids = ["how", "sessions", "desktop", "config", "install"];
@@ -40,33 +38,8 @@ export function SiteHeader() {
     return () => io.disconnect();
   }, []);
 
-  useEffect(() => {
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const onScroll = () => {
-      if (reduce.matches) {
-        setProgress(0);
-        return;
-      }
-      const doc = document.documentElement;
-      const max = doc.scrollHeight - doc.clientHeight;
-      setProgress(max > 0 ? Math.min(1, Math.max(0, window.scrollY / max)) : 0);
-    };
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", onScroll, { passive: true });
-    return () => {
-      window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("resize", onScroll);
-    };
-  }, []);
-
   return (
     <header className={styles.mast}>
-      <div
-        className={styles.progress}
-        style={{ transform: `scaleX(${progress})` }}
-        aria-hidden
-      />
       <div className={styles.inner}>
         <a className={styles.logo} href="./">
           Flick<span>ctx</span>

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import styles from "./IncidentDemo.module.css";
 
@@ -19,8 +20,8 @@ const STEPS: Step[] = [
   {
     id: "aws-show",
     panel: "aws",
-    caption: "AWS Console · CloudWatch — mark the ACU spike.",
-    ms: 1600,
+    caption: "AWS Console · CloudWatch — mark the spike.",
+    ms: 1700,
     mark: false,
     draw: false,
     box: false,
@@ -28,7 +29,7 @@ const STEPS: Step[] = [
   {
     id: "aws-mark",
     panel: "aws",
-    caption: "Mark AWS. Crop is the vision focus.",
+    caption: "Mark AWS. Crop becomes the vision focus.",
     ms: 1800,
     mark: true,
     draw: true,
@@ -37,8 +38,8 @@ const STEPS: Step[] = [
   {
     id: "dd-show",
     panel: "dd",
-    caption: "Datadog · Log Explorer — mark the error lines.",
-    ms: 1600,
+    caption: "Datadog · Log Explorer — mark the errors.",
+    ms: 1700,
     mark: false,
     draw: false,
     box: false,
@@ -46,7 +47,7 @@ const STEPS: Step[] = [
   {
     id: "dd-mark",
     panel: "dd",
-    caption: "Mark Datadog. Same hotkey, any UI.",
+    caption: "Mark Datadog. Same hotkey on any UI.",
     ms: 1800,
     mark: true,
     draw: true,
@@ -55,8 +56,8 @@ const STEPS: Step[] = [
   {
     id: "gcp-show",
     panel: "gcp",
-    caption: "Google Cloud · Monitoring — mark the latency chart.",
-    ms: 1600,
+    caption: "Google Cloud · Monitoring — mark the chart.",
+    ms: 1700,
     mark: false,
     draw: false,
     box: false,
@@ -73,7 +74,7 @@ const STEPS: Step[] = [
   {
     id: "route",
     panel: "route",
-    caption: "Route → OpenCode or Claude Code → session. No Flickctx API key.",
+    caption: "Route → OpenCode or Claude Code. No Flickctx API key.",
     ms: 3200,
     mark: false,
     draw: false,
@@ -89,57 +90,6 @@ const DD_LOGS = [
   { lvl: "warn", text: "retrying payment authorize attempt=2", err: false },
 ];
 
-function IconAws({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" aria-hidden>
-      <path
-        fill="#FF9900"
-        d="M6.8 16.4c2.2 1.6 5.4 2.5 8.2 2.5 2.5 0 4.7-.6 6.4-1.9.3-.2.1-.5-.2-.4-2.5 1.1-5.7 1.7-8.4 1.7-3.4 0-6.9-.9-9.4-2.5-.4-.2-.7.2-.3.6.1 0 .1 0 .2 0z"
-      />
-      <path
-        fill="#FF9900"
-        d="M18.9 14.9c.3-.4-.2-.7-.6-.5-1.5.7-4.9.9-7.1.5-.8-.2-1.5-.4-2-.7-.3-.1-.6.2-.3.5 1.3 1.8 5.1 2.3 8.1 1.4.6-.2 1.3-.6 1.9-1.2z"
-      />
-      <path
-        fill="#252F3E"
-        d="M13.2 4.2 8.1 5.6c-.3.1-.4.3-.4.5v8.1c0 .2.2.4.5.3l1.4-.4c.2-.1.4-.3.4-.5V7.3l3.1-.8v7.5c0 .2.2.4.5.3l1.4-.4c.2-.1.4-.3.4-.5V4.7c0-.3-.3-.5-.7-.5z"
-      />
-    </svg>
-  );
-}
-
-function IconDd({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" aria-hidden>
-      <rect width="24" height="24" rx="5" fill="#632CA6" />
-      <path
-        fill="#fff"
-        d="M7.2 7.1h2.2v9.8H7.2V7.1zm3.6 0h2.3c2.6 0 4.3 1.5 4.3 3.8 0 2.4-1.8 3.9-4.4 3.9h-2.2V7.1zm2.2 5.8c1.3 0 2.1-.8 2.1-2s-.8-1.9-2.1-1.9h-.1v3.9h.1z"
-      />
-    </svg>
-  );
-}
-
-function IconGcp({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" aria-hidden>
-      <path
-        fill="#EA4335"
-        d="M12.2 3.2 6.6 6.4v3.2l5.6-3.2 5.5 3.2V6.4L12.2 3.2z"
-      />
-      <path
-        fill="#4285F4"
-        d="M17.7 9.6v4.8l-5.5 3.2v3.2l5.5-3.2 2.8-1.6V11.2l-2.8-1.6z"
-      />
-      <path
-        fill="#FBBC04"
-        d="M6.6 14.4v-4.8l-2.8 1.6v6.4l2.8 1.6 5.5 3.2v-3.2L6.6 14.4z"
-      />
-      <path fill="#34A853" d="M6.6 9.6 12.2 6.4l5.5 3.2-5.5 3.2-5.6-3.2z" />
-    </svg>
-  );
-}
-
 export function IncidentDemo({
   onCaption,
 }: {
@@ -150,8 +100,9 @@ export function IncidentDemo({
   const idxRef = useRef(0);
 
   useEffect(() => {
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)");
-    reduceRef.current = reduce.matches;
+    reduceRef.current = window.matchMedia(
+      "(prefers-reduced-motion: reduce)"
+    ).matches;
   }, []);
 
   useEffect(() => {
@@ -194,21 +145,40 @@ export function IncidentDemo({
         <div
           className={`${styles.tab} ${step.panel === "aws" ? styles.tabOn : ""}`}
         >
-          <IconAws className={styles.icon} />
-          <span className={styles.tabFull}>AWS Console</span>
-          <span className={styles.tabShort}>AWS</span>
+          <Image
+            src="/brands/aws.svg"
+            alt=""
+            width={28}
+            height={17}
+            className={styles.awsLogo}
+            unoptimized
+          />
+          <span className={styles.tabFull}>AWS</span>
         </div>
         <div
           className={`${styles.tab} ${step.panel === "dd" ? styles.tabOn : ""}`}
         >
-          <IconDd className={styles.icon} />
+          <Image
+            src="/brands/datadog.svg"
+            alt=""
+            width={18}
+            height={20}
+            className={styles.ddLogo}
+            unoptimized
+          />
           <span className={styles.tabFull}>Datadog</span>
-          <span className={styles.tabShort}>DD</span>
         </div>
         <div
           className={`${styles.tab} ${step.panel === "gcp" ? styles.tabOn : ""}`}
         >
-          <IconGcp className={styles.icon} />
+          <Image
+            src="/brands/gcp.svg"
+            alt=""
+            width={22}
+            height={18}
+            className={styles.gcpLogo}
+            unoptimized
+          />
           <span className={styles.tabFull}>Google Cloud</span>
           <span className={styles.tabShort}>GCP</span>
         </div>
@@ -224,7 +194,6 @@ export function IncidentDemo({
 
       <div className={styles.viewport}>
         <div className={styles.stagePane}>
-          {/* AWS CloudWatch */}
           <div
             className={`${styles.scene} ${styles.awsScene} ${
               step.panel === "aws" ? styles.sceneOn : styles.sceneOff
@@ -232,8 +201,13 @@ export function IncidentDemo({
           >
             <aside className={styles.awsNav}>
               <div className={styles.awsBrand}>
-                <IconAws className={styles.iconSm} />
-                <span>console</span>
+                <Image
+                  src="/brands/aws.svg"
+                  alt="AWS"
+                  width={40}
+                  height={24}
+                  unoptimized
+                />
               </div>
               <p>CloudWatch</p>
               <p>RDS</p>
@@ -280,14 +254,19 @@ export function IncidentDemo({
             </div>
           </div>
 
-          {/* Datadog Log Explorer */}
           <div
             className={`${styles.scene} ${styles.ddScene} ${
               step.panel === "dd" ? styles.sceneOn : styles.sceneOff
             }`}
           >
             <header className={styles.ddTop}>
-              <IconDd className={styles.iconSm} />
+              <Image
+                src="/brands/datadog.svg"
+                alt="Datadog"
+                width={20}
+                height={22}
+                unoptimized
+              />
               <strong>Log Explorer</strong>
               <span className={styles.ddPill}>Logs</span>
               <span className={styles.ddFilter}>service:payments-api</span>
@@ -309,7 +288,6 @@ export function IncidentDemo({
             </div>
           </div>
 
-          {/* GCP Monitoring */}
           <div
             className={`${styles.scene} ${styles.gcpScene} ${
               step.panel === "gcp" ? styles.sceneOn : styles.sceneOff
@@ -317,7 +295,13 @@ export function IncidentDemo({
           >
             <aside className={styles.gcpNav}>
               <div className={styles.gcpBrand}>
-                <IconGcp className={styles.iconSm} />
+                <Image
+                  src="/brands/gcp.svg"
+                  alt="Google Cloud"
+                  width={26}
+                  height={21}
+                  unoptimized
+                />
                 <span>Google Cloud</span>
               </div>
               <p>APIs & Services</p>
@@ -352,7 +336,6 @@ export function IncidentDemo({
             </div>
           </div>
 
-          {/* Route panel */}
           <div
             className={`${styles.scene} ${styles.routeScene} ${
               step.panel === "route" ? styles.sceneOn : styles.sceneOff
@@ -363,7 +346,7 @@ export function IncidentDemo({
             <ul className={styles.routeList}>
               <li className={styles.routeOn}>
                 <span>OpenCode</span>
-                <em>payments-incident · ses_8f2a</em>
+                <em>payments-incident</em>
               </li>
               <li>
                 <span>Claude Code</span>
@@ -374,9 +357,6 @@ export function IncidentDemo({
                 <em>vision chat</em>
               </li>
             </ul>
-            <p className={styles.routeHint}>
-              Uses that session’s keys, models, and context.
-            </p>
           </div>
 
           <div className={styles.marks}>
