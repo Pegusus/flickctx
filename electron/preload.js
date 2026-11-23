@@ -4,6 +4,11 @@ contextBridge.exposeInMainWorld("flickctx", {
   getConfig: () => ipcRenderer.invoke("config:get"),
   setConfig: (partial) => ipcRenderer.invoke("config:set", partial),
   mark: () => ipcRenderer.send("app:mark"),
+  setLauncherExpanded: (expanded) =>
+    ipcRenderer.send("launcher:set-expanded", Boolean(expanded)),
+  onLauncherMode: (cb) => {
+    ipcRenderer.on("launcher:mode", (_e, mode) => cb(mode));
+  },
   cancelOverlay: () => ipcRenderer.send("overlay:cancel"),
   completeOverlay: (rect) => ipcRenderer.send("overlay:complete", rect),
   askAboutMark: (payload) => ipcRenderer.send("result:ask", payload),

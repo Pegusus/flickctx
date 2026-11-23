@@ -8,18 +8,59 @@
       body {
         margin: 0;
         height: 100%;
-        background: #111318;
+        background: transparent;
         color: #e8eaef;
         font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
         overflow: hidden;
+        user-select: none;
       }
-      #wrap {
+      #chip,
+      #bar {
         height: 100%;
+        box-sizing: border-box;
+        background: #111318;
+        border: 1px solid rgba(94, 234, 212, 0.28);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+        -webkit-app-region: drag;
+      }
+      #chip {
         display: flex;
         align-items: center;
-        gap: 8px;
+        justify-content: center;
+        gap: 6px;
         padding: 0 10px;
-        -webkit-app-region: drag;
+        border-radius: 999px;
+        cursor: pointer;
+        -webkit-app-region: no-drag;
+      }
+      #chip:hover {
+        border-color: rgba(94, 234, 212, 0.55);
+      }
+      #chip .mark {
+        color: #5eead4;
+        font-size: 11px;
+        font-weight: 650;
+        letter-spacing: 0.04em;
+      }
+      #chip .dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: #5eead4;
+        flex-shrink: 0;
+      }
+      #bar {
+        display: none;
+        align-items: center;
+        gap: 8px;
+        padding: 0 8px 0 12px;
+        border-radius: 12px;
+      }
+      body.expanded #chip {
+        display: none;
+      }
+      body.expanded #bar {
+        display: flex;
       }
       #brand {
         font-size: 12px;
@@ -41,21 +82,70 @@
         cursor: pointer;
         white-space: nowrap;
       }
+      button:hover {
+        border-color: rgba(94, 234, 212, 0.6);
+      }
       #hint {
         font-size: 10px;
         color: #9aa3b2;
         white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        flex: 1;
+        min-width: 0;
+      }
+      #collapse {
+        border-color: rgba(154, 163, 178, 0.35);
+        background: transparent;
+        color: #9aa3b2;
+        padding: 4px 8px;
+        font-size: 14px;
+        line-height: 1;
       }
     </style>
   </head>
   <body>
-    <div id="wrap">
+    <div id="chip" title="Open Flickctx">
+      <span class="dot" aria-hidden="true"></span>
+      <span class="mark">Flickctx</span>
+    </div>
+    <div id="bar">
       <div id="brand">Flick<span>ctx</span></div>
-      <button id="mark">Mark</button>
+      <button id="mark" type="button">Mark</button>
       <div id="hint">mark anything · ask anything</div>
+      <button id="collapse" type="button" title="Collapse to corner">–</button>
     </div>
     <script>
-      document.getElementById("mark").onclick = () => window.flickctx.mark();
+      const body = document.body;
+      const chip = document.getElementById("chip");
+      const mark = document.getElementById("mark");
+      const collapse = document.getElementById("collapse");
+
+      function setExpanded(on) {
+        body.classList.toggle("expanded", Boolean(on));
+      }
+
+      chip.onclick = () => {
+        if (window.flickctx?.setLauncherExpanded) {
+          window.flickctx.setLauncherExpanded(true);
+        } else {
+          setExpanded(true);
+        }
+      };
+      collapse.onclick = () => {
+        if (window.flickctx?.setLauncherExpanded) {
+          window.flickctx.setLauncherExpanded(false);
+        } else {
+          setExpanded(false);
+        }
+      };
+      mark.onclick = () => window.flickctx.mark();
+
+      if (window.flickctx?.onLauncherMode) {
+        window.flickctx.onLauncherMode((mode) => {
+          setExpanded(mode === "expanded");
+        });
+      }
     </script>
   </body>
 </html>

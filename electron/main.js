@@ -176,57 +176,139 @@ function createOverlays() {
   return overlayWindows;
 }
 
+const LAUNCHER_EXPANDED = { width: 300, height: 44 };
+const LAUNCHER_COLLAPSED = { width: 118, height: 36 };
+let launcherExpanded = false;
+
+function primaryWorkArea() {
+  return screen.getPrimaryDisplay().workArea;
+}
+
+function launcherBounds(expanded = launcherExpanded) {
+  const area = primaryWorkArea();
+  const size = expanded ? LAUNCHER_EXPANDED : LAUNCHER_COLLAPSED;
+  return {
+    width: size.width,
+    height: size.height,
+    x: area.x + area.width - size.width - 16,
+    y: area.y + 12,
+  };
+}
+
+function placeResultWindow(win) {
+  if (!win || win.isDestroyed()) return;
+  const area = primaryWorkArea();
+  const width = Math.min(460, Math.max(360, win.getBounds().width || 460));
+  const height = Math.min(620, Math.max(420, win.getBounds().height || 620));
+  const launcherH = launcherExpanded
+    ? LAUNCHER_EXPANDED.height
+    : LAUNCHER_COLLAPSED.height;
+  win.setBounds({
+    width,
+    height,
+    x: area.x + area.width - width - 16,
+    y: area.y + 12 + launcherH + 10,
+  });
+}
+
+function setLauncherExpanded(expanded) {
+  launcherExpanded = Boolean(expanded);
+  if (!launcherWindow || launcherWindow.isDestroyed()) return;
+  launcherWindow.setBounds(launcherBounds(launcherExpanded));
+  launcherWindow.showInactive();
+  launcherWindow.setAlwaysOnTop(true, "screen-saver");
+  launcherWindow.setVisibleOnAllWorkspaces(true, {
+    visibleOnFullScreen: true,
+  });
+  launcherWindow.webContents.send(
+    "launcher:mode",
+    launcherExpanded ? "expanded" : "collapsed"
+  );
+  if (resultWindow && !resultWindow.isDestroyed() && resultWindow.isVisible()) {
+    placeResultWindow(resultWindow);
+  }
+}
+
+function showLauncherChip() {
+  setLauncherExpanded(false);
+}
+
 function createResultWindow() {
-  const primary = screen.getPrimaryDisplay().workArea;
   const width = 460;
   const height = 620;
+  const area = primaryWorkArea();
   const win = new BrowserWindow({
     width,
     height,
-    x: primary.x + primary.width - width - 24,
-    y: primary.y + 24,
+    x: area.x + area.width - width - 16,
+    y: area.y + 12 + LAUNCHER_COLLAPSED.height + 10,
     frame: false,
     transparent: false,
     resizable: true,
     alwaysOnTop: true,
-    skipTaskbar: false,
+    skipTaskbar: true,
     show: false,
     backgroundColor: "#111318",
+    // panel keeps the chat on every macOS Space / desktop
+    type: process.platform === "darwin" ? "panel" : undefined,
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
       nodeIntegration: false,
+      backgroundThrottling: false,
     },
   });
+  win.setAlwaysOnTop(true, "screen-saver");
+  win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+  if (process.platform === "darwin") {
+    try {
+      win.setWindowButtonVisibility(false);
+    } catch {
+      /* ignore */
+    }
+  }
   win.loadFile(path.join(__dirname, "result.html"));
   return win;
 }
 
 function createLauncher() {
-  const primary = screen.getPrimaryDisplay().workArea;
-  const width = 320;
-  const height = 44;
+  const bounds = launcherBounds(false);
   const win = new BrowserWindow({
-    width,
-    height,
-    x: primary.x + Math.round((primary.width - width) / 2),
-    y: primary.y + 16,
+    ...bounds,
     frame: false,
-    transparent: false,
+    transparent: true,
     resizable: false,
+    movable: true,
+    minimizable: false,
+    maximizable: false,
+    fullscreenable: false,
     alwaysOnTop: true,
-    skipTaskbar: false,
+    skipTaskbar: true,
+    hasShadow: true,
     show: true,
-    backgroundColor: "#111318",
+    focusable: true,
+    // panel = stay on all Spaces like a menu-bar widget
+    type: process.platform === "darwin" ? "panel" : "toolbar",
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
       nodeIntegration: false,
+      backgroundThrottling: false,
     },
   });
   win.setAlwaysOnTop(true, "screen-saver");
   win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+  if (process.platform === "darwin") {
+    try {
+      win.setWindowButtonVisibility(false);
+    } catch {
+      /* ignore */
+    }
+  }
   win.loadFile(path.join(__dirname, "launcher.html"));
+  win.webContents.on("did-finish-load", () => {
+    win.webContents.send("launcher:mode", "collapsed");
+  });
   return win;
 }
 
@@ -246,6 +328,7 @@ function showOverlay() {
   if (resultWindow && !resultWindow.isDestroyed()) {
     resultWindow.hide();
   }
+  // overlays cover the screen; chip returns after mark / cancel
   // Recreate each time so newly plugged monitors / Spaces are covered
   const wins = createOverlays();
   for (const win of wins) {
@@ -271,9 +354,7 @@ function showOverlay() {
 
 function hideOverlay() {
   destroyOverlays();
-  if (launcherWindow && !launcherWindow.isDestroyed()) {
-    launcherWindow.show();
-  }
+  showLauncherChip();
 }
 
 async function captureDisplayPng(display) {
@@ -414,7 +495,20 @@ function ensureResultWindow() {
   if (!resultWindow || resultWindow.isDestroyed()) {
     resultWindow = createResultWindow();
   }
+  placeResultWindow(resultWindow);
+  resultWindow.setAlwaysOnTop(true, "screen-saver");
+  resultWindow.setVisibleOnAllWorkspaces(true, {
+    visibleOnFullScreen: true,
+  });
   return resultWindow;
+}
+
+function showResultWindow() {
+  const win = ensureResultWindow();
+  showLauncherChip();
+  win.show();
+  win.focus();
+  return win;
 }
 
 function clearHighlights() {
@@ -518,9 +612,7 @@ async function showHighlightsOnScreen(payload) {
 
 async function runExplain(imagePath, question = "") {
   const config = loadConfig();
-  const win = ensureResultWindow();
-  win.show();
-  win.focus();
+  const win = showResultWindow();
   const route = activeRoute;
   win.webContents.send("result:loading", {
     projectPath: config.projectPath,
@@ -776,9 +868,7 @@ function registerIpc() {
       activeRoute = resolveInitialRoute(config);
       const sessionCatalog = loadSessionCatalog();
       const picker = sessionPickerPayload(sessionCatalog, config);
-      const win = ensureResultWindow();
-      win.show();
-      win.focus();
+      const win = showResultWindow();
       const fm = lastFrontmost;
       const hintBits = [];
       if (fm?.appName) hintBits.push(fm.appName);
@@ -805,8 +895,7 @@ function registerIpc() {
         sessionMeta: picker.sessionMeta,
       });
     } catch (err) {
-      const win = ensureResultWindow();
-      win.show();
+      const win = showResultWindow();
       win.webContents.send("result:error", {
         message: err.message || String(err),
       });
@@ -815,19 +904,21 @@ function registerIpc() {
     }
   });
 
+  ipcMain.on("launcher:set-expanded", (_e, expanded) => {
+    setLauncherExpanded(Boolean(expanded));
+  });
+
   ipcMain.on("result:ask", async (_e, payload) => {
     const imagePath = payload?.imagePath || lastImagePath;
     if (!imagePath) {
-      const win = ensureResultWindow();
-      win.show();
+      const win = showResultWindow();
       win.webContents.send("result:error", {
         message: "No marked region yet. Click Mark and draw freehand around something first.",
       });
       return;
     }
     if (!activeRoute) {
-      const win = ensureResultWindow();
-      win.show();
+      const win = showResultWindow();
       const picker = sessionPickerPayload(loadSessionCatalog(), loadConfig());
       win.webContents.send("result:pick-route", {
         imagePath,
@@ -848,6 +939,7 @@ function registerIpc() {
 
   ipcMain.on("result:close", () => {
     if (resultWindow && !resultWindow.isDestroyed()) resultWindow.hide();
+    showLauncherChip();
   });
 
   ipcMain.on("result:clear-chat", () => {
@@ -896,9 +988,13 @@ function buildTray() {
       click: () => showOverlay(),
     },
     {
+      label: "Show Mark widget",
+      click: () => setLauncherExpanded(true),
+    },
+    {
       label: "Show last result",
       click: () => {
-        if (resultWindow && !resultWindow.isDestroyed()) resultWindow.show();
+        if (resultWindow && !resultWindow.isDestroyed()) showResultWindow();
       },
     },
     {
@@ -959,6 +1055,14 @@ if (!gotLock) {
     registerHotkey();
     launcherWindow = createLauncher();
     resultWindow = createResultWindow();
+    screen.on("display-metrics-changed", () => {
+      if (launcherWindow && !launcherWindow.isDestroyed()) {
+        setLauncherExpanded(launcherExpanded);
+      }
+      if (resultWindow && !resultWindow.isDestroyed() && resultWindow.isVisible()) {
+        placeResultWindow(resultWindow);
+      }
+    });
     // Trigger macOS to register this process in Screen Recording (shows as Electron)
     ensureMacScreenPermission({ forcePrompt: true });
     try {
@@ -969,8 +1073,9 @@ if (!gotLock) {
     } catch {
       /* permission may still be pending */
     }
+    showLauncherChip();
     console.log(
-      "Flickctx UI: Mark → draw freehand → ask. On macOS enable Screen Recording for “Electron”, then restart."
+      "Flickctx UI: top-right chip → expand → Mark → ask. Visible on every Space. On macOS enable Screen Recording for “Electron”, then restart."
     );
   });
 
