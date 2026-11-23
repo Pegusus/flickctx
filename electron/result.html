@@ -144,8 +144,14 @@
         font-size: 12.5px;
       }
       .msg.pending {
+        color: var(--text);
+        font-style: normal;
+      }
+      .msg.pending .stream-status {
         color: var(--muted);
         font-style: italic;
+        font-size: 12.5px;
+        margin-bottom: 8px;
       }
       .msg.error {
         color: var(--danger);
@@ -798,7 +804,7 @@
             }</div>`;
             if (m.reasoning && String(m.reasoning).trim()) {
               html +=
-                `<details class="reasoning">` +
+                `<details class="reasoning"${m.pending ? " open" : ""}>` +
                 `<summary>Reasoning</summary>` +
                 `<div class="reasoning-body">${escapeHtml(
                   String(m.reasoning).trim()
@@ -806,7 +812,15 @@
                 `</details>`;
             }
             if (m.pending) {
-              html += escapeHtml(m.text || "Thinking…");
+              if (m.status) {
+                html += `<div class="stream-status">${escapeHtml(m.status)}</div>`;
+              }
+              if (m.text) {
+                html += `<div class="md">${renderMarkdown(m.text)}</div>`;
+              }
+              if (!m.text && !m.status) {
+                html += `<div class="stream-status">Thinking…</div>`;
+              }
             } else if (m.error) {
               html += escapeHtml(m.text || "Error");
             } else {
@@ -844,10 +858,14 @@
         }
         messages.push({
           role: "assistant",
-          text:
+          text: "",
+          reasoning: "",
+          status:
             activeRoute.provider === "flickctx"
               ? "Thinking…"
-              : `Sending to ${activeRoute.provider}…`,
+              : activeRoute.provider === "claude"
+                ? "Claude Code · starting…"
+                : "OpenCode · starting…",
           pending: true,
         });
         renderChat();
@@ -961,7 +979,9 @@
         if (!messages.some((m) => m.pending)) {
           messages.push({
             role: "assistant",
-            text: "Thinking…",
+            text: "",
+            reasoning: "",
+            status: "Thinking…",
             pending: true,
           });
           renderChat();
@@ -971,6 +991,23 @@
         if (data?.projectPath) {
           meta.textContent = "Mark attached · " + data.projectPath;
         }
+      });
+
+      let streamRaf = 0;
+      window.flickctx.onResultStream((data) => {
+        const idx = messages.map((m) => m.pending).lastIndexOf(true);
+        if (idx < 0) return;
+        const cur = messages[idx];
+        if (typeof data?.text === "string") cur.text = data.text;
+        if (typeof data?.reasoning === "string") cur.reasoning = data.reasoning;
+        if (typeof data?.status === "string") cur.status = data.status;
+        if (data?.kind === "text" && data.text) cur.status = data.status || "";
+        // Coalesce rapid stream frames into one paint.
+        if (streamRaf) return;
+        streamRaf = requestAnimationFrame(() => {
+          streamRaf = 0;
+          renderChat();
+        });
       });
 
       window.flickctx.onResultDone((data) => {

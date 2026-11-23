@@ -1,4 +1,4 @@
-const { execFile, execFileSync } = require("child_process");
+const { execFile, execFileSync, spawn } = require("child_process");
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
@@ -609,6 +609,103 @@ function runCommand(cmd, args, opts = {}) {
   });
 }
 
+/**
+ * Spawn a CLI and stream stdout line-by-line (NDJSON / stream-json).
+ * onLine(line) is called for each complete line; onProgress is optional
+ * and left to callers that parse events.
+ */
+function spawnStreaming(cmd, args, opts = {}) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(cmd, args, {
+      cwd: opts.cwd || process.cwd(),
+      env: expandedEnv({ ...process.env, ...(opts.env || {}) }),
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    let stdout = "";
+    let stderr = "";
+    let lineBuf = "";
+    let settled = false;
+    const timeoutMs = opts.timeout || 240_000;
+    const timer = setTimeout(() => {
+      try {
+        child.kill("SIGTERM");
+      } catch {
+        /* ignore */
+      }
+    }, timeoutMs);
+
+    const finish = (fn, value) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      fn(value);
+    };
+
+    child.stdout.on("data", (chunk) => {
+      const s = chunk.toString("utf8");
+      stdout += s;
+      if (typeof opts.onChunk === "function") {
+        try {
+          opts.onChunk(s);
+        } catch {
+          /* ignore */
+        }
+      }
+      if (typeof opts.onLine === "function") {
+        lineBuf += s;
+        const parts = lineBuf.split(/\r?\n/);
+        lineBuf = parts.pop() || "";
+        for (const line of parts) {
+          if (!line.trim()) continue;
+          try {
+            opts.onLine(line);
+          } catch {
+            /* ignore */
+          }
+        }
+      }
+    });
+    child.stderr.on("data", (chunk) => {
+      stderr += chunk.toString("utf8");
+    });
+    child.on("error", (err) => {
+      finish(reject, err);
+    });
+    child.on("close", (code, signal) => {
+      if (lineBuf.trim() && typeof opts.onLine === "function") {
+        try {
+          opts.onLine(lineBuf);
+        } catch {
+          /* ignore */
+        }
+        lineBuf = "";
+      }
+      if (code && code !== 0) {
+        const msg =
+          (stderr || "").trim() ||
+          (stdout || "").trim() ||
+          `Command failed (${signal || code})`;
+        const wrapped = new Error(msg.slice(0, 1200));
+        wrapped.code = code;
+        wrapped.stdout = stdout;
+        wrapped.stderr = stderr;
+        finish(reject, wrapped);
+        return;
+      }
+      finish(resolve, { stdout, stderr, code: code || 0 });
+    });
+  });
+}
+
+function emitProgress(onProgress, payload) {
+  if (typeof onProgress !== "function") return;
+  try {
+    onProgress(payload);
+  } catch {
+    /* ignore */
+  }
+}
+
 function extractClaudePrintText(stdout) {
   const raw = String(stdout || "").trim();
   if (!raw) return "";
@@ -655,7 +752,101 @@ function extractOpenCodeText(stdout) {
   return raw;
 }
 
-async function sendToClaudeSession({ session, question, imagePath }) {
+function consumeClaudeStreamLine(line, state, onProgress) {
+  let ev;
+  try {
+    ev = JSON.parse(line);
+  } catch {
+    return;
+  }
+  const type = ev.type;
+
+  if (type === "stream_event") {
+    const event = ev.event || {};
+    if (event.type === "content_block_delta") {
+      const delta = event.delta || {};
+      if (delta.type === "text_delta" && delta.text) {
+        state.text += delta.text;
+        state.sawStreamText = true;
+        emitProgress(onProgress, {
+          kind: "text",
+          text: state.text,
+          reasoning: state.reasoning,
+          status: "",
+        });
+      } else if (delta.type === "thinking_delta" && delta.thinking) {
+        state.reasoning += delta.thinking;
+        emitProgress(onProgress, {
+          kind: "reasoning",
+          text: state.text,
+          reasoning: state.reasoning,
+          status: "Thinking…",
+        });
+      }
+    } else if (event.type === "content_block_start") {
+      const block = event.content_block || {};
+      if (block.type === "tool_use" && block.name) {
+        emitProgress(onProgress, {
+          kind: "tool",
+          text: state.text,
+          reasoning: state.reasoning,
+          status: `Using ${block.name}…`,
+        });
+      } else if (block.type === "thinking") {
+        emitProgress(onProgress, {
+          kind: "status",
+          text: state.text,
+          reasoning: state.reasoning,
+          status: "Thinking…",
+        });
+      }
+    }
+    return;
+  }
+
+  if (type === "assistant" && ev.message?.content) {
+    const texts = [];
+    const thinks = [];
+    for (const block of ev.message.content) {
+      if (block?.type === "text" && block.text) texts.push(block.text);
+      if (block?.type === "thinking" && block.thinking) {
+        thinks.push(block.thinking);
+      }
+      if (block?.type === "tool_use" && block.name) {
+        emitProgress(onProgress, {
+          kind: "tool",
+          text: state.text,
+          reasoning: state.reasoning,
+          status: `Using ${block.name}…`,
+        });
+      }
+    }
+    if (thinks.length) {
+      state.reasoning = thinks.join("\n\n");
+    }
+    if (texts.length && !state.sawStreamText) {
+      state.text = texts.join("\n\n");
+      emitProgress(onProgress, {
+        kind: "text",
+        text: state.text,
+        reasoning: state.reasoning,
+        status: "",
+      });
+    }
+    return;
+  }
+
+  if (type === "result") {
+    if (typeof ev.result === "string" && ev.result.trim()) {
+      state.finalText = ev.result.trim();
+    }
+    if (ev.is_error && ev.result) {
+      state.error = String(ev.result);
+    }
+  }
+}
+
+async function sendToClaudeSession({ session, question, imagePath, onProgress }) {
   const bin = which("claude");
   if (!bin) {
     throw new Error(
@@ -664,12 +855,32 @@ async function sendToClaudeSession({ session, question, imagePath }) {
   }
   if (!session?.id) throw new Error("Missing Claude session id.");
   const prompt = buildMarkPrompt(question, imagePath);
-  const args = [
+  const cwd =
+    (session.directory && fs.existsSync(session.directory)
+      ? session.directory
+      : "") || process.cwd();
+  const state = {
+    text: "",
+    reasoning: "",
+    finalText: "",
+    sawStreamText: false,
+    error: "",
+  };
+  emitProgress(onProgress, {
+    kind: "status",
+    text: "",
+    reasoning: "",
+    status: "Claude Code · starting…",
+  });
+
+  const streamArgs = [
     "-p",
     "--resume",
     session.id,
     "--output-format",
-    "json",
+    "stream-json",
+    "--verbose",
+    "--include-partial-messages",
     "--permission-mode",
     "acceptEdits",
     "--allowedTools",
@@ -680,19 +891,51 @@ async function sendToClaudeSession({ session, question, imagePath }) {
     "Grep",
     prompt,
   ];
-  const cwd =
-    (session.directory && fs.existsSync(session.directory)
-      ? session.directory
-      : "") || process.cwd();
-  const { stdout } = await runCommand(bin, args, {
-    cwd,
-    timeout: 240_000,
-  });
-  const text = extractClaudePrintText(stdout);
-  if (!text) throw new Error("Claude Code returned an empty response.");
+
+  let stdout = "";
+  try {
+    const result = await spawnStreaming(bin, streamArgs, {
+      cwd,
+      timeout: 240_000,
+      onLine: (line) => consumeClaudeStreamLine(line, state, onProgress),
+    });
+    stdout = result.stdout || "";
+  } catch (err) {
+    // Older CLIs may not support stream-json — fall back to one-shot JSON.
+    const fallback = await runCommand(
+      bin,
+      [
+        "-p",
+        "--resume",
+        session.id,
+        "--output-format",
+        "json",
+        "--permission-mode",
+        "acceptEdits",
+        "--allowedTools",
+        "Read",
+        "--allowedTools",
+        "Glob",
+        "--allowedTools",
+        "Grep",
+        prompt,
+      ],
+      { cwd, timeout: 240_000 }
+    );
+    stdout = fallback.stdout || "";
+    state.text = extractClaudePrintText(stdout);
+  }
+
+  const text =
+    state.finalText || state.text || extractClaudePrintText(stdout) || "";
+  if (!text) {
+    throw new Error(
+      state.error || "Claude Code returned an empty response."
+    );
+  }
   return {
     explanation: text,
-    reasoning: "",
+    reasoning: state.reasoning || "",
     model: "claude-code-session",
     route: {
       provider: "claude",
@@ -702,12 +945,92 @@ async function sendToClaudeSession({ session, question, imagePath }) {
     },
     followUpPrompt: text,
     usage: null,
-    thinkingEnabled: false,
+    thinkingEnabled: Boolean(state.reasoning),
     highlights: null,
   };
 }
 
-async function sendToOpenCodeSession({ session, question, imagePath }) {
+function consumeOpenCodeStreamLine(line, state, onProgress) {
+  let ev;
+  try {
+    ev = JSON.parse(line);
+  } catch {
+    return;
+  }
+  const type = String(ev.type || "");
+
+  if (type === "reasoning") {
+    const chunk = ev.part?.text || ev.text || "";
+    if (chunk) {
+      state.reasoningParts.push(String(chunk));
+      state.reasoning = state.reasoningParts.join("\n\n");
+      emitProgress(onProgress, {
+        kind: "reasoning",
+        text: state.text,
+        reasoning: state.reasoning,
+        status: "Thinking…",
+      });
+    }
+    return;
+  }
+
+  if (type === "text") {
+    const chunk = ev.part?.text || ev.text || "";
+    if (chunk) {
+      state.textParts.push(String(chunk));
+      state.text = state.textParts.join("\n\n").trim();
+      emitProgress(onProgress, {
+        kind: "text",
+        text: state.text,
+        reasoning: state.reasoning,
+        status: "",
+      });
+    }
+    return;
+  }
+
+  if (type === "tool_use") {
+    const tool = ev.part?.tool || ev.tool || "tool";
+    const title =
+      ev.part?.state?.title ||
+      ev.part?.state?.input?.description ||
+      tool;
+    emitProgress(onProgress, {
+      kind: "tool",
+      text: state.text,
+      reasoning: state.reasoning,
+      status: `${tool}: ${String(title).slice(0, 80)}`,
+    });
+    return;
+  }
+
+  if (type === "step_start") {
+    emitProgress(onProgress, {
+      kind: "status",
+      text: state.text,
+      reasoning: state.reasoning,
+      status: "Working…",
+    });
+    return;
+  }
+
+  if (type === "error") {
+    const msg =
+      ev.error?.data?.message ||
+      ev.error?.message ||
+      ev.error?.name ||
+      ev.message ||
+      "OpenCode error";
+    state.error = String(msg);
+  }
+}
+
+async function sendToOpenCodeSession({
+  session,
+  question,
+  imagePath,
+  onProgress,
+}) {
   const bin = which("opencode");
   if (!bin) {
     throw new Error(
@@ -716,30 +1039,80 @@ async function sendToOpenCodeSession({ session, question, imagePath }) {
   }
   if (!session?.id) throw new Error("Missing OpenCode session id.");
   const prompt = buildMarkPrompt(question, imagePath);
+  const cwd =
+    (session.directory && fs.existsSync(session.directory)
+      ? session.directory
+      : "") || process.cwd();
+  const state = {
+    text: "",
+    textParts: [],
+    reasoning: "",
+    reasoningParts: [],
+    error: "",
+  };
+  emitProgress(onProgress, {
+    kind: "status",
+    text: "",
+    reasoning: "",
+    status: "OpenCode · starting…",
+  });
+
+  // OpenCode uses its own provider auth/config — no Flickctx API key required.
+  // --thinking emits reasoning events in the JSON stream.
   const args = [
     "run",
     "--session",
     session.id,
     "--format",
     "json",
+    "--thinking",
     "--file",
     imagePath,
     prompt,
   ];
-  const cwd =
-    (session.directory && fs.existsSync(session.directory)
-      ? session.directory
-      : "") || process.cwd();
-  // OpenCode uses its own provider auth/config — no Flickctx API key required.
-  const { stdout } = await runCommand(bin, args, {
-    cwd,
-    timeout: 240_000,
-  });
-  const text = extractOpenCodeText(stdout);
-  if (!text) throw new Error("OpenCode returned an empty response.");
+
+  let stdout = "";
+  try {
+    const result = await spawnStreaming(bin, args, {
+      cwd,
+      timeout: 240_000,
+      onLine: (line) => consumeOpenCodeStreamLine(line, state, onProgress),
+    });
+    stdout = result.stdout || "";
+  } catch (err) {
+    // Older OpenCode without --thinking
+    if (/thinking|unknown|unexpected/i.test(String(err.message || ""))) {
+      const result = await spawnStreaming(
+        bin,
+        [
+          "run",
+          "--session",
+          session.id,
+          "--format",
+          "json",
+          "--file",
+          imagePath,
+          prompt,
+        ],
+        {
+          cwd,
+          timeout: 240_000,
+          onLine: (line) => consumeOpenCodeStreamLine(line, state, onProgress),
+        }
+      );
+      stdout = result.stdout || "";
+    } else {
+      throw err;
+    }
+  }
+
+  const text = state.text || extractOpenCodeText(stdout) || "";
+  if (!text) {
+    throw new Error(state.error || "OpenCode returned an empty response.");
+  }
   return {
     explanation: text,
-    reasoning: "",
+    reasoning: state.reasoning || "",
     model: "opencode-session",
     route: {
       provider: "opencode",
@@ -749,12 +1122,17 @@ async function sendToOpenCodeSession({ session, question, imagePath }) {
     },
     followUpPrompt: text,
     usage: null,
-    thinkingEnabled: false,
+    thinkingEnabled: Boolean(state.reasoning),
     highlights: null,
   };
 }
 
-async function sendToAgentSession({ session, question, imagePath }) {
+async function sendToAgentSession({
+  session,
+  question,
+  imagePath,
+  onProgress,
+}) {
   if (!session || session.provider === "flickctx") {
     throw new Error("No agent session selected.");
   }
@@ -762,10 +1140,10 @@ async function sendToAgentSession({ session, question, imagePath }) {
     throw new Error("Marked screenshot missing.");
   }
   if (session.provider === "claude") {
-    return sendToClaudeSession({ session, question, imagePath });
+    return sendToClaudeSession({ session, question, imagePath, onProgress });
   }
   if (session.provider === "opencode") {
-    return sendToOpenCodeSession({ session, question, imagePath });
+    return sendToOpenCodeSession({ session, question, imagePath, onProgress });
   }
   throw new Error(`Unknown session provider: ${session.provider}`);
 }
@@ -780,4 +1158,6 @@ module.exports = {
   buildMarkPrompt,
   which,
   expandedEnv,
+  consumeClaudeStreamLine,
+  consumeOpenCodeStreamLine,
 };

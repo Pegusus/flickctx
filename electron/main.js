@@ -757,11 +757,19 @@ async function runExplain(imagePath, question = "") {
   try {
     let result;
     if (route && route.provider && route.provider !== "flickctx") {
-      // OpenCode / Claude Code use their own auth — no Flickctx API key needed.
+      // OpenCode / Claude Code use their own auth — stream thinking/answer through.
       result = await sendToAgentSession({
         session: route,
         question,
         imagePath,
+        onProgress: (progress) => {
+          if (!win.isDestroyed()) {
+            win.webContents.send("result:stream", {
+              ...progress,
+              provider: route.provider,
+            });
+          }
+        },
       });
     } else {
       result = await explainSelection({
