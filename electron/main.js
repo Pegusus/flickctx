@@ -566,7 +566,7 @@ function hideResultWindow() {
 function createTrayMenuWindow() {
   const win = new BrowserWindow({
     width: 232,
-    height: 292,
+    height: 360,
     show: false,
     frame: false,
     transparent: true,
@@ -612,7 +612,7 @@ function showTrayMenu() {
     trayMenuWindow = createTrayMenuWindow();
   }
   const width = 232;
-  const height = 292;
+  const height = 360;
   let x = 0;
   let y = 0;
   try {
@@ -801,6 +801,31 @@ async function runExplain(imagePath, question = "") {
     if (conversationHistory.length > 10) {
       conversationHistory = conversationHistory.slice(-10);
     }
+    // Bind newly created Claude/OpenCode session id for follow-ups.
+    if (
+      result.route &&
+      (result.route.provider === "claude" ||
+        result.route.provider === "opencode") &&
+      result.route.id &&
+      result.route.id !== "new"
+    ) {
+      activeRoute = {
+        ...(activeRoute || {}),
+        provider: result.route.provider,
+        id: result.route.id,
+        title: result.route.title || result.route.id,
+        directory: result.route.directory || activeRoute?.directory || "",
+        isNew: false,
+      };
+      const cfg = loadConfig();
+      if (cfg.rememberSessionRoute !== false) {
+        saveConfig({
+          preferredSession: activeRoute,
+          preferredRoute: activeRoute.provider,
+          rememberSessionRoute: true,
+        });
+      }
+    }
     let width = null;
     let height = null;
     try {
@@ -931,12 +956,24 @@ function registerIpc() {
       payload.provider === "claude" ||
       payload.provider === "opencode"
     ) {
+      const isNew = Boolean(payload.isNew) || payload.id === "new" || !payload.id;
+      const config = loadConfig();
       activeRoute = {
         provider: payload.provider,
-        id: payload.id,
-        title: payload.title || payload.id,
-        directory: payload.directory || "",
+        id: isNew ? "new" : payload.id,
+        title:
+          payload.title ||
+          (isNew
+            ? payload.provider === "claude"
+              ? "New Claude Code session"
+              : "New OpenCode session"
+            : payload.id),
+        directory:
+          payload.directory ||
+          config.projectPath ||
+          process.cwd(),
         sessionFile: payload.sessionFile || "",
+        isNew,
       };
     } else {
       activeRoute = null;
@@ -1068,6 +1105,31 @@ function registerIpc() {
       case "hide-chat":
         hideResultWindow();
         break;
+      case "new-claude":
+      case "new-opencode": {
+        const provider = action === "new-claude" ? "claude" : "opencode";
+        const config = loadConfig();
+        activeRoute = {
+          provider,
+          id: "new",
+          isNew: true,
+          title:
+            provider === "claude"
+              ? "New Claude Code session"
+              : "New OpenCode session",
+          directory: config.projectPath || process.cwd(),
+        };
+        if (config.rememberSessionRoute !== false) {
+          saveConfig({
+            preferredSession: activeRoute,
+            preferredRoute: provider,
+            rememberSessionRoute: true,
+          });
+        }
+        const win = showResultWindow();
+        win.webContents.send("result:route-set", { route: activeRoute });
+        break;
+      }
       case "config": {
         const c = loadConfig();
         fs.mkdirSync(c.configDir, { recursive: true });

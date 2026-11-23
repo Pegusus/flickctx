@@ -39,6 +39,9 @@ contextBridge.exposeInMainWorld("flickctx", {
   onResultStream: (cb) => {
     ipcRenderer.on("result:stream", (_e, data) => cb(data));
   },
+  onResultRouteSet: (cb) => {
+    ipcRenderer.on("result:route-set", (_e, data) => cb(data));
+  },
   onResultDone: (cb) => {
     ipcRenderer.on("result:done", (_e, data) => cb(data));
   },

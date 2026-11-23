@@ -1,8 +1,24 @@
 const { execFile, execFileSync, spawn } = require("child_process");
+const crypto = require("crypto");
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
 const { claudeConfigDir } = require("./context");
+
+function isNewAgentSession(session) {
+  if (!session) return false;
+  if (session.isNew) return true;
+  const id = String(session.id || "");
+  return !id || id === "new";
+}
+
+function newClaudeSessionId() {
+  return crypto.randomUUID();
+}
+
+function newOpenCodeSessionId() {
+  return "ses_" + crypto.randomBytes(12).toString("hex");
+}
 
 const DEFAULT_LIMIT = 40;
 
@@ -760,6 +776,12 @@ function consumeClaudeStreamLine(line, state, onProgress) {
     return;
   }
   const type = ev.type;
+  const sid =
+    ev.session_id ||
+    ev.sessionId ||
+    ev.data?.session_id ||
+    (type === "system" ? ev.session_id : "");
+  if (sid) state.sessionId = String(sid);
 
   if (type === "stream_event") {
     const event = ev.event || {};
@@ -846,41 +868,24 @@ function consumeClaudeStreamLine(line, state, onProgress) {
   }
 }
 
-async function sendToClaudeSession({ session, question, imagePath, onProgress }) {
-  const bin = which("claude");
-  if (!bin) {
-    throw new Error(
-      "Claude Code CLI not found on PATH. Install `claude`, or pick OpenCode / Flickctx built-in."
-    );
+function buildClaudeArgs({ resumeId, sessionId, prompt, stream }) {
+  const args = ["-p"];
+  if (resumeId) {
+    args.push("--resume", resumeId);
+  } else if (sessionId) {
+    args.push("--session-id", sessionId);
   }
-  if (!session?.id) throw new Error("Missing Claude session id.");
-  const prompt = buildMarkPrompt(question, imagePath);
-  const cwd =
-    (session.directory && fs.existsSync(session.directory)
-      ? session.directory
-      : "") || process.cwd();
-  const state = {
-    text: "",
-    reasoning: "",
-    finalText: "",
-    sawStreamText: false,
-    error: "",
-  };
-  emitProgress(onProgress, {
-    kind: "status",
-    text: "",
-    reasoning: "",
-    status: "Claude Code · starting…",
-  });
-
-  const streamArgs = [
-    "-p",
-    "--resume",
-    session.id,
-    "--output-format",
-    "stream-json",
-    "--verbose",
-    "--include-partial-messages",
+  if (stream) {
+    args.push(
+      "--output-format",
+      "stream-json",
+      "--verbose",
+      "--include-partial-messages"
+    );
+  } else {
+    args.push("--output-format", "json");
+  }
+  args.push(
     "--permission-mode",
     "acceptEdits",
     "--allowedTools",
@@ -889,8 +894,49 @@ async function sendToClaudeSession({ session, question, imagePath, onProgress })
     "Glob",
     "--allowedTools",
     "Grep",
+    prompt
+  );
+  return args;
+}
+
+async function sendToClaudeSession({ session, question, imagePath, onProgress }) {
+  const bin = which("claude");
+  if (!bin) {
+    throw new Error(
+      "Claude Code CLI not found on PATH. Install `claude`, or pick OpenCode / Flickctx built-in."
+    );
+  }
+  const creating = isNewAgentSession(session);
+  if (!creating && !session?.id) throw new Error("Missing Claude session id.");
+  const prompt = buildMarkPrompt(question, imagePath);
+  const cwd =
+    (session.directory && fs.existsSync(session.directory)
+      ? session.directory
+      : "") || process.cwd();
+  const createdId = creating ? newClaudeSessionId() : "";
+  const state = {
+    text: "",
+    reasoning: "",
+    finalText: "",
+    sawStreamText: false,
+    error: "",
+    sessionId: creating ? createdId : session.id,
+  };
+  emitProgress(onProgress, {
+    kind: "status",
+    text: "",
+    reasoning: "",
+    status: creating
+      ? "Claude Code · creating session…"
+      : "Claude Code · starting…",
+  });
+
+  const streamArgs = buildClaudeArgs({
+    resumeId: creating ? "" : session.id,
+    sessionId: creating ? createdId : "",
     prompt,
-  ];
+    stream: true,
+  });
 
   let stdout = "";
   try {
@@ -901,29 +947,29 @@ async function sendToClaudeSession({ session, question, imagePath, onProgress })
     });
     stdout = result.stdout || "";
   } catch (err) {
-    // Older CLIs may not support stream-json — fall back to one-shot JSON.
-    const fallback = await runCommand(
-      bin,
-      [
-        "-p",
-        "--resume",
-        session.id,
-        "--output-format",
-        "json",
-        "--permission-mode",
-        "acceptEdits",
-        "--allowedTools",
-        "Read",
-        "--allowedTools",
-        "Glob",
-        "--allowedTools",
-        "Grep",
-        prompt,
-      ],
-      { cwd, timeout: 240_000 }
-    );
-    stdout = fallback.stdout || "";
-    state.text = extractClaudePrintText(stdout);
+    // Older CLIs may not support stream-json / --session-id — fall back.
+    const fallbackArgs = buildClaudeArgs({
+      resumeId: creating ? "" : session.id,
+      sessionId: "",
+      prompt,
+      stream: false,
+    });
+    try {
+      const fallback = await runCommand(bin, fallbackArgs, {
+        cwd,
+        timeout: 240_000,
+      });
+      stdout = fallback.stdout || "";
+      state.text = extractClaudePrintText(stdout);
+      try {
+        const parsed = JSON.parse(stdout);
+        if (parsed.session_id) state.sessionId = String(parsed.session_id);
+      } catch {
+        /* ignore */
+      }
+    } catch (fallbackErr) {
+      throw err.message ? err : fallbackErr;
+    }
   }
 
   const text =
@@ -933,15 +979,20 @@ async function sendToClaudeSession({ session, question, imagePath, onProgress })
       state.error || "Claude Code returned an empty response."
     );
   }
+  const routeId = state.sessionId || createdId || session.id;
   return {
     explanation: text,
     reasoning: state.reasoning || "",
     model: "claude-code-session",
     route: {
       provider: "claude",
-      id: session.id,
-      title: session.title || session.id,
+      id: routeId,
+      title:
+        creating && (!session.title || session.title.startsWith("New "))
+          ? `Claude · ${String(routeId).slice(0, 8)}`
+          : session.title || routeId,
       directory: cwd,
+      isNew: false,
     },
     followUpPrompt: text,
     usage: null,
@@ -958,6 +1009,8 @@ function consumeOpenCodeStreamLine(line, state, onProgress) {
     return;
   }
   const type = String(ev.type || "");
+  const sid = ev.sessionID || ev.sessionId || ev.session_id || ev.part?.sessionID;
+  if (sid) state.sessionId = String(sid);
 
   if (type === "reasoning") {
     const chunk = ev.part?.text || ev.text || "";
@@ -1025,6 +1078,15 @@ function consumeOpenCodeStreamLine(line, state, onProgress) {
   }
 }
 
+function buildOpenCodeArgs({ sessionId, imagePath, prompt, thinking }) {
+  const args = ["run"];
+  if (sessionId) args.push("--session", sessionId);
+  args.push("--format", "json");
+  if (thinking) args.push("--thinking");
+  args.push("--file", imagePath, prompt);
+  return args;
+}
+
 async function sendToOpenCodeSession({
   session,
   question,
@@ -1037,69 +1099,58 @@ async function sendToOpenCodeSession({
       "OpenCode CLI not found on PATH. Install `opencode`, or pick Claude Code / Flickctx built-in."
     );
   }
-  if (!session?.id) throw new Error("Missing OpenCode session id.");
+  const creating = isNewAgentSession(session);
+  if (!creating && !session?.id) throw new Error("Missing OpenCode session id.");
   const prompt = buildMarkPrompt(question, imagePath);
   const cwd =
     (session.directory && fs.existsSync(session.directory)
       ? session.directory
       : "") || process.cwd();
+  // Prefer an explicit new id (create-if-missing on OpenCode 2.1.4+).
+  // If that fails, retry with no --session so the CLI allocates one.
+  const createdId = creating ? newOpenCodeSessionId() : "";
   const state = {
     text: "",
     textParts: [],
     reasoning: "",
     reasoningParts: [],
     error: "",
+    sessionId: creating ? createdId : session.id,
   };
   emitProgress(onProgress, {
     kind: "status",
     text: "",
     reasoning: "",
-    status: "OpenCode · starting…",
+    status: creating
+      ? "OpenCode · creating session…"
+      : "OpenCode · starting…",
   });
 
-  // OpenCode uses its own provider auth/config — no Flickctx API key required.
-  // --thinking emits reasoning events in the JSON stream.
-  const args = [
-    "run",
-    "--session",
-    session.id,
-    "--format",
-    "json",
-    "--thinking",
-    "--file",
-    imagePath,
-    prompt,
-  ];
+  async function runOnce(sessionId, thinking) {
+    return spawnStreaming(
+      bin,
+      buildOpenCodeArgs({ sessionId, imagePath, prompt, thinking }),
+      {
+        cwd,
+        timeout: 240_000,
+        onLine: (line) => consumeOpenCodeStreamLine(line, state, onProgress),
+      }
+    );
+  }
 
   let stdout = "";
   try {
-    const result = await spawnStreaming(bin, args, {
-      cwd,
-      timeout: 240_000,
-      onLine: (line) => consumeOpenCodeStreamLine(line, state, onProgress),
-    });
+    const result = await runOnce(creating ? createdId : session.id, true);
     stdout = result.stdout || "";
   } catch (err) {
-    // Older OpenCode without --thinking
-    if (/thinking|unknown|unexpected/i.test(String(err.message || ""))) {
-      const result = await spawnStreaming(
-        bin,
-        [
-          "run",
-          "--session",
-          session.id,
-          "--format",
-          "json",
-          "--file",
-          imagePath,
-          prompt,
-        ],
-        {
-          cwd,
-          timeout: 240_000,
-          onLine: (line) => consumeOpenCodeStreamLine(line, state, onProgress),
-        }
-      );
+    const msg = String(err.message || err);
+    if (creating && /not found|invalid|unknown session/i.test(msg)) {
+      // Older OpenCode: omit --session to create.
+      state.sessionId = "";
+      const result = await runOnce("", /thinking|unknown|unexpected/i.test(msg) ? false : true);
+      stdout = result.stdout || "";
+    } else if (/thinking|unknown|unexpected/i.test(msg)) {
+      const result = await runOnce(creating ? createdId : session.id, false);
       stdout = result.stdout || "";
     } else {
       throw err;
@@ -1110,15 +1161,20 @@ async function sendToOpenCodeSession({
   if (!text) {
     throw new Error(state.error || "OpenCode returned an empty response.");
   }
+  const routeId = state.sessionId || createdId || session.id;
   return {
     explanation: text,
     reasoning: state.reasoning || "",
     model: "opencode-session",
     route: {
       provider: "opencode",
-      id: session.id,
-      title: session.title || session.id,
+      id: routeId,
+      title:
+        creating && (!session.title || session.title.startsWith("New "))
+          ? `OpenCode · ${String(routeId).slice(0, 12)}`
+          : session.title || routeId,
       directory: cwd,
+      isNew: false,
     },
     followUpPrompt: text,
     usage: null,
@@ -1160,4 +1216,5 @@ module.exports = {
   expandedEnv,
   consumeClaudeStreamLine,
   consumeOpenCodeStreamLine,
+  isNewAgentSession,
 };

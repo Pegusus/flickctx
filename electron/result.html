@@ -546,14 +546,15 @@
         for (const p of providers) {
           const btn = document.createElement("button");
           btn.className = "route-item provider";
-          btn.disabled = !p.available && p.count === 0;
+          // Allow opening even with zero saved sessions — user can create new.
+          btn.disabled = !p.available;
           btn.innerHTML =
             `<div class="top"><span>${p.title}</span><span class="prov">${p.prov}</span></div>` +
             `<div class="sub">${escapeHtml(
-              !p.available && p.count === 0
+              !p.available
                 ? p.id === "claude"
-                  ? "claude CLI / ~/.claude sessions not detected"
-                  : "opencode CLI / local session DB not detected"
+                  ? "claude CLI not detected — install Claude Code first"
+                  : "opencode CLI not detected — install OpenCode first"
                 : p.sub(p.count)
             )}</div>`;
           btn.onclick = () => {
@@ -607,6 +608,21 @@
           routeList.removeChild(routeList.lastChild);
         }
 
+        const newBtn = document.createElement("button");
+        newBtn.className = "route-item provider";
+        newBtn.innerHTML =
+          `<div class="top"><span>+ New ${label} session</span><span class="prov">new</span></div>` +
+          `<div class="sub">Start a fresh chat in ${label} from this mark — then keep talking here</div>`;
+        newBtn.onclick = () =>
+          pickRoute({
+            provider,
+            id: "new",
+            isNew: true,
+            title: "New " + label + " session",
+            directory: "",
+          });
+        routeList.appendChild(newBtn);
+
         const sessions = sessionsFor(provider);
         if (!sessions.length) {
           const empty = document.createElement("div");
@@ -614,9 +630,9 @@
           empty.textContent =
             "No saved " +
             label +
-            " sessions found on this machine. They do not need to be running — start or resume one in " +
+            " sessions yet. Use + New above, or open " +
             label +
-            ", then tap Route again. Or go back and pick another option.";
+            " once and come back to resume.";
           routeList.appendChild(empty);
           return;
         }
@@ -651,7 +667,8 @@
             ? { provider: "flickctx", remember }
             : {
                 provider: session.provider,
-                id: session.id,
+                id: session.id || "new",
+                isNew: Boolean(session.isNew) || session.id === "new",
                 title: session.title,
                 directory: session.directory || "",
                 sessionFile: session.sessionFile || "",
@@ -661,18 +678,24 @@
         setRouteChip(res?.route || payload);
         hideRoutePicker();
         composer.classList.remove("hidden");
+        const route = activeRoute || res?.route || payload;
+        const isNew = Boolean(route.isNew) || route.id === "new";
         messages = [{
           role: "system",
           text:
-            activeRoute?.provider === "flickctx"
+            route.provider === "flickctx"
               ? "Using Flickctx built-in. Ask about the marked snippet."
-              : `Routing into ${activeRoute.provider} · ${activeRoute.title || activeRoute.id}. Uses that session’s configs — no Flickctx API key required.`,
+              : isNew
+                ? `New ${route.provider === "claude" ? "Claude Code" : "OpenCode"} session. Ask anything — the session is created on first send (no Flickctx API key).`
+                : `Routing into ${route.provider} · ${route.title || route.id}. Uses that session’s configs — no Flickctx API key required.`,
         }];
         renderChat();
         meta.textContent =
-          activeRoute?.provider === "flickctx"
+          route.provider === "flickctx"
             ? "Route · Flickctx built-in"
-            : `Route · ${activeRoute.provider} · ${activeRoute.title || activeRoute.id}`;
+            : isNew
+              ? `Route · new ${route.provider} session`
+              : `Route · ${route.provider} · ${route.title || route.id}`;
         questionEl.focus();
       }
 
@@ -973,6 +996,27 @@
         renderChat();
       });
 
+      if (window.flickctx.onResultRouteSet) {
+        window.flickctx.onResultRouteSet((data) => {
+          if (!data?.route) return;
+          setRouteChip(data.route);
+          hideRoutePicker();
+          composer.classList.remove("hidden");
+          messages = [{
+            role: "system",
+            text:
+              data.route.isNew || data.route.id === "new"
+                ? `New ${data.route.provider === "claude" ? "Claude Code" : "OpenCode"} session ready. Mark something or ask to start chatting.`
+                : `Routed to ${data.route.provider} · ${data.route.title || data.route.id}.`,
+          }];
+          renderChat();
+          meta.textContent =
+            data.route.isNew || data.route.id === "new"
+              ? `Route · new ${data.route.provider} session`
+              : `Route · ${data.route.provider} · ${data.route.title || data.route.id}`;
+        });
+      }
+
       window.flickctx.onResultLoading((data) => {
         // If we already added a pending bubble via submit(), keep chat.
         // If loading without local pending (edge), add one.
@@ -1027,6 +1071,7 @@
         const bits = [];
         if (data.route?.provider && data.route.provider !== "flickctx") {
           setRouteChip(data.route);
+          activeRoute = { ...activeRoute, ...data.route, isNew: false };
           bits.push(data.route.provider);
           bits.push(String(data.route.title || data.route.id || "").slice(0, 32));
         } else {

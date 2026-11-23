@@ -32,7 +32,7 @@ npm start
 
 1. Click the **Flickctx icon in the macOS menu bar** (top-right status area) → **Mark region** or **Open chat** (or press ⌘⇧F / Ctrl+Shift+F).
 2. Draw freehand around something — the **chat panel** stays on every Space so you can keep talking while switching tabs/desktops.
-3. Pick Claude Code / OpenCode / Flickctx, then a session — remembered for later marks (**Route** to change)
+3. Pick Claude Code / OpenCode / Flickctx — **+ New session** or an existing one — then chat (streamed live). Remembered until you change **Route**
 4. Type any question → **Send**
 5. Ask “where is …” on Flickctx built-in for on-screen highlight rings
 

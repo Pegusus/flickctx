@@ -241,6 +241,10 @@ if (sqlite3) {
   assert.strictEqual(ocState.reasoning, "plan A");
   assert.strictEqual(ocState.text, "Done.");
   assert.ok(ocProgress.some((p) => p.kind === "tool" && /read/i.test(p.status)));
+
+  const { isNewAgentSession } = require("./sessions");
+  assert.strictEqual(isNewAgentSession({ provider: "claude", id: "new", isNew: true }), true);
+  assert.strictEqual(isNewAgentSession({ provider: "claude", id: "abc" }), false);
 }
 
 console.log("sessions.test.js: ok");
