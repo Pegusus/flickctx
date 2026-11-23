@@ -283,8 +283,21 @@ function setLauncherExpanded(expanded) {
   }
 }
 
+function ensureLauncher() {
+  if (!launcherWindow || launcherWindow.isDestroyed()) {
+    launcherWindow = createLauncher();
+  }
+  return launcherWindow;
+}
+
 function showLauncherChip() {
+  ensureLauncher();
   setLauncherExpanded(false);
+}
+
+function showLauncherBar() {
+  ensureLauncher();
+  setLauncherExpanded(true);
 }
 
 function createResultWindow() {
@@ -417,6 +430,8 @@ function showOverlay() {
 
 function hideOverlay() {
   destroyOverlays();
+  // Always bring the Mark UI back — previously it stayed hidden forever.
+  showLauncherBar();
   if (resultOpenBeforeMark) {
     resultOpenBeforeMark = false;
     showResultWindow();
@@ -1238,32 +1253,107 @@ function registerIpc() {
 
 function buildTray() {
   const icon = trayIcon();
+  // Destroy previous tray if we're rebuilding.
+  try {
+    if (tray && !tray.isDestroyed?.()) tray.destroy();
+  } catch {
+    /* ignore */
+  }
   tray = new Tray(icon.isEmpty() ? nativeImage.createEmpty() : icon);
-  tray.setToolTip("Flickctx — click to Mark or open chat");
+  tray.setToolTip("Flickctx");
+  // Native macOS status item: a titled tray + context menu is the reliable
+  // way to stay in the top-right menu bar (custom popovers / Dock-hide made
+  // the app vanish on crowded bars).
   if (process.platform === "darwin") {
     try {
       tray.setIgnoreDoubleClickEvents(true);
     } catch {
       /* ignore */
     }
-    // Full title — short "Fx" is easy to miss in a crowded menu bar /
-    // Control Center overflow. Text alone still works if the bitmap fails.
     try {
       tray.setTitle("Flickctx");
     } catch {
       /* ignore */
     }
   }
-  // Menu-bar status item: click opens our dropdown under the icon.
-  // Do not setContextMenu on macOS — it swallows click events.
-  tray.on("click", () => showTrayMenu());
-  tray.on("right-click", () => showTrayMenu());
-  tray.on("double-click", () => showOverlay());
-  console.log(
-    icon.isEmpty()
-      ? "Flickctx tray: text-only status item (icon missing)"
-      : "Flickctx tray: menu-bar status item ready"
-  );
+
+  const menu = Menu.buildFromTemplate([
+    {
+      label: "Mark region",
+      accelerator: "CommandOrControl+Shift+F",
+      click: () => showOverlay(),
+    },
+    {
+      label: "Show Mark bar",
+      click: () => showLauncherBar(),
+    },
+    {
+      label: "Open chat",
+      click: () => showResultWindow(),
+    },
+    { type: "separator" },
+    {
+      label: "New Claude Code session",
+      click: () => {
+        const config = loadConfig();
+        activeRoute = {
+          provider: "claude",
+          id: "new",
+          isNew: true,
+          title: "New Claude Code session",
+          directory: config.projectPath || process.cwd(),
+        };
+        const win = showResultWindow();
+        win.webContents.send("result:route-set", { route: activeRoute });
+      },
+    },
+    {
+      label: "New OpenCode session",
+      click: () => {
+        const config = loadConfig();
+        activeRoute = {
+          provider: "opencode",
+          id: "new",
+          isNew: true,
+          title: "New OpenCode session",
+          directory: config.projectPath || process.cwd(),
+        };
+        const win = showResultWindow();
+        win.webContents.send("result:route-set", { route: activeRoute });
+      },
+    },
+    { type: "separator" },
+    {
+      label: "Screen Recording…",
+      click: () => ensureMacScreenPermission({ forcePrompt: true }),
+    },
+    {
+      label: "Open config",
+      click: () => {
+        const c = loadConfig();
+        fs.mkdirSync(c.configDir, { recursive: true });
+        shell.showItemInFolder(c.configPath);
+      },
+    },
+    { type: "separator" },
+    { label: "Quit Flickctx", click: () => app.quit() },
+  ]);
+  // On macOS, setContextMenu makes left-click open this menu — that's the
+  // standard status-item behavior and stays visible in the menu bar.
+  tray.setContextMenu(menu);
+  // Still handle click on Linux/Windows (and as a backup).
+  tray.on("click", () => {
+    if (process.platform === "darwin") {
+      try {
+        tray.popUpContextMenu(menu);
+      } catch {
+        showTrayMenu();
+      }
+      return;
+    }
+    showTrayMenu();
+  });
+  console.log("Flickctx menu-bar status item: look for “Flickctx” top-right");
 }
 
 function buildDock() {
@@ -1341,9 +1431,8 @@ if (!gotLock) {
     registerHotkey();
     trayMenuWindow = createTrayMenuWindow();
     resultWindow = createResultWindow();
-    // Always-on top-right Mark chip so something is visible immediately.
-    launcherWindow = createLauncher();
-    setLauncherExpanded(true);
+    // Always-on Mark bar + menu-bar “Flickctx” title.
+    showLauncherBar();
     screen.on("display-metrics-changed", () => {
       if (launcherWindow && !launcherWindow.isDestroyed()) {
         setLauncherExpanded(launcherExpanded);
@@ -1363,7 +1452,7 @@ if (!gotLock) {
       /* permission may still be pending */
     }
     console.log(
-      "Flickctx UI: top-right Mark bar + Dock + menu-bar “Flickctx”. Chat stays on every Space. On macOS enable Screen Recording for “Electron”, then restart."
+      "Flickctx ready — look top-right menu bar for “Flickctx”, or the Mark bar under it. ⌘⇧F to mark."
     );
   });
 
