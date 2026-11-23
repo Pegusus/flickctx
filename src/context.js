@@ -232,12 +232,24 @@ function gatherOpenCodeContext(projectPath, maxChars) {
   if (fs.existsSync(dbPath)) {
     bits.push(`OpenCode DB present at ${dbPath}`);
     // Best-effort: try sqlite3 CLI if available
-    const sql = `SELECT id, title, directory, datetime(time_updated/1000, 'unixepoch') AS updated
-      FROM session
-      WHERE directory LIKE '%${path.basename(projectPath).replace(/'/g, "")}%'
-      ORDER BY time_updated DESC LIMIT 3;`;
-    const out = run("sqlite3", ["-header", "-separator", " | ", dbPath, sql]);
-    if (out) bits.push("Recent sessions:\n" + out);
+    const tables = run(
+      "sqlite3",
+      [dbPath, "SELECT name FROM sqlite_master WHERE type='table';"]
+    );
+    const table = /\bsession_v2\b/.test(tables || "")
+      ? "session_v2"
+      : /\bsession\b/.test(tables || "")
+        ? "session"
+        : "";
+    if (table) {
+      const sql = `SELECT id, title, directory, datetime(time_updated/1000, 'unixepoch') AS updated
+        FROM ${table}
+        WHERE directory LIKE '%${path.basename(projectPath).replace(/'/g, "")}%'
+          AND (time_archived IS NULL OR time_archived = 0)
+        ORDER BY time_updated DESC LIMIT 3;`;
+      const out = run("sqlite3", ["-header", "-separator", " | ", dbPath, sql]);
+      if (out) bits.push("Recent sessions:\n" + out);
+    }
   }
 
   // Legacy / alternate JSON storage

@@ -426,8 +426,45 @@
       let messages = []; // {role, text, reasoning?}
       let activeRoute = null;
       let pendingSessions = [];
+      let pendingByProvider = { claude: [], opencode: [] };
       let pendingSessionMeta = {};
       let pickerProvider = null; // null | 'claude' | 'opencode'
+
+      function applySessionCatalog(data) {
+        pendingSessions = Array.isArray(data?.sessions) ? data.sessions : [];
+        pendingByProvider = {
+          claude: Array.isArray(data?.byProvider?.claude)
+            ? data.byProvider.claude
+            : pendingSessions.filter((s) => s.provider === "claude"),
+          opencode: Array.isArray(data?.byProvider?.opencode)
+            ? data.byProvider.opencode
+            : pendingSessions.filter((s) => s.provider === "opencode"),
+        };
+        pendingSessionMeta = data?.sessionMeta || {
+          counts: {
+            claude: pendingByProvider.claude.length,
+            opencode: pendingByProvider.opencode.length,
+          },
+          claudeAvailable: true,
+          opencodeAvailable: true,
+          rememberSessionRoute: data?.rememberSessionRoute,
+        };
+        if (data?.counts && !data?.sessionMeta) {
+          pendingSessionMeta.counts = data.counts;
+        }
+        if (typeof data?.claudeAvailable === "boolean") {
+          pendingSessionMeta.claudeAvailable = data.claudeAvailable;
+        }
+        if (typeof data?.opencodeAvailable === "boolean") {
+          pendingSessionMeta.opencodeAvailable = data.opencodeAvailable;
+        }
+      }
+
+      function sessionsFor(provider) {
+        const list = pendingByProvider?.[provider];
+        if (Array.isArray(list) && list.length) return list;
+        return pendingSessions.filter((s) => s.provider === provider);
+      }
 
       function setRouteChip(route) {
         activeRoute = route || null;
@@ -462,14 +499,14 @@
         routeList.innerHTML = "";
 
         const counts = pendingSessionMeta.counts || {};
-        const claudeCount =
-          typeof counts.claude === "number"
-            ? counts.claude
-            : pendingSessions.filter((s) => s.provider === "claude").length;
-        const opencodeCount =
-          typeof counts.opencode === "number"
-            ? counts.opencode
-            : pendingSessions.filter((s) => s.provider === "opencode").length;
+        const claudeCount = Math.max(
+          typeof counts.claude === "number" ? counts.claude : 0,
+          sessionsFor("claude").length
+        );
+        const opencodeCount = Math.max(
+          typeof counts.opencode === "number" ? counts.opencode : 0,
+          sessionsFor("opencode").length
+        );
         const claudeOk = pendingSessionMeta.claudeAvailable !== false;
         const opencodeOk = pendingSessionMeta.opencodeAvailable !== false;
 
@@ -483,8 +520,8 @@
             empty: "No Claude Code sessions found on this machine yet.",
             sub: (n) =>
               n
-                ? n + " recent session" + (n === 1 ? "" : "s") + " · uses Claude login / configs"
-                : "Open Claude Code and start a chat, then come back",
+                ? n + " saved session" + (n === 1 ? "" : "s") + " · running or not"
+                : "No saved sessions on disk yet · start one in Claude Code",
           },
           {
             id: "opencode",
@@ -495,8 +532,8 @@
             empty: "No OpenCode sessions found on this machine yet.",
             sub: (n) =>
               n
-                ? n + " recent session" + (n === 1 ? "" : "s") + " · uses OpenCode auth / models"
-                : "Open OpenCode and start a chat, then come back",
+                ? n + " saved session" + (n === 1 ? "" : "s") + " · running or not"
+                : "No saved sessions on disk yet · start one in OpenCode",
           },
         ];
 
@@ -509,11 +546,13 @@
             `<div class="sub">${escapeHtml(
               !p.available && p.count === 0
                 ? p.id === "claude"
-                  ? "claude CLI not detected · install or open Claude Code first"
-                  : "opencode CLI not detected · install or open OpenCode first"
+                  ? "claude CLI / ~/.claude sessions not detected"
+                  : "opencode CLI / local session DB not detected"
                 : p.sub(p.count)
             )}</div>`;
-          btn.onclick = () => renderSessionStep(p.id);
+          btn.onclick = () => {
+            void renderSessionStep(p.id);
+          };
           routeList.appendChild(btn);
         }
 
@@ -526,13 +565,14 @@
         routeList.appendChild(builtIn);
       }
 
-      function renderSessionStep(provider) {
+      async function renderSessionStep(provider) {
         pickerProvider = provider;
         const label = provider === "claude" ? "Claude Code" : "OpenCode";
-        const sessions = pendingSessions.filter((s) => s.provider === provider);
-        routePickerLabel.textContent = "Pick a " + label + " session";
+        const article = provider === "opencode" ? "an" : "a";
+        routePickerLabel.textContent =
+          "Pick " + article + " " + label + " session";
         routePickerHint.textContent =
-          "Follow-ups go into this session with its configs — no Flickctx API key.";
+          "Saved sessions work even if that chat is not open. Uses that tool’s configs — no Flickctx API key.";
         routeList.innerHTML = "";
 
         const back = document.createElement("button");
@@ -542,15 +582,35 @@
         back.onclick = () => renderProviderStep();
         routeList.appendChild(back);
 
+        const loading = document.createElement("div");
+        loading.className = "hint";
+        loading.textContent = "Loading saved sessions…";
+        routeList.appendChild(loading);
+
+        try {
+          if (window.flickctx.listSessions) {
+            const fresh = await window.flickctx.listSessions();
+            applySessionCatalog(fresh);
+          }
+        } catch {
+          /* keep cached catalog */
+        }
+
+        // Rebuild after refresh (keep back button)
+        while (routeList.childNodes.length > 1) {
+          routeList.removeChild(routeList.lastChild);
+        }
+
+        const sessions = sessionsFor(provider);
         if (!sessions.length) {
           const empty = document.createElement("div");
           empty.className = "hint";
           empty.textContent =
-            "No " +
+            "No saved " +
             label +
-            " sessions found. Start one in " +
+            " sessions found on this machine. They do not need to be running — start or resume one in " +
             label +
-            ", then tap Route again — or go back and pick another option.";
+            ", then tap Route again. Or go back and pick another option.";
           routeList.appendChild(empty);
           return;
         }
@@ -569,8 +629,7 @@
       }
 
       function showRoutePicker(data) {
-        pendingSessions = Array.isArray(data?.sessions) ? data.sessions : [];
-        pendingSessionMeta = data?.sessionMeta || {};
+        applySessionCatalog(data || {});
         rememberRoute.checked =
           pendingSessionMeta.rememberSessionRoute !== false;
         renderProviderStep();

@@ -645,18 +645,44 @@ function registerIpc() {
     };
   });
 
-  ipcMain.handle("sessions:list", () => {
+  function loadSessionCatalog() {
     try {
-      return listAgentSessions({ limit: 20 });
+      return listAgentSessions({ limit: 40 });
     } catch (err) {
+      console.warn("session list failed:", err.message || err);
       return {
         sessions: [],
-        counts: {},
+        byProvider: { claude: [], opencode: [] },
+        counts: { claude: 0, opencode: 0 },
         claudeAvailable: false,
         opencodeAvailable: false,
         error: err.message || String(err),
       };
     }
+  }
+
+  function sessionPickerPayload(catalog, config) {
+    return {
+      sessions: catalog.sessions || [],
+      byProvider: catalog.byProvider || {
+        claude: (catalog.sessions || []).filter((s) => s.provider === "claude"),
+        opencode: (catalog.sessions || []).filter(
+          (s) => s.provider === "opencode"
+        ),
+      },
+      sessionMeta: {
+        counts: catalog.counts || {},
+        claudeAvailable: Boolean(catalog.claudeAvailable),
+        opencodeAvailable: Boolean(catalog.opencodeAvailable),
+        rememberSessionRoute:
+          !config || config.rememberSessionRoute !== false,
+        error: catalog.error || "",
+      },
+    };
+  }
+
+  ipcMain.handle("sessions:list", () => {
+    return loadSessionCatalog();
   });
 
   ipcMain.handle("sessions:set-route", (_e, payload) => {
@@ -747,17 +773,8 @@ function registerIpc() {
       };
       const config = loadConfig();
       activeRoute = resolveInitialRoute(config);
-      let sessionCatalog = {
-        sessions: [],
-        counts: {},
-        claudeAvailable: false,
-        opencodeAvailable: false,
-      };
-      try {
-        sessionCatalog = listAgentSessions({ limit: 20 });
-      } catch (err) {
-        console.warn("session list failed:", err.message || err);
-      }
+      const sessionCatalog = loadSessionCatalog();
+      const picker = sessionPickerPayload(sessionCatalog, config);
       const win = ensureResultWindow();
       win.show();
       win.focus();
@@ -782,13 +799,9 @@ function registerIpc() {
         hasContextImage: true,
         route: activeRoute,
         needsRoutePick: !activeRoute,
-        sessions: sessionCatalog.sessions || [],
-        sessionMeta: {
-          counts: sessionCatalog.counts || {},
-          claudeAvailable: Boolean(sessionCatalog.claudeAvailable),
-          opencodeAvailable: Boolean(sessionCatalog.opencodeAvailable),
-          rememberSessionRoute: config.rememberSessionRoute !== false,
-        },
+        sessions: picker.sessions,
+        byProvider: picker.byProvider,
+        sessionMeta: picker.sessionMeta,
       });
     } catch (err) {
       const win = ensureResultWindow();
@@ -814,20 +827,12 @@ function registerIpc() {
     if (!activeRoute) {
       const win = ensureResultWindow();
       win.show();
-      let sessionCatalog = { sessions: [] };
-      try {
-        sessionCatalog = listAgentSessions({ limit: 20 });
-      } catch {
-        /* ignore */
-      }
+      const picker = sessionPickerPayload(loadSessionCatalog(), loadConfig());
       win.webContents.send("result:pick-route", {
         imagePath,
-        sessions: sessionCatalog.sessions || [],
-        sessionMeta: {
-          counts: sessionCatalog.counts || {},
-          claudeAvailable: Boolean(sessionCatalog.claudeAvailable),
-          opencodeAvailable: Boolean(sessionCatalog.opencodeAvailable),
-        },
+        sessions: picker.sessions,
+        byProvider: picker.byProvider,
+        sessionMeta: picker.sessionMeta,
       });
       return;
     }
@@ -851,22 +856,13 @@ function registerIpc() {
   ipcMain.on("result:change-route", () => {
     activeRoute = null;
     const config = loadConfig();
-    let sessionCatalog = { sessions: [], counts: {} };
-    try {
-      sessionCatalog = listAgentSessions({ limit: 20 });
-    } catch {
-      /* ignore */
-    }
+    const picker = sessionPickerPayload(loadSessionCatalog(), config);
     const win = ensureResultWindow();
     win.webContents.send("result:pick-route", {
       imagePath: lastImagePath,
-      sessions: sessionCatalog.sessions || [],
-      sessionMeta: {
-        counts: sessionCatalog.counts || {},
-        claudeAvailable: Boolean(sessionCatalog.claudeAvailable),
-        opencodeAvailable: Boolean(sessionCatalog.opencodeAvailable),
-        rememberSessionRoute: config.rememberSessionRoute !== false,
-      },
+      sessions: picker.sessions,
+      byProvider: picker.byProvider,
+      sessionMeta: picker.sessionMeta,
     });
   });
 
