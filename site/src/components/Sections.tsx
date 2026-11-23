@@ -5,7 +5,7 @@ export function HowSection() {
   return (
     <section className="section" id="how">
       <div className="container">
-        <Reveal>
+        <Reveal stagger>
           <p className="kicker">How it works</p>
           <h2 className="sec-title">Mark. Route. Keep going.</h2>
           <p className="sec-lead">
@@ -57,7 +57,7 @@ export function SessionsSection() {
   return (
     <section className="section" id="sessions">
       <div className="container">
-        <Reveal>
+        <Reveal stagger>
           <div className={styles.split}>
             <div className={styles.copy}>
               <p className="kicker">Session routing</p>
@@ -103,7 +103,7 @@ export function VisionSection() {
   return (
     <section className="section" id="vision">
       <div className="container">
-        <Reveal>
+        <Reveal stagger>
           <div className={styles.split}>
             <div className={styles.copy}>
               <p className="kicker">Vision grounding</p>
@@ -180,7 +180,7 @@ export function SkillsSection() {
   return (
     <section className="section" id="skills">
       <div className="container">
-        <Reveal>
+        <Reveal stagger>
           <div className={`${styles.split} ${styles.splitReverse}`}>
             <div className={styles.copy}>
               <p className="kicker">On-demand skills</p>
@@ -211,7 +211,7 @@ export function ToolsSection() {
   return (
     <section className="section" id="tools">
       <div className="container">
-        <Reveal>
+        <Reveal stagger>
           <p className="kicker">Local + web tools</p>
           <h2 className="sec-title">From the mark to your repos and the web.</h2>
           <p className="sec-lead">
@@ -255,7 +255,7 @@ export function ConfigSection() {
   return (
     <section className="section" id="config">
       <div className="container">
-        <Reveal>
+        <Reveal stagger>
           <div className={styles.split}>
             <div className={styles.copy}>
               <p className="kicker">Easily configurable</p>
