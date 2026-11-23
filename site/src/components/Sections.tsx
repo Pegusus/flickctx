@@ -48,27 +48,17 @@ export function HowSection() {
 export function ArchitectureSection() {
   return (
     <section className="section" id="architecture">
-      <div className="container">
+      <div className={`container ${styles.archWide}`}>
         <Reveal>
-          <p className="kicker">Architecture</p>
-          <h2 className="sec-title">How the repo is wired.</h2>
+          <p className="kicker">Technical design</p>
+          <h2 className="sec-title">How Flickctx is built.</h2>
           <p className="sec-lead">
-            Four layers: Electron UI, Node core under <code>src/</code>, host
-            CLIs / Anthropic, and local state. Session routing and built-in
-            vision are separate deliver paths from the same capture pipeline.
+            An Electron main process owns floating windows over IPC. One local
+            capture pipeline feeds two deliver engines: a session CLI bridge, or
+            a built-in vision agent with tools. Answers stream back into the
+            same chat window.
           </p>
           <ArchDiagram />
-          <p className={styles.archLink}>
-            Full write-up in{" "}
-            <a
-              href="https://github.com/Pegusus/flickctx/blob/main/ARCHITECTURE.md"
-              target="_blank"
-              rel="noreferrer"
-            >
-              ARCHITECTURE.md
-            </a>
-            .
-          </p>
         </Reveal>
       </div>
     </section>

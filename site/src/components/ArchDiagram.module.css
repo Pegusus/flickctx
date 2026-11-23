@@ -3,216 +3,133 @@
   padding: 0;
 }
 
-.stack {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
+.svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  background: #fafafa;
   border: 1px solid var(--rule);
   border-radius: 8px;
-  background: #fff;
-  overflow: hidden;
 }
 
-.layer {
-  padding: 1rem 1.1rem 1.15rem;
-  border-bottom: 1px solid var(--rule);
+.wire path {
+  stroke: #c5c9ce;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  transition: stroke-dashoffset 0.9s var(--ease);
+}
+
+.in .wire path {
+  stroke-dashoffset: 0;
+}
+
+.stream {
+  stroke: var(--accent) !important;
+  stroke-opacity: 0.55;
+  stroke-dasharray: 4 3;
+}
+
+.annot text {
+  fill: #9aa3ad;
+  font-size: 10px;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  letter-spacing: 0.04em;
   opacity: 0;
-  transform: translateY(10px);
+  transition: opacity 0.5s var(--ease) 0.35s;
+}
+
+.in .annot text {
+  opacity: 1;
+}
+
+.box rect,
+.boxAccent rect,
+.boxMuted rect,
+.step rect {
+  fill: #fff;
+  stroke: var(--rule);
+  stroke-width: 1.25;
+}
+
+.boxAccent rect {
+  stroke: var(--accent);
+  stroke-width: 1.5;
+  fill: #f3faf8;
+}
+
+.boxMuted rect {
+  fill: #f3f4f5;
+}
+
+.step rect {
+  fill: #f7f7f7;
+}
+
+.h {
+  fill: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+  font-family: var(--font-sans), ui-sans-serif, sans-serif;
+  letter-spacing: -0.02em;
+}
+
+.p {
+  fill: var(--mute);
+  font-size: 11px;
+  font-family: var(--font-sans), ui-sans-serif, sans-serif;
+}
+
+.box,
+.boxAccent,
+.boxMuted,
+.step {
+  opacity: 0;
+  transform: translateY(8px);
   transition:
-    opacity 0.65s var(--ease),
-    transform 0.65s var(--ease);
+    opacity 0.55s var(--ease),
+    transform 0.55s var(--ease);
 }
 
-.layer:last-of-type {
-  border-bottom: none;
-}
-
-.in .l1 {
+.in .n1 {
   opacity: 1;
   transform: none;
   transition-delay: 0.02s;
 }
-.in .l2 {
+.in .n2 {
   opacity: 1;
   transform: none;
-  transition-delay: 0.12s;
+  transition-delay: 0.1s;
 }
-.in .l3 {
+.in .n3 {
   opacity: 1;
   transform: none;
-  transition-delay: 0.22s;
-}
-.in .l4 {
-  opacity: 1;
-  transform: none;
-  transition-delay: 0.32s;
-}
-
-.layerHead {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 0.75rem;
-  margin-bottom: 0.75rem;
-}
-
-.layerTag {
-  font-size: 0.6875rem;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--mute);
-}
-
-.layerHead code {
-  font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 0.75rem;
-  color: var(--ink);
-  background: #f0f0f0;
-  padding: 0.15em 0.4em;
-  border-radius: 3px;
-}
-
-.mods {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  gap: 0.45rem;
-}
-
-.mods li {
-  display: grid;
-  grid-template-columns: minmax(7.5rem, auto) 1fr;
-  gap: 0.65rem;
-  align-items: baseline;
-  font-size: 0.8125rem;
-}
-
-.mods code {
-  font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 0.75rem;
-  color: var(--ink);
-}
-
-.mods span {
-  color: var(--mute);
-}
-
-.grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.65rem;
-}
-
-.card {
-  border: 1px solid var(--rule);
-  border-radius: 6px;
-  padding: 0.7rem 0.8rem;
-  background: #fafafa;
-}
-
-.card h4 {
-  margin: 0 0 0.25rem;
-  font-size: 0.8125rem;
-  font-weight: 600;
-  letter-spacing: -0.02em;
-}
-
-.card p {
-  margin: 0 0 0.35rem;
-  font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 0.68rem;
-  color: #444;
-  line-height: 1.4;
-}
-
-.card p code {
-  font: inherit;
-}
-
-.card span {
-  display: block;
-  font-size: 0.75rem;
-  color: var(--mute);
-  line-height: 1.4;
-}
-
-.arrow {
-  text-align: center;
-  font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 0.65rem;
-  letter-spacing: 0.04em;
-  color: #9ca3af;
-  padding: 0.35rem 0;
-  background: #f7f7f7;
-  border-bottom: 1px solid var(--rule);
-  opacity: 0;
-  transition: opacity 0.5s var(--ease);
-}
-
-.in .arrow {
-  opacity: 1;
   transition-delay: 0.18s;
 }
-
-.extRow {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.65rem;
+.in .n3 .step {
+  opacity: 1;
+  transform: none;
 }
-
-.ext {
-  border: 1px solid var(--rule);
-  border-radius: 6px;
-  padding: 0.7rem 0.75rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
+.in .n3 .step:nth-child(3) {
+  transition-delay: 0.22s;
 }
-
-.ext strong {
-  font-size: 0.8125rem;
-  font-weight: 600;
+.in .n3 .step:nth-child(4) {
+  transition-delay: 0.28s;
 }
-
-.ext code {
-  font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 0.68rem;
-  color: #444;
-  line-height: 1.35;
+.in .n3 .step:nth-child(5) {
+  transition-delay: 0.34s;
 }
-
-.ext span {
-  font-size: 0.75rem;
-  color: var(--mute);
-  line-height: 1.35;
+.in .n3 .step:nth-child(6) {
+  transition-delay: 0.4s;
 }
-
-.disk {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  gap: 0.4rem;
+.in .n4 {
+  opacity: 1;
+  transform: none;
+  transition-delay: 0.28s;
 }
-
-.disk li {
-  display: grid;
-  grid-template-columns: minmax(9rem, auto) 1fr;
-  gap: 0.65rem;
-  align-items: baseline;
-  font-size: 0.8125rem;
-}
-
-.disk code {
-  font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 0.72rem;
-  color: var(--ink);
-}
-
-.disk span {
-  color: var(--mute);
+.in .n5 {
+  opacity: 1;
+  transform: none;
+  transition-delay: 0.38s;
 }
 
 .cap {
@@ -220,38 +137,24 @@
   font-size: 0.8125rem;
   color: var(--mute);
   opacity: 0;
-  transition: opacity 0.55s var(--ease) 0.4s;
+  transition: opacity 0.5s var(--ease) 0.45s;
 }
 
 .in .cap {
   opacity: 1;
 }
 
-.cap a {
-  color: var(--ink);
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-
-@media (max-width: 700px) {
-  .grid,
-  .extRow {
-    grid-template-columns: 1fr;
-  }
-
-  .mods li,
-  .disk li {
-    grid-template-columns: 1fr;
-    gap: 0.15rem;
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .layer,
-  .arrow,
+  .wire path,
+  .box,
+  .boxAccent,
+  .boxMuted,
+  .step,
+  .annot text,
   .cap {
     opacity: 1;
     transform: none;
+    stroke-dashoffset: 0;
     transition: none;
   }
 }
