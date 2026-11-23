@@ -71,10 +71,40 @@ function safeRead(filePath, maxBytes = 200_000) {
   }
 }
 
+function cleanTitle(value) {
+  const text = String(value || "")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!text) return "";
+  // Skip command-wrapper noise that is not a real session name
+  if (text.startsWith("<local-command-caveat>")) return "";
+  if (text.startsWith("<command-")) return "";
+  return text.slice(0, 120);
+}
+
+function extractMessageText(message) {
+  if (!message) return "";
+  const content = message.content;
+  if (typeof content === "string") return content;
+  if (Array.isArray(content)) {
+    return content
+      .map((p) => (p && p.type === "text" ? p.text : ""))
+      .filter(Boolean)
+      .join(" ");
+  }
+  return "";
+}
+
 function summarizeClaudeTranscript(filePath) {
   const raw = safeRead(filePath, 800_000) || "";
   const lines = raw.split("\n").filter(Boolean);
-  let title = "";
+  // Prefer the same labels Claude Code’s own picker uses:
+  // custom-title (user /rename) > ai-title (generated) > agent-name > summary.
+  let customTitle = "";
+  let aiTitle = "";
+  let agentName = "";
+  let summaryTitle = "";
+  let firstUserTitle = "";
   let cwd = "";
   let preview = "";
   let sessionId = path.basename(filePath, ".jsonl");
@@ -88,34 +118,40 @@ function summarizeClaudeTranscript(filePath) {
     }
     if (record.sessionId) sessionId = record.sessionId;
     if (record.cwd && !cwd) cwd = record.cwd;
-    if (record.type === "summary" && record.summary && !title) {
-      title = String(record.summary).slice(0, 120);
+
+    const type = String(record.type || "");
+    if (type === "custom-title") {
+      const t = cleanTitle(record.customTitle || record.title);
+      if (t) customTitle = t; // latest wins
+    } else if (type === "ai-title") {
+      const t = cleanTitle(record.aiTitle || record.title);
+      if (t) aiTitle = t;
+    } else if (type === "agent-name") {
+      const t = cleanTitle(record.agentName || record.title);
+      if (t) agentName = t;
+    } else if (type === "summary" && record.summary) {
+      const t = cleanTitle(record.summary);
+      if (t) summaryTitle = t;
     }
+
     if (
-      !preview &&
-      (record.type === "user" || record.type === "assistant") &&
+      (type === "user" || type === "assistant") &&
       record.message
     ) {
-      const content = record.message.content;
-      let text = "";
-      if (typeof content === "string") text = content;
-      else if (Array.isArray(content)) {
-        text = content
-          .map((p) => (p && p.type === "text" ? p.text : ""))
-          .filter(Boolean)
-          .join(" ");
-      }
-      text = String(text || "").replace(/\s+/g, " ").trim();
-      // Skip local-command caveat noise as the only preview when possible
-      if (text && !text.startsWith("<local-command-caveat>")) {
-        preview = text.slice(0, 140);
-        if (!title && record.type === "user") title = preview.slice(0, 80);
-      } else if (text && !preview) {
-        preview = text.slice(0, 140);
-        if (!title && record.type === "user") title = preview.slice(0, 80);
-      }
+      const text = cleanTitle(extractMessageText(record.message));
+      if (!text) continue;
+      if (!preview) preview = text.slice(0, 140);
+      if (!firstUserTitle && type === "user") firstUserTitle = text.slice(0, 80);
     }
   }
+
+  const title =
+    customTitle ||
+    aiTitle ||
+    agentName ||
+    summaryTitle ||
+    firstUserTitle ||
+    `Claude session ${sessionId.slice(0, 8)}`;
 
   let mtime = 0;
   let size = 0;
@@ -127,12 +163,12 @@ function summarizeClaudeTranscript(filePath) {
     /* ignore */
   }
 
-  if (size < 20 && !title && !preview) return null;
+  if (size < 20 && !preview && title.startsWith("Claude session ")) return null;
 
   return {
     provider: "claude",
     id: sessionId,
-    title: title || `Claude session ${sessionId.slice(0, 8)}`,
+    title,
     directory: cwd || "",
     preview: preview || "",
     mtime,
@@ -252,14 +288,24 @@ function resolveOpenCodeDbPath() {
   return path.join(base, "opencode.db");
 }
 
+function openCodeDisplayTitle(row) {
+  // Prefer the title OpenCode itself shows; slug is a secondary label.
+  return (
+    cleanTitle(row.title) ||
+    cleanTitle(row.name) ||
+    cleanTitle(row.slug) ||
+    String(row.id || row.sessionID || "OpenCode session").slice(0, 40)
+  );
+}
+
 function mapOpenCodeRows(rows) {
   return (rows || [])
     .map((row) => ({
       provider: "opencode",
       id: String(row.id || row.sessionID || ""),
-      title: String(row.title || row.name || row.slug || row.id || "OpenCode session"),
+      title: openCodeDisplayTitle(row),
       directory: String(row.directory || row.path || row.cwd || ""),
-      preview: String(row.preview || row.summary || "").slice(0, 140),
+      preview: cleanTitle(row.preview || row.summary || "").slice(0, 140),
       mtime: Number(
         row.time_updated || row.updatedAt || row.updated || row.mtime || 0
       ),
@@ -296,7 +342,13 @@ function queryOpenCodeDbWithNodeSqlite(dbPath, limit) {
       const parentClause = hasParent
         ? "AND (parent_id IS NULL OR parent_id = '')"
         : "";
-      const sql = `SELECT id, title, directory, time_updated
+      const cols = new Set(
+        db.prepare(`PRAGMA table_info(${table})`).all().map((c) => c.name)
+      );
+      const selectCols = ["id", "title", "directory", "time_updated"]
+        .concat(cols.has("slug") ? ["slug"] : [])
+        .join(", ");
+      const sql = `SELECT ${selectCols}
         FROM ${table}
         WHERE (time_archived IS NULL OR time_archived = 0)
         ${parentClause}
@@ -356,7 +408,10 @@ function queryOpenCodeDbWithSqlite3(dbPath, limit) {
     const parentClause = hasParent
       ? "AND (parent_id IS NULL OR parent_id = '')"
       : "";
-    const sql = `SELECT id, title, directory, time_updated
+    const selectCols = /\bslug\b/.test(colsRaw)
+      ? "id, title, slug, directory, time_updated"
+      : "id, title, directory, time_updated";
+    const sql = `SELECT ${selectCols}
       FROM ${table}
       WHERE (time_archived IS NULL OR time_archived = 0)
       ${parentClause}
@@ -446,7 +501,7 @@ function listOpenCodeSessionsFromStorage(limit = DEFAULT_LIMIT) {
           matches.push({
             provider: "opencode",
             id,
-            title: String(json.title || json.slug || id),
+            title: openCodeDisplayTitle(json),
             directory: String(json.directory || json.path || ""),
             preview: "",
             mtime: Number(json.time_updated || json.updatedAt || stat.mtimeMs),

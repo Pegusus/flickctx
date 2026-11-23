@@ -52,14 +52,44 @@ fs.writeFileSync(
   }) + "\n"
 );
 
+// Prefer Claude’s own custom-title / ai-title over first-message text
+const namedFile = path.join(projectDir, "named-session.jsonl");
+fs.writeFileSync(
+  namedFile,
+  [
+    JSON.stringify({
+      type: "user",
+      sessionId: "named-session",
+      cwd: "/Users/demo/app",
+      message: {
+        content:
+          "<local-command-caveat>The command below was run directly…",
+      },
+    }),
+    JSON.stringify({
+      type: "ai-title",
+      sessionId: "named-session",
+      aiTitle: "Payments timeout debug",
+    }),
+    JSON.stringify({
+      type: "custom-title",
+      sessionId: "named-session",
+      customTitle: "Checkout incidents",
+    }),
+  ].join("\n") + "\n"
+);
+
 const sessions = listClaudeSessions(10);
-assert.ok(sessions.length >= 2);
+assert.ok(sessions.length >= 3);
 assert.ok(sessions.some((s) => s.id === "abc123def"));
 assert.ok(sessions.some((s) => s.id === "nested999"));
 assert.match(
   sessions.find((s) => s.id === "abc123def").title,
   /payments/i
 );
+const named = sessions.find((s) => s.id === "named-session");
+assert.ok(named);
+assert.strictEqual(named.title, "Checkout incidents");
 
 const prompt = buildMarkPrompt("what is this?", "/tmp/mark.png");
 assert.match(prompt, /\/tmp\/mark\.png/);
