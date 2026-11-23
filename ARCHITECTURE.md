@@ -2,6 +2,17 @@
 
 Flickctx is a local Electron companion: mark a region on screen, then continue in an **OpenCode** or **Claude Code** session (that session’s keys, models, and context — no Flickctx API key), or use the **Flickctx built-in** vision chat.
 
+## System layers
+
+| Layer | Path | Role |
+|-------|------|------|
+| UI shell | `electron/` | Mark bar, tray, overlays, chat window, IPC (`main.js`, `launcher.html`, `overlay.html`, `result.html`, `preload.js`) |
+| Core | `src/` | Capture (`capture.js`, `image.js`, `frontmost.js`), session router (`sessions.js`), built-in agent (`explain.js` + `tools.js` + `skills.js`), config/context (`config.js`, `context.js`, `repos.js`) |
+| Externals | host / network | `claude` / `opencode` CLIs for session routes; Anthropic Messages API or `worker/` proxy for built-in |
+| On disk | local | `skills/*.md`, `~/.config/flickctx`, Claude/OpenCode session dirs, temp crop JPEGs |
+
+Capture always runs in-process. **Deliver** then forks: session routes spawn CLIs; built-in calls the API.
+
 ## Current flow
 
 | Step | What happens |

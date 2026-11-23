@@ -21,7 +21,7 @@ export function ArchDiagram() {
           io.unobserve(entry.target);
         }
       },
-      { threshold: 0.2 }
+      { threshold: 0.15 }
     );
     io.observe(el);
     return () => io.disconnect();
@@ -31,104 +31,153 @@ export function ArchDiagram() {
     <figure
       ref={ref}
       className={styles.figure}
-      aria-label="Flickctx technical architecture"
+      aria-label="Flickctx system architecture"
     >
-      <svg
-        className={styles.svg}
-        viewBox="0 0 720 420"
-        role="img"
-        aria-labelledby="arch-title arch-desc"
-      >
-        <title id="arch-title">Flickctx architecture</title>
-        <desc id="arch-desc">
-          Mark bar and hotkey capture a crop, route to Claude Code, OpenCode, or
-          Flickctx built-in, then stream answers into the chat panel.
-        </desc>
+      <div className={styles.stack}>
+        {/* Layer: Electron UI */}
+        <section className={`${styles.layer} ${styles.l1}`}>
+          <header className={styles.layerHead}>
+            <span className={styles.layerTag}>UI shell</span>
+            <code>electron/</code>
+          </header>
+          <ul className={styles.mods}>
+            <li>
+              <code>main.js</code>
+              <span>windows, tray, Spaces, Route state, IPC</span>
+            </li>
+            <li>
+              <code>launcher.html</code>
+              <span>Mark · Route · Chat · Quit bar</span>
+            </li>
+            <li>
+              <code>overlay.html</code>
+              <span>freehand mark overlay</span>
+            </li>
+            <li>
+              <code>result.html</code>
+              <span>chat, stream, Markdown</span>
+            </li>
+            <li>
+              <code>preload.js</code>
+              <span>safe bridge to Node</span>
+            </li>
+          </ul>
+        </section>
 
-        <g className={styles.wire} fill="none" strokeWidth="1.25">
-          <path d="M360 58 V88" pathLength={1} />
-          <path d="M360 148 V178" pathLength={1} />
-          <path d="M360 208 V218" pathLength={1} />
-          <path d="M200 218 H520" pathLength={1} />
-          <path d="M200 218 V238" pathLength={1} />
-          <path d="M520 218 V238" pathLength={1} />
-          <path d="M200 238 V268" pathLength={1} />
-          <path d="M520 238 V268" pathLength={1} />
-          <path d="M200 328 H360 V348" pathLength={1} />
-          <path d="M520 328 H360" pathLength={1} />
-        </g>
+        <div className={styles.arrow} aria-hidden>
+          IPC · spawn · fs
+        </div>
 
-        <g className={`${styles.node} ${styles.n1}`}>
-          <rect x="250" y="16" width="220" height="42" rx="4" />
-          <text x="360" y="35" className={styles.label}>
-            Mark bar · tray · ⌘⇧F
-          </text>
-          <text x="360" y="50" className={styles.sub}>
-            electron/launcher · overlay
-          </text>
-        </g>
+        {/* Layer: Core */}
+        <section className={`${styles.layer} ${styles.l2}`}>
+          <header className={styles.layerHead}>
+            <span className={styles.layerTag}>Core</span>
+            <code>src/</code>
+          </header>
+          <div className={styles.grid}>
+            <div className={styles.card}>
+              <h4>Capture</h4>
+              <p>
+                <code>capture.js</code> · <code>image.js</code> ·{" "}
+                <code>frontmost.js</code>
+              </p>
+              <span>display shot → crop JPEG · context frame · app/URL hint</span>
+            </div>
+            <div className={styles.card}>
+              <h4>Session router</h4>
+              <p>
+                <code>sessions.js</code>
+              </p>
+              <span>
+                discover Claude / OpenCode sessions ·{" "}
+                <code>sendToAgentSession</code> · stream JSON
+              </span>
+            </div>
+            <div className={styles.card}>
+              <h4>Built-in agent</h4>
+              <p>
+                <code>explain.js</code> · <code>tools.js</code> ·{" "}
+                <code>skills.js</code>
+              </p>
+              <span>Messages API loop · vision · tools · on-demand skills</span>
+            </div>
+            <div className={styles.card}>
+              <h4>Context</h4>
+              <p>
+                <code>context.js</code> · <code>repos.js</code> ·{" "}
+                <code>config.js</code>
+              </p>
+              <span>ambient repos · Claude/OpenCode hints · ~/.config/flickctx</span>
+            </div>
+          </div>
+        </section>
 
-        <g className={`${styles.node} ${styles.n2}`}>
-          <rect x="220" y="88" width="280" height="60" rx="4" />
-          <text x="360" y="112" className={styles.label}>
-            Capture
-          </text>
-          <text x="360" y="130" className={styles.sub}>
-            crop JPEG · full-display context · frontmost hint
-          </text>
-        </g>
+        <div className={styles.arrow} aria-hidden>
+          process spawn · HTTPS
+        </div>
 
-        <g className={`${styles.node} ${styles.n3}`}>
-          <rect x="220" y="178" width="280" height="40" rx="4" />
-          <text x="360" y="203" className={styles.label}>
-            Route · Claude · OpenCode · Flickctx
-          </text>
-        </g>
+        {/* Layer: Externals */}
+        <section className={`${styles.layer} ${styles.l3}`}>
+          <header className={styles.layerHead}>
+            <span className={styles.layerTag}>Externals</span>
+            <code>host machine · network</code>
+          </header>
+          <div className={styles.extRow}>
+            <div className={styles.ext}>
+              <strong>Claude Code CLI</strong>
+              <code>claude -p --resume · stream-json</code>
+              <span>uses that session’s auth / models</span>
+            </div>
+            <div className={styles.ext}>
+              <strong>OpenCode CLI</strong>
+              <code>opencode run --session · --thinking</code>
+              <span>uses that session’s auth / models</span>
+            </div>
+            <div className={styles.ext}>
+              <strong>Anthropic API</strong>
+              <code>explain.js</code> or <code>worker/</code> proxy
+              <span>built-in only · key / login / FLICKCTX_PROXY_URL</span>
+            </div>
+          </div>
+        </section>
 
-        <g className={`${styles.node} ${styles.n4}`}>
-          <rect x="40" y="238" width="320" height="90" rx="4" />
-          <text x="200" y="266" className={styles.label}>
-            Session path
-          </text>
-          <text x="200" y="286" className={styles.sub}>
-            src/sessions.js → sendToAgentSession
-          </text>
-          <text x="200" y="304" className={styles.code}>
-            claude -p --resume · stream-json
-          </text>
-          <text x="200" y="318" className={styles.code}>
-            opencode run --session · --thinking
-          </text>
-        </g>
+        {/* Layer: Data */}
+        <section className={`${styles.layer} ${styles.l4}`}>
+          <header className={styles.layerHead}>
+            <span className={styles.layerTag}>On disk</span>
+            <code>local state</code>
+          </header>
+          <ul className={styles.disk}>
+            <li>
+              <code>skills/*.md</code>
+              <span>thin product refs (aws, datadog, gcp, …)</span>
+            </li>
+            <li>
+              <code>~/.config/flickctx</code>
+              <span>API key, model, roots, preferred route</span>
+            </li>
+            <li>
+              <code>~/.claude</code> · <code>~/.opencode</code>
+              <span>session catalogs read by sessions.js</span>
+            </li>
+            <li>
+              <code>tmp crop JPEG</code>
+              <span>passed into CLI / vision request</span>
+            </li>
+          </ul>
+        </section>
+      </div>
 
-        <g className={`${styles.node} ${styles.n5}`}>
-          <rect x="360" y="238" width="320" height="90" rx="4" />
-          <text x="520" y="266" className={styles.label}>
-            Built-in path
-          </text>
-          <text x="520" y="286" className={styles.sub}>
-            src/explain.js · Messages API
-          </text>
-          <text x="520" y="304" className={styles.code}>
-            crop + context + tools + skills
-          </text>
-          <text x="520" y="318" className={styles.code}>
-            key · Claude login · or Worker proxy
-          </text>
-        </g>
-
-        <g className={`${styles.nodeAccent} ${styles.n6}`}>
-          <rect x="220" y="348" width="280" height="52" rx="4" />
-          <text x="360" y="372" className={styles.label}>
-            Chat UI
-          </text>
-          <text x="360" y="388" className={styles.sub}>
-            electron/result.html · stream thinking + answer
-          </text>
-        </g>
-      </svg>
       <figcaption className={styles.cap}>
-        Primary path uses the session’s own auth. Built-in is optional.
+        Repo map of{" "}
+        <a
+          href="https://github.com/Pegusus/flickctx"
+          target="_blank"
+          rel="noreferrer"
+        >
+          Pegusus/flickctx
+        </a>
+        . Session routes never need a Flickctx key; built-in does.
       </figcaption>
     </figure>
   );

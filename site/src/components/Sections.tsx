@@ -51,12 +51,24 @@ export function ArchitectureSection() {
       <div className="container">
         <Reveal>
           <p className="kicker">Architecture</p>
-          <h2 className="sec-title">Mark → route → stream.</h2>
+          <h2 className="sec-title">How the repo is wired.</h2>
           <p className="sec-lead">
-            Local Electron shell. Session routes call your installed CLIs.
-            Built-in hits the Messages API only when you choose it.
+            Four layers: Electron UI, Node core under <code>src/</code>, host
+            CLIs / Anthropic, and local state. Session routing and built-in
+            vision are separate deliver paths from the same capture pipeline.
           </p>
           <ArchDiagram />
+          <p className={styles.archLink}>
+            Full write-up in{" "}
+            <a
+              href="https://github.com/Pegusus/flickctx/blob/main/ARCHITECTURE.md"
+              target="_blank"
+              rel="noreferrer"
+            >
+              ARCHITECTURE.md
+            </a>
+            .
+          </p>
         </Reveal>
       </div>
     </section>

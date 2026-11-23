@@ -58,6 +58,26 @@
   border-radius: 3px;
 }
 
+.archLink {
+  margin: 0.85rem 0 0;
+  font-size: 0.8125rem;
+  color: var(--mute);
+}
+
+.archLink a {
+  color: var(--ink);
+  text-underline-offset: 2px;
+}
+
+.archLink code,
+:global(.sec-lead) code {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.85em;
+  background: #eee;
+  padding: 0.1em 0.3em;
+  border-radius: 3px;
+}
+
 .installPre {
   margin: 1.25rem 0 1rem;
   max-width: 100%;
