@@ -111,11 +111,19 @@ kbd {
   color: #fff;
   border: 1px solid var(--ink);
   border-radius: 6px;
-  transition: opacity 0.15s var(--ease), background 0.15s var(--ease);
+  transition:
+    opacity 0.25s var(--ease),
+    border-color 0.25s var(--ease),
+    background 0.25s var(--ease),
+    transform 0.25s var(--ease);
 }
 
 .btn:hover {
   opacity: 0.88;
+}
+
+.btn:active {
+  transform: translateY(1px);
 }
 
 .btn.quiet {
@@ -132,15 +140,53 @@ kbd {
 
 .reveal {
   opacity: 0;
-  transform: translateY(10px);
+  transform: translateY(12px);
   transition:
-    opacity 0.5s var(--ease),
-    transform 0.5s var(--ease);
+    opacity 0.7s var(--ease),
+    transform 0.7s var(--ease);
+  will-change: opacity, transform;
 }
 
 .reveal.in {
   opacity: 1;
   transform: none;
+}
+
+/* Soft cascade for list items inside a reveal */
+.reveal-cascade ol > li,
+.reveal-cascade ul > li {
+  opacity: 0;
+  transform: translateY(10px);
+  transition:
+    opacity 0.65s var(--ease),
+    transform 0.65s var(--ease);
+}
+
+.reveal-cascade.in ol > li,
+.reveal-cascade.in ul > li {
+  opacity: 1;
+  transform: none;
+}
+
+.reveal-cascade.in ol > li:nth-child(1),
+.reveal-cascade.in ul > li:nth-child(1) {
+  transition-delay: 0.05s;
+}
+.reveal-cascade.in ol > li:nth-child(2),
+.reveal-cascade.in ul > li:nth-child(2) {
+  transition-delay: 0.12s;
+}
+.reveal-cascade.in ol > li:nth-child(3),
+.reveal-cascade.in ul > li:nth-child(3) {
+  transition-delay: 0.19s;
+}
+.reveal-cascade.in ol > li:nth-child(4),
+.reveal-cascade.in ul > li:nth-child(4) {
+  transition-delay: 0.26s;
+}
+.reveal-cascade.in ol > li:nth-child(5),
+.reveal-cascade.in ul > li:nth-child(5) {
+  transition-delay: 0.33s;
 }
 
 @media (max-width: 900px) {
@@ -168,9 +214,16 @@ kbd {
     scroll-behavior: auto;
   }
 
-  .reveal {
+  .reveal,
+  .reveal-cascade ol > li,
+  .reveal-cascade ul > li {
     opacity: 1;
     transform: none;
     transition: none;
+    will-change: auto;
+  }
+
+  .btn:active {
+    transform: none;
   }
 }

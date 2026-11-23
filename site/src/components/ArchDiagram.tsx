@@ -1,8 +1,38 @@
+"use client";
+
+import { useEffect, useRef } from "react";
 import styles from "./ArchDiagram.module.css";
 
 export function ArchDiagram() {
+  const ref = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      el.classList.add(styles.in);
+      return;
+    }
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (!entry.isIntersecting) continue;
+          entry.target.classList.add(styles.in);
+          io.unobserve(entry.target);
+        }
+      },
+      { threshold: 0.2 }
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+
   return (
-    <figure className={styles.figure} aria-label="Flickctx technical architecture">
+    <figure
+      ref={ref}
+      className={styles.figure}
+      aria-label="Flickctx technical architecture"
+    >
       <svg
         className={styles.svg}
         viewBox="0 0 720 420"
@@ -15,23 +45,20 @@ export function ArchDiagram() {
           Flickctx built-in, then stream answers into the chat panel.
         </desc>
 
-        {/* connectors */}
         <g className={styles.wire} fill="none" strokeWidth="1.25">
-          <path d="M360 58 V88" />
-          <path d="M360 148 V178" />
-          <path d="M200 238 V268" />
-          <path d="M520 238 V268" />
-          <path d="M200 328 H360 V348" />
-          <path d="M520 328 H360" />
-          {/* branch split */}
-          <path d="M360 208 V218" />
-          <path d="M200 218 H520" />
-          <path d="M200 218 V238" />
-          <path d="M520 218 V238" />
+          <path d="M360 58 V88" pathLength={1} />
+          <path d="M360 148 V178" pathLength={1} />
+          <path d="M360 208 V218" pathLength={1} />
+          <path d="M200 218 H520" pathLength={1} />
+          <path d="M200 218 V238" pathLength={1} />
+          <path d="M520 218 V238" pathLength={1} />
+          <path d="M200 238 V268" pathLength={1} />
+          <path d="M520 238 V268" pathLength={1} />
+          <path d="M200 328 H360 V348" pathLength={1} />
+          <path d="M520 328 H360" pathLength={1} />
         </g>
 
-        {/* nodes */}
-        <g className={styles.node}>
+        <g className={`${styles.node} ${styles.n1}`}>
           <rect x="250" y="16" width="220" height="42" rx="4" />
           <text x="360" y="35" className={styles.label}>
             Mark bar · tray · ⌘⇧F
@@ -41,7 +68,7 @@ export function ArchDiagram() {
           </text>
         </g>
 
-        <g className={styles.node}>
+        <g className={`${styles.node} ${styles.n2}`}>
           <rect x="220" y="88" width="280" height="60" rx="4" />
           <text x="360" y="112" className={styles.label}>
             Capture
@@ -51,14 +78,14 @@ export function ArchDiagram() {
           </text>
         </g>
 
-        <g className={styles.node}>
+        <g className={`${styles.node} ${styles.n3}`}>
           <rect x="220" y="178" width="280" height="40" rx="4" />
           <text x="360" y="203" className={styles.label}>
             Route · Claude · OpenCode · Flickctx
           </text>
         </g>
 
-        <g className={styles.node}>
+        <g className={`${styles.node} ${styles.n4}`}>
           <rect x="40" y="238" width="320" height="90" rx="4" />
           <text x="200" y="266" className={styles.label}>
             Session path
@@ -74,7 +101,7 @@ export function ArchDiagram() {
           </text>
         </g>
 
-        <g className={styles.node}>
+        <g className={`${styles.node} ${styles.n5}`}>
           <rect x="360" y="238" width="320" height="90" rx="4" />
           <text x="520" y="266" className={styles.label}>
             Built-in path
@@ -90,7 +117,7 @@ export function ArchDiagram() {
           </text>
         </g>
 
-        <g className={styles.nodeAccent}>
+        <g className={`${styles.nodeAccent} ${styles.n6}`}>
           <rect x="220" y="348" width="280" height="52" rx="4" />
           <text x="360" y="372" className={styles.label}>
             Chat UI

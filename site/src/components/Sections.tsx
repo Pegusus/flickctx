@@ -14,6 +14,8 @@ export function HowSection() {
             Claude Code session that already has your configs — or stay on
             Flickctx built-in.
           </p>
+        </Reveal>
+        <Reveal cascade>
           <ol className={styles.steps}>
             <li>
               <h3>Mark</h3>
@@ -72,6 +74,8 @@ export function SessionsSection() {
             No Flickctx API key for OpenCode or Claude Code routes — those
             sessions keep their own keys, models, and project context.
           </p>
+        </Reveal>
+        <Reveal cascade>
           <ul className={styles.splitList}>
             <li>
               <strong>OpenCode</strong>

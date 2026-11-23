@@ -5,9 +5,12 @@ import { useEffect, useRef, type ReactNode } from "react";
 export function Reveal({
   children,
   className = "",
+  cascade = false,
 }: {
   children: ReactNode;
   className?: string;
+  /** Soft stagger for direct children */
+  cascade?: boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);
 
@@ -26,14 +29,19 @@ export function Reveal({
           io.unobserve(entry.target);
         }
       },
-      { rootMargin: "0px 0px -6% 0px", threshold: 0.12 }
+      { rootMargin: "0px 0px -5% 0px", threshold: 0.1 }
     );
     io.observe(el);
     return () => io.disconnect();
   }, []);
 
   return (
-    <div ref={ref} className={`reveal ${className}`.trim()}>
+    <div
+      ref={ref}
+      className={["reveal", cascade ? "reveal-cascade" : "", className]
+        .filter(Boolean)
+        .join(" ")}
+    >
       {children}
     </div>
   );

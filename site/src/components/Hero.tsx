@@ -1,12 +1,30 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { IncidentDemo } from "./IncidentDemo";
 import styles from "./Hero.module.css";
 
 export function Hero() {
   const [caption, setCaption] = useState("");
-  const onCaption = useCallback((text: string) => setCaption(text), []);
+  const [captionVisible, setCaptionVisible] = useState(true);
+
+  const onCaption = useCallback((text: string) => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setCaption(text);
+      setCaptionVisible(true);
+      return;
+    }
+    setCaptionVisible(false);
+    window.setTimeout(() => {
+      setCaption(text);
+      setCaptionVisible(true);
+    }, 160);
+  }, []);
+
+  useEffect(() => {
+    // ensure first caption paints visible
+    setCaptionVisible(true);
+  }, []);
 
   return (
     <section className={styles.hero} aria-label="Flickctx overview">
@@ -40,7 +58,13 @@ export function Hero() {
         <div className={styles.stage}>
           <IncidentDemo onCaption={onCaption} />
         </div>
-        <p className={styles.caption}>{caption}</p>
+        <p
+          className={`${styles.caption} ${
+            captionVisible ? "" : styles.captionFade
+          }`}
+        >
+          {caption}
+        </p>
       </div>
     </section>
   );
