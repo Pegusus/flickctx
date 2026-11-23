@@ -55,7 +55,7 @@ export function HowSection() {
 
 export function SessionsSection() {
   return (
-    <section className="section quiet" id="sessions">
+    <section className="section" id="sessions">
       <div className="container">
         <Reveal>
           <div className={styles.split}>
@@ -253,7 +253,7 @@ export function ToolsSection() {
 
 export function ConfigSection() {
   return (
-    <section className="section quiet" id="config">
+    <section className="section" id="config">
       <div className="container">
         <Reveal>
           <div className={styles.split}>

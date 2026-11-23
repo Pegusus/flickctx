@@ -41,28 +41,30 @@ export function SiteHeader() {
 
   return (
     <header className={styles.mast}>
-      <a className={styles.logo} href="./">
-        Flick<span>ctx</span>
-      </a>
-      <nav className={styles.nav} aria-label="Primary">
-        {LINKS.map((link) => (
-          <a
-            key={link.href}
-            href={link.href}
-            className={[
-              !link.mobile ? styles.hideMobile : "",
-              active === link.href ? styles.active : "",
-            ]
-              .filter(Boolean)
-              .join(" ")}
-            {...(link.external
-              ? { target: "_blank", rel: "noreferrer" }
-              : {})}
-          >
-            {link.label}
-          </a>
-        ))}
-      </nav>
+      <div className={styles.inner}>
+        <a className={styles.logo} href="./">
+          Flick<span>ctx</span>
+        </a>
+        <nav className={styles.nav} aria-label="Primary">
+          {LINKS.map((link) => (
+            <a
+              key={link.href}
+              href={link.href}
+              className={[
+                !link.mobile ? styles.hideMobile : "",
+                active === link.href ? styles.active : "",
+              ]
+                .filter(Boolean)
+                .join(" ")}
+              {...(link.external
+                ? { target: "_blank", rel: "noreferrer" }
+                : {})}
+            >
+              {link.label}
+            </a>
+          ))}
+        </nav>
+      </div>
     </header>
   );
 }

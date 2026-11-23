@@ -1,21 +1,25 @@
 .mast {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 16px;
-  padding: calc(12px + var(--safe-t)) var(--pad-x) 12px;
-  border-bottom: 1px solid var(--rule);
   position: sticky;
   top: 0;
   z-index: 40;
-  background: rgba(238, 240, 242, 0.92);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  background: var(--bg);
+  border-bottom: 1px solid var(--rule);
+}
+
+.inner {
+  width: min(100%, var(--content-wide));
+  margin: 0 auto;
+  padding: calc(0.75rem + var(--safe-t)) var(--pad-x) 0.75rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  min-height: var(--header-h);
 }
 
 .logo {
-  font-family: var(--font-display), "Segoe UI", sans-serif;
-  font-weight: 800;
+  font-family: var(--font-display), var(--font-sans), sans-serif;
+  font-weight: 700;
   font-size: 1.05rem;
   letter-spacing: -0.03em;
   text-decoration: none;
@@ -32,8 +36,7 @@
   flex-wrap: nowrap;
   justify-content: flex-end;
   align-items: center;
-  gap: 4px;
-  font-family: var(--font-sans), "Segoe UI", sans-serif;
+  gap: 0.15rem;
   font-size: 0.8125rem;
   font-weight: 500;
 }
@@ -41,12 +44,13 @@
 .nav a {
   text-decoration: none;
   color: var(--mute);
-  min-height: 40px;
+  min-height: 2.5rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0 10px;
+  padding: 0 0.65rem;
   white-space: nowrap;
+  transition: color 0.15s var(--ease);
 }
 
 .nav a:hover,
@@ -54,29 +58,16 @@
   color: var(--ink);
 }
 
-.hideMobile {
-  /* desktop default: show */
-}
-
 @media (max-width: 900px) {
-  .logo {
-    font-family: var(--font-sans), "Segoe UI", sans-serif;
-    font-weight: 600;
-    font-size: 1rem;
-    letter-spacing: -0.02em;
-  }
-
   .hideMobile {
     display: none !important;
   }
 
   .nav {
     gap: 0;
-    font-size: 0.8125rem;
   }
 
   .nav a {
-    padding: 0 8px;
-    min-width: 0;
+    padding: 0 0.5rem;
   }
 }

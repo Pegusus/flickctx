@@ -1,14 +1,12 @@
 import type { Metadata, Viewport } from "next";
-import { IBM_Plex_Mono, IBM_Plex_Sans, Syne } from "next/font/google";
+import { IBM_Plex_Mono, IBM_Plex_Sans, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 
-const display = Syne({
+const display = Space_Grotesk({
   subsets: ["latin"],
-  weight: ["700", "800"],
+  weight: ["500", "600", "700"],
   variable: "--font-display",
   display: "swap",
-  // Prevent size-adjust fallback metrics from making Syne look horizontally stretched
-  adjustFontFallback: false,
 });
 
 const sans = IBM_Plex_Sans({
@@ -16,7 +14,6 @@ const sans = IBM_Plex_Sans({
   weight: ["400", "500", "600"],
   variable: "--font-sans",
   display: "swap",
-  adjustFontFallback: false,
 });
 
 const mono = IBM_Plex_Mono({
@@ -24,7 +21,6 @@ const mono = IBM_Plex_Mono({
   weight: ["400", "500"],
   variable: "--font-mono",
   display: "swap",
-  adjustFontFallback: false,
 });
 
 export const metadata: Metadata = {
@@ -44,7 +40,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: "#e8eaec",
+  themeColor: "#eceeef",
 };
 
 export default function RootLayout({
@@ -53,7 +49,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${display.variable} ${sans.variable} ${mono.variable}`}>
+    <html
+      lang="en"
+      className={`${display.variable} ${sans.variable} ${mono.variable}`}
+    >
       <body>{children}</body>
     </html>
   );
