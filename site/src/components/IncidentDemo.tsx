@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
+import { AwsMark, DatadogMark, GcpMark } from "./BrandMarks";
 import styles from "./IncidentDemo.module.css";
 
 type Panel = "aws" | "dd" | "gcp" | "route";
@@ -145,40 +146,19 @@ export function IncidentDemo({
         <div
           className={`${styles.tab} ${step.panel === "aws" ? styles.tabOn : ""}`}
         >
-          <Image
-            src="/brands/aws.svg"
-            alt=""
-            width={28}
-            height={17}
-            className={styles.awsLogo}
-            unoptimized
-          />
+          <AwsMark className={styles.tabMark} />
           <span className={styles.tabFull}>AWS</span>
         </div>
         <div
           className={`${styles.tab} ${step.panel === "dd" ? styles.tabOn : ""}`}
         >
-          <Image
-            src="/brands/datadog.svg"
-            alt=""
-            width={18}
-            height={20}
-            className={styles.ddLogo}
-            unoptimized
-          />
+          <DatadogMark className={styles.tabMark} />
           <span className={styles.tabFull}>Datadog</span>
         </div>
         <div
           className={`${styles.tab} ${step.panel === "gcp" ? styles.tabOn : ""}`}
         >
-          <Image
-            src="/brands/gcp.svg"
-            alt=""
-            width={22}
-            height={18}
-            className={styles.gcpLogo}
-            unoptimized
-          />
+          <GcpMark className={styles.tabMark} />
           <span className={styles.tabFull}>Google Cloud</span>
           <span className={styles.tabShort}>GCP</span>
         </div>

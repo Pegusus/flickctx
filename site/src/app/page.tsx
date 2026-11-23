@@ -1,5 +1,6 @@
 import { Hero } from "@/components/Hero";
 import {
+  ArchitectureSection,
   ConfigSection,
   DesktopSection,
   HowSection,
@@ -16,6 +17,7 @@ export default function HomePage() {
       <main id="main">
         <Hero />
         <HowSection />
+        <ArchitectureSection />
         <SessionsSection />
         <DesktopSection />
         <ConfigSection />

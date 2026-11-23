@@ -5,6 +5,7 @@ import styles from "./SiteHeader.module.css";
 
 const LINKS = [
   { href: "#how", label: "How", mobile: false },
+  { href: "#architecture", label: "Architecture", mobile: false },
   { href: "#sessions", label: "Sessions", mobile: false },
   { href: "#install", label: "Install", mobile: true },
   {
@@ -19,7 +20,7 @@ export function SiteHeader() {
   const [active, setActive] = useState("");
 
   useEffect(() => {
-    const ids = ["how", "sessions", "desktop", "config", "install"];
+    const ids = ["how", "architecture", "sessions", "desktop", "config", "install"];
     const els = ids
       .map((id) => document.getElementById(id))
       .filter(Boolean) as HTMLElement[];

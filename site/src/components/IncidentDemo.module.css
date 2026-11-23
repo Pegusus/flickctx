@@ -40,18 +40,17 @@
   background: rgba(255, 255, 255, 0.05);
 }
 
-.awsLogo,
-.ddLogo,
-.gcpLogo {
+/* Themed marks — muted to match the chrome, not brand orange/purple */
+.tabMark {
+  width: 16px;
+  height: 16px;
   display: block;
-  object-fit: contain;
-  opacity: 0.85;
+  flex-shrink: 0;
+  color: rgba(255, 255, 255, 0.38);
 }
 
-.tabOn .awsLogo,
-.tabOn .ddLogo,
-.tabOn .gcpLogo {
-  opacity: 1;
+.tabOn .tabMark {
+  color: rgba(255, 255, 255, 0.92);
 }
 
 .flickDot {

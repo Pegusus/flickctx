@@ -1,3 +1,4 @@
+import { ArchDiagram } from "./ArchDiagram";
 import { Reveal } from "./Reveal";
 import styles from "./Sections.module.css";
 
@@ -36,6 +37,24 @@ export function HowSection() {
               </p>
             </li>
           </ol>
+        </Reveal>
+      </div>
+    </section>
+  );
+}
+
+export function ArchitectureSection() {
+  return (
+    <section className="section" id="architecture">
+      <div className="container">
+        <Reveal>
+          <p className="kicker">Architecture</p>
+          <h2 className="sec-title">Mark → route → stream.</h2>
+          <p className="sec-lead">
+            Local Electron shell. Session routes call your installed CLIs.
+            Built-in hits the Messages API only when you choose it.
+          </p>
+          <ArchDiagram />
         </Reveal>
       </div>
     </section>

@@ -1,0 +1,78 @@
+.figure {
+  margin: 1.75rem 0 0;
+  padding: 0;
+}
+
+.svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  background: #fff;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+}
+
+.wire {
+  stroke: #cfcfcf;
+}
+
+.node rect {
+  fill: #fafafa;
+  stroke: #d6d6d6;
+  stroke-width: 1;
+}
+
+.nodeAccent rect {
+  fill: #111;
+  stroke: #111;
+  stroke-width: 1;
+}
+
+.label {
+  fill: #111;
+  font-family: var(--font-sans), ui-sans-serif, sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  text-anchor: middle;
+  letter-spacing: -0.02em;
+}
+
+.nodeAccent .label {
+  fill: #fff;
+}
+
+.sub {
+  fill: #6b7280;
+  font-family: var(--font-sans), ui-sans-serif, sans-serif;
+  font-size: 10px;
+  text-anchor: middle;
+}
+
+.nodeAccent .sub {
+  fill: rgba(255, 255, 255, 0.55);
+}
+
+.code {
+  fill: #52525b;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 9.5px;
+  text-anchor: middle;
+}
+
+.cap {
+  margin: 0.65rem 0 0;
+  font-size: 0.8125rem;
+  color: var(--mute);
+}
+
+@media (max-width: 700px) {
+  .svg {
+    /* keep readable; allow horizontal scroll if needed */
+    min-width: 560px;
+  }
+
+  .figure {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
