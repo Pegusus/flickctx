@@ -252,11 +252,18 @@ function placeResultWindow(win) {
   const area = primaryWorkArea();
   const width = Math.min(460, Math.max(360, win.getBounds().width || 460));
   const height = Math.min(620, Math.max(420, win.getBounds().height || 620));
+  const launcherVisible =
+    launcherWindow && !launcherWindow.isDestroyed() && launcherWindow.isVisible();
+  const launcherH = launcherVisible
+    ? launcherExpanded
+      ? LAUNCHER_EXPANDED.height
+      : LAUNCHER_COLLAPSED.height
+    : 0;
   win.setBounds({
     width,
     height,
     x: area.x + area.width - width - 16,
-    y: area.y + 16,
+    y: area.y + 16 + (launcherH ? launcherH + 10 : 0),
   });
 }
 
@@ -1239,10 +1246,10 @@ function buildTray() {
     } catch {
       /* ignore */
     }
-    // Always show a short title so the status item is findable even if the
-    // bitmap fails to paint (common with empty/broken tray PNGs).
+    // Full title — short "Fx" is easy to miss in a crowded menu bar /
+    // Control Center overflow. Text alone still works if the bitmap fails.
     try {
-      tray.setTitle(icon.isEmpty() ? "Flickctx" : " Fx");
+      tray.setTitle("Flickctx");
     } catch {
       /* ignore */
     }
@@ -1257,6 +1264,55 @@ function buildTray() {
       ? "Flickctx tray: text-only status item (icon missing)"
       : "Flickctx tray: menu-bar status item ready"
   );
+}
+
+function buildDock() {
+  if (process.platform !== "darwin" || !app.dock) return;
+  try {
+    app.dock.show();
+  } catch {
+    /* ignore */
+  }
+  try {
+    app.dock.setMenu(
+      Menu.buildFromTemplate([
+        { label: "Mark region", click: () => showOverlay() },
+        { label: "Show Mark bar", click: () => setLauncherExpanded(true) },
+        { label: "Open chat", click: () => showResultWindow() },
+        { type: "separator" },
+        {
+          label: "New Claude Code session",
+          click: () => {
+            const config = loadConfig();
+            activeRoute = {
+              provider: "claude",
+              id: "new",
+              isNew: true,
+              title: "New Claude Code session",
+              directory: config.projectPath || process.cwd(),
+            };
+            showResultWindow();
+          },
+        },
+        {
+          label: "New OpenCode session",
+          click: () => {
+            const config = loadConfig();
+            activeRoute = {
+              provider: "opencode",
+              id: "new",
+              isNew: true,
+              title: "New OpenCode session",
+              directory: config.projectPath || process.cwd(),
+            };
+            showResultWindow();
+          },
+        },
+      ])
+    );
+  } catch {
+    /* ignore */
+  }
 }
 
 function registerHotkey() {
@@ -1278,20 +1334,20 @@ if (!gotLock) {
 
   app.whenReady().then(async () => {
     registerIpc();
-    // Create the menu-bar icon *before* hiding the Dock — otherwise a failed
-    // tray leaves the user with no way to reach the app.
     buildTray();
-    if (process.platform === "darwin" && app.dock) {
-      try {
-        app.dock.hide();
-      } catch {
-        /* ignore */
-      }
-    }
+    // Keep Dock visible — crowded menu bars hide status items in overflow,
+    // and hiding Dock left users with no visible Flickctx UI at all.
+    buildDock();
     registerHotkey();
     trayMenuWindow = createTrayMenuWindow();
     resultWindow = createResultWindow();
+    // Always-on top-right Mark chip so something is visible immediately.
+    launcherWindow = createLauncher();
+    setLauncherExpanded(true);
     screen.on("display-metrics-changed", () => {
+      if (launcherWindow && !launcherWindow.isDestroyed()) {
+        setLauncherExpanded(launcherExpanded);
+      }
       if (resultWindow && !resultWindow.isDestroyed() && resultWindow.isVisible()) {
         placeResultWindow(resultWindow);
       }
@@ -1307,7 +1363,7 @@ if (!gotLock) {
       /* permission may still be pending */
     }
     console.log(
-      "Flickctx UI: menu-bar icon → Mark / Open chat. Chat stays on every Space. On macOS enable Screen Recording for “Electron”, then restart."
+      "Flickctx UI: top-right Mark bar + Dock + menu-bar “Flickctx”. Chat stays on every Space. On macOS enable Screen Recording for “Electron”, then restart."
     );
   });
 

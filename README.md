@@ -30,7 +30,7 @@ npm start
 
 **No API key?** After Mark, choose **Claude Code** or **OpenCode**, then a session — Flickctx sends the screenshot + question into that chat, so the session’s models/keys/context are used. Built-in Flickctx still needs a key or Claude login.
 
-1. Click the **Flickctx icon in the macOS menu bar** (top-right status area) → **Mark region** or **Open chat** (or press ⌘⇧F / Ctrl+Shift+F).
+1. After `npm start`, use the **top-right Mark bar**, the **Dock** icon, or the menu-bar **Flickctx** item (may sit in ⌃ overflow if the bar is crowded). Or press ⌘⇧F / Ctrl+Shift+F.
 2. Draw freehand around something — the **chat panel** stays on every Space so you can keep talking while switching tabs/desktops.
 3. Pick Claude Code / OpenCode / Flickctx — **+ New session** or an existing one — then chat (streamed live). Remembered until you change **Route**
 4. Type any question → **Send**
