@@ -4,6 +4,11 @@ contextBridge.exposeInMainWorld("flickctx", {
   getConfig: () => ipcRenderer.invoke("config:get"),
   setConfig: (partial) => ipcRenderer.invoke("config:set", partial),
   mark: () => ipcRenderer.send("app:mark"),
+  trayAction: (action) => ipcRenderer.send("tray:action", action),
+  trayMenuBlur: () => ipcRenderer.send("tray:blur"),
+  onTrayMenuMeta: (cb) => {
+    ipcRenderer.on("tray:meta", (_e, meta) => cb(meta));
+  },
   setLauncherExpanded: (expanded) =>
     ipcRenderer.send("launcher:set-expanded", Boolean(expanded)),
   onLauncherMode: (cb) => {

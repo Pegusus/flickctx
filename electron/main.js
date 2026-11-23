@@ -29,7 +29,8 @@ app.setName("Flickctx");
 let tray = null;
 let overlayWindows = []; // one per display — required for multi-monitor + macOS Spaces
 let resultWindow = null;
-let launcherWindow = null;
+let launcherWindow = null; // optional legacy; primary UI is menu-bar tray
+let trayMenuWindow = null;
 let highlightWindow = null;
 let busy = false;
 let lastImagePath = null;
@@ -113,12 +114,34 @@ function ensureMacScreenPermission({ forcePrompt = false } = {}) {
 }
 
 function trayIcon() {
-  // 16x16 simple PNG
-  const png = Buffer.from(
-    "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAMklEQVQ4T2NkYGD4z0ABYBzVMKoBBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGABu+AaH1nYGxAAAAAElFTkSuQmCC",
-    "base64"
+  // 32×32 black “target” — macOS menu-bar template (tinted by the system).
+  const img = nativeImage.createFromBuffer(
+    Buffer.from(
+      "iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAZ0lEQVR42u2WUQ4AIAhCu/+l6QT9KAlzsPnn8q1MOSeKasIjJEVHYFAMaXEKBEgx2mgUiO4hbQjGNVIBWM9IJa/kgAWARl4AdgB8bUL5N7QcROOjWL6MLNaxhSGxsGQWptTClkc7dQFhhjLcUkRsfQAAAABJRU5ErkJggg==",
+      "base64"
+    )
   );
-  return nativeImage.createFromBuffer(png);
+  if (process.platform === "darwin") {
+    try {
+      img.setTemplateImage(true);
+    } catch {
+      /* ignore */
+    }
+  }
+  return img;
+}
+
+function formatHotkeyLabel(accelerator) {
+  const raw = String(accelerator || "CommandOrControl+Shift+F");
+  if (process.platform === "darwin") {
+    return raw
+      .replace(/CommandOrControl|Command|Cmd/gi, "⌘")
+      .replace(/Control|Ctrl/gi, "⌃")
+      .replace(/Alt|Option/gi, "⌥")
+      .replace(/Shift/gi, "⇧")
+      .replace(/\+/g, "");
+  }
+  return raw.replace(/CommandOrControl/gi, "Ctrl");
 }
 
 function createOverlayForDisplay(display) {
@@ -217,14 +240,11 @@ function placeResultWindow(win) {
   const area = primaryWorkArea();
   const width = Math.min(460, Math.max(360, win.getBounds().width || 460));
   const height = Math.min(620, Math.max(420, win.getBounds().height || 620));
-  const launcherH = launcherExpanded
-    ? LAUNCHER_EXPANDED.height
-    : LAUNCHER_COLLAPSED.height;
   win.setBounds({
     width,
     height,
     x: area.x + area.width - width - 16,
-    y: area.y + 12 + launcherH + 10,
+    y: area.y + 16,
   });
 }
 
@@ -345,13 +365,14 @@ function showOverlay() {
   resultOpenBeforeMark = Boolean(
     resultWindow && !resultWindow.isDestroyed() && resultWindow.isVisible()
   );
+  hideTrayMenu();
   if (launcherWindow && !launcherWindow.isDestroyed()) {
     launcherWindow.hide();
   }
   if (resultWindow && !resultWindow.isDestroyed()) {
     resultWindow.hide();
   }
-  // overlays cover the screen; chip (+ chat if it was open) return after
+  // overlays cover the screen; chat restores after cancel if it was open
   // Recreate each time so newly plugged monitors / Spaces are covered
   const wins = createOverlays();
   for (const win of wins) {
@@ -377,7 +398,6 @@ function showOverlay() {
 
 function hideOverlay() {
   destroyOverlays();
-  showLauncherChip();
   if (resultOpenBeforeMark) {
     resultOpenBeforeMark = false;
     showResultWindow();
@@ -529,15 +549,99 @@ function ensureResultWindow() {
 
 function showResultWindow() {
   const win = ensureResultWindow();
-  showLauncherChip();
+  hideTrayMenu();
   placeResultWindow(win);
   win.show();
   pinAcrossSpaces(win);
   win.focus();
   // Focus can clear “join all Spaces” — pin again after becoming key.
   pinAcrossSpaces(win);
-  pinAcrossSpaces(launcherWindow);
   return win;
+}
+
+function hideResultWindow() {
+  if (resultWindow && !resultWindow.isDestroyed()) resultWindow.hide();
+}
+
+function createTrayMenuWindow() {
+  const win = new BrowserWindow({
+    width: 232,
+    height: 292,
+    show: false,
+    frame: false,
+    transparent: true,
+    resizable: false,
+    movable: false,
+    minimizable: false,
+    maximizable: false,
+    fullscreenable: false,
+    skipTaskbar: true,
+    alwaysOnTop: true,
+    focusable: true,
+    hasShadow: false,
+    type: process.platform === "darwin" ? "panel" : "toolbar",
+    webPreferences: {
+      preload: path.join(__dirname, "preload.js"),
+      contextIsolation: true,
+      nodeIntegration: false,
+      backgroundThrottling: false,
+    },
+  });
+  pinAcrossSpaces(win);
+  if (process.platform === "darwin") {
+    try {
+      win.setWindowButtonVisibility(false);
+    } catch {
+      /* ignore */
+    }
+  }
+  win.loadFile(path.join(__dirname, "tray-menu.html"));
+  win.on("blur", () => hideTrayMenu());
+  return win;
+}
+
+function hideTrayMenu() {
+  if (trayMenuWindow && !trayMenuWindow.isDestroyed() && trayMenuWindow.isVisible()) {
+    trayMenuWindow.hide();
+  }
+}
+
+function showTrayMenu() {
+  if (!tray) return;
+  if (!trayMenuWindow || trayMenuWindow.isDestroyed()) {
+    trayMenuWindow = createTrayMenuWindow();
+  }
+  const width = 232;
+  const height = 292;
+  let x = 0;
+  let y = 0;
+  try {
+    const b = tray.getBounds();
+    x = Math.round(b.x + b.width / 2 - width / 2);
+    y = Math.round(b.y + b.height + 6);
+  } catch {
+    const area = primaryWorkArea();
+    x = area.x + area.width - width - 12;
+    y = area.y + 8;
+  }
+  // Keep on-screen
+  const area = primaryWorkArea();
+  x = Math.min(Math.max(area.x + 8, x), area.x + area.width - width - 8);
+  y = Math.min(Math.max(area.y + 4, y), area.y + area.height - height - 8);
+
+  if (trayMenuWindow.isVisible()) {
+    hideTrayMenu();
+    return;
+  }
+
+  trayMenuWindow.setBounds({ x, y, width, height });
+  trayMenuWindow.webContents.send("tray:meta", {
+    hotkey: formatHotkeyLabel(loadConfig().hotkey),
+  });
+  trayMenuWindow.show();
+  pinAcrossSpaces(trayMenuWindow);
+  trayMenuWindow.focus();
+  pinAcrossSpaces(trayMenuWindow);
 }
 
 function clearHighlights() {
@@ -940,6 +1044,39 @@ function registerIpc() {
     setLauncherExpanded(Boolean(expanded));
   });
 
+  ipcMain.on("tray:blur", () => {
+    hideTrayMenu();
+  });
+
+  ipcMain.on("tray:action", (_e, action) => {
+    hideTrayMenu();
+    switch (action) {
+      case "mark":
+        showOverlay();
+        break;
+      case "chat":
+        showResultWindow();
+        break;
+      case "hide-chat":
+        hideResultWindow();
+        break;
+      case "config": {
+        const c = loadConfig();
+        fs.mkdirSync(c.configDir, { recursive: true });
+        shell.showItemInFolder(c.configPath);
+        break;
+      }
+      case "permission":
+        ensureMacScreenPermission({ forcePrompt: true });
+        break;
+      case "quit":
+        app.quit();
+        break;
+      default:
+        break;
+    }
+  });
+
   ipcMain.on("result:ask", async (_e, payload) => {
     const imagePath = payload?.imagePath || lastImagePath;
     if (!imagePath) {
@@ -970,8 +1107,7 @@ function registerIpc() {
   });
 
   ipcMain.on("result:close", () => {
-    if (resultWindow && !resultWindow.isDestroyed()) resultWindow.hide();
-    showLauncherChip();
+    hideResultWindow();
   });
 
   ipcMain.on("result:clear-chat", () => {
@@ -1014,52 +1150,11 @@ function registerIpc() {
 function buildTray() {
   tray = new Tray(trayIcon());
   tray.setToolTip("Flickctx");
-  const contextMenu = Menu.buildFromTemplate([
-    {
-      label: "Mark region",
-      click: () => showOverlay(),
-    },
-    {
-      label: "Show Mark widget",
-      click: () => setLauncherExpanded(true),
-    },
-    {
-      label: "Show chat",
-      click: () => showResultWindow(),
-    },
-    {
-      label: "Fix Screen Recording permission…",
-      click: () => ensureMacScreenPermission({ forcePrompt: true }),
-    },
-    { type: "separator" },
-    {
-      label: "Open config folder",
-      click: () => {
-        const c = loadConfig();
-        fs.mkdirSync(c.configDir, { recursive: true });
-        if (!fs.existsSync(c.configPath)) {
-          fs.writeFileSync(
-            c.configPath,
-            JSON.stringify(
-              {
-                apiKey: "",
-                projectPath: process.cwd(),
-                model: c.model,
-                hotkey: c.hotkey,
-              },
-              null,
-              2
-            ) + "\n"
-          );
-        }
-        shell.showItemInFolder(c.configPath);
-      },
-    },
-    { type: "separator" },
-    { label: "Quit", click: () => app.quit() },
-  ]);
-  tray.setContextMenu(contextMenu);
-  tray.on("click", () => showOverlay());
+  // Menu-bar status item: click opens our dropdown under the icon.
+  // Do not setContextMenu on macOS — it swallows click events.
+  tray.on("click", () => showTrayMenu());
+  tray.on("right-click", () => showTrayMenu());
+  tray.on("double-click", () => showOverlay());
 }
 
 function registerHotkey() {
@@ -1081,14 +1176,18 @@ if (!gotLock) {
 
   app.whenReady().then(async () => {
     registerIpc();
+    if (process.platform === "darwin" && app.dock) {
+      try {
+        app.dock.hide();
+      } catch {
+        /* ignore */
+      }
+    }
     buildTray();
     registerHotkey();
-    launcherWindow = createLauncher();
+    trayMenuWindow = createTrayMenuWindow();
     resultWindow = createResultWindow();
     screen.on("display-metrics-changed", () => {
-      if (launcherWindow && !launcherWindow.isDestroyed()) {
-        setLauncherExpanded(launcherExpanded);
-      }
       if (resultWindow && !resultWindow.isDestroyed() && resultWindow.isVisible()) {
         placeResultWindow(resultWindow);
       }
@@ -1103,9 +1202,8 @@ if (!gotLock) {
     } catch {
       /* permission may still be pending */
     }
-    showLauncherChip();
     console.log(
-      "Flickctx UI: top-right chip → expand → Mark → ask. Visible on every Space. On macOS enable Screen Recording for “Electron”, then restart."
+      "Flickctx UI: menu-bar icon → Mark / Open chat. Chat stays on every Space. On macOS enable Screen Recording for “Electron”, then restart."
     );
   });
 
