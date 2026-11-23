@@ -21,7 +21,7 @@ export function SiteHeader() {
   const [progress, setProgress] = useState(0);
 
   useEffect(() => {
-    const ids = ["how", "sessions", "vision", "skills", "tools", "config", "install"];
+    const ids = ["how", "sessions", "desktop", "config", "install"];
     const els = ids
       .map((id) => document.getElementById(id))
       .filter(Boolean) as HTMLElement[];

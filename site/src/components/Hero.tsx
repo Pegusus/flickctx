@@ -15,8 +15,9 @@ export function Hero() {
           Flick<span>ctx</span>
         </p>
         <p className={styles.line}>
-          Mark anything on your screen. Continue in an OpenCode or Claude Code
-          session — no Flickctx API key needed — or use built-in vision chat.
+          Mark anything on your screen — AWS, Datadog, GCP, anywhere. Route into
+          an OpenCode or Claude Code session (no Flickctx API key), or use
+          built-in vision chat.
         </p>
         <div className={styles.actions}>
           <a
@@ -35,7 +36,7 @@ export function Hero() {
 
       <div
         className={styles.theater}
-        aria-label="Example demo: connecting an AWS spike to Datadog errors"
+        aria-label="Demo: mark AWS, Datadog, or GCP, then route into a session"
       >
         <div className={styles.stage}>
           <IncidentDemo onCaption={onCaption} />

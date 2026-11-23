@@ -24,14 +24,14 @@ const mono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Flickctx — mark screen, ask, keep chatting",
+  title: "Flickctx — mark screen, route to a session, keep chatting",
   description:
-    "Mark a region on screen, ask about it, keep chatting. Configurable API key and model — uses Claude Code / OpenCode context when available.",
+    "Mark anything on screen. Route into an OpenCode or Claude Code session — no Flickctx API key — or use built-in vision chat.",
   metadataBase: new URL("https://flickctx.vercel.app"),
   openGraph: {
     title: "Flickctx",
     description:
-      "Mark a region on screen, ask about it, keep chatting. Configurable API key and model — uses Claude Code / OpenCode context when available.",
+      "Mark anything on screen. Route into an OpenCode or Claude Code session — no Flickctx API key — or use built-in vision chat.",
     type: "website",
   },
 };

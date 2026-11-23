@@ -5,10 +5,10 @@ Mark anything on your screen. Ask anything. Get a direct answer.
 **Landing page:** https://flickctx.vercel.app · Next.js source in [`site/`](./site/)  
 **Static mirror (GitHub Pages):** https://pegusus.github.io/flickctx/ · [`website/`](./website/) / [`docs/`](./docs/)
 
-**screenshot + your question → vision agent reasons → answer**  
-(+ optional local repos, web search tools, multi-turn chat)
+**Mark → Route (OpenCode / Claude Code / built-in) → Chat**  
+Screenshot + question continue in the session you pick (or Flickctx built-in vision).
 
-No question-specific prompt hacks. Pricing, diagrams, websites, Datadog, AWS consoles, code snippets — same path.
+Same path for AWS, Datadog, GCP, IDE, docs — whatever you circle.
 
 See [ARCHITECTURE.md](./ARCHITECTURE.md).
 

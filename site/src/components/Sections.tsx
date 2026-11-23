@@ -7,11 +7,11 @@ export function HowSection() {
       <div className="container">
         <Reveal stagger>
           <p className="kicker">How it works</p>
-          <h2 className="sec-title">Mark. Route. Keep going.</h2>
+          <h2 className="sec-title">Mark. Route. Chat.</h2>
           <p className="sec-lead">
-            One hotkey. Freehand around what matters. Then continue in the
-            OpenCode or Claude Code session that already has your configs — or
-            stay on Flickctx built-in.
+            Freehand around anything on screen — AWS, Datadog, GCP, your IDE —
+            then continue in the OpenCode or Claude Code session that already
+            has your configs.
           </p>
           <ol className={styles.steps}>
             <li>
@@ -19,9 +19,9 @@ export function HowSection() {
               <div>
                 <h3>Mark</h3>
                 <p>
-                  <kbd>⌘⇧F</kbd> / <kbd>Ctrl+Shift+F</kbd> — draw freehand. The
-                  crop becomes the primary vision focus; the full display stays
-                  as context.
+                  <kbd>⌘⇧F</kbd> / <kbd>Ctrl+Shift+F</kbd> or the Mark bar.
+                  Draw freehand. The crop is the vision focus; the full display
+                  stays as context.
                 </p>
               </div>
             </li>
@@ -30,9 +30,8 @@ export function HowSection() {
               <div>
                 <h3>Route</h3>
                 <p>
-                  Choose Claude Code or OpenCode, then a session (uses that
-                  tool’s keys/models), or Flickctx built-in. Remembered until
-                  you change Route.
+                  Choose Claude Code or OpenCode, then a session (or + New), or
+                  Flickctx built-in. Remembered until you change it.
                 </p>
               </div>
             </li>
@@ -41,8 +40,9 @@ export function HowSection() {
               <div>
                 <h3>Chat</h3>
                 <p>
-                  Follow-ups stay on the same mark and the same agent session —
-                  project context is already there.
+                  The mark + question stream into that session — thinking and
+                  answers live in the Flickctx chat panel. Follow-ups stay on
+                  the same mark and route.
                 </p>
               </div>
             </li>
@@ -62,33 +62,34 @@ export function SessionsSection() {
             <div className={styles.copy}>
               <p className="kicker">Session routing</p>
               <h2 className="sec-title">
-                No Flickctx API key? Use the OpenCode session you already opened.
+                No Flickctx API key. Use the session you already opened.
               </h2>
               <p className="sec-lead">
-                After a mark, pick Claude Code or OpenCode first, then a recent
-                session. The screenshot + question continue there — with that
-                session’s provider config and context.
+                After Mark, pick the tool first, then a recent session. The
+                screenshot and question continue there — with that session’s
+                provider, models, and project context.
               </p>
             </div>
             <ul className={styles.splitList}>
               <li>
                 <strong>OpenCode</strong>
                 <span>
-                  <code>opencode run --session</code> + the marked image file —
-                  your OpenCode auth/models apply
+                  <code>opencode run --session</code> + the marked image —
+                  streams thinking and the answer back into Flickctx
                 </span>
               </li>
               <li>
                 <strong>Claude Code</strong>
                 <span>
                   <code>claude -p --resume</code> into an existing conversation
+                  (or + New session)
                 </span>
               </li>
               <li>
                 <strong>Flickctx built-in</strong>
                 <span>
-                  Overlay vision agent when you want a quick answer without an
-                  IDE session (needs key or Claude login)
+                  Local vision chat when you want a quick answer without an IDE
+                  session (key, Claude login, or proxy)
                 </span>
               </li>
             </ul>
@@ -99,152 +100,24 @@ export function SessionsSection() {
   );
 }
 
-export function VisionSection() {
+export function DesktopSection() {
   return (
-    <section className="section" id="vision">
-      <div className="container">
-        <Reveal stagger>
-          <div className={styles.split}>
-            <div className={styles.copy}>
-              <p className="kicker">Vision grounding</p>
-              <h2 className="sec-title">
-                It looks at what you marked — not a guess from the FAQ.
-              </h2>
-              <p className="sec-lead">
-                Flickctx sends a JPEG crop of your mark, a wider context frame,
-                and whatever frontmost-app hint it can detect. Answers stay tied
-                to the pixels on screen.
-              </p>
-            </div>
-            <ul className={styles.splitList}>
-              <li>
-                <strong>Primary crop</strong>
-                <span>
-                  Freehand → bounding box → resized JPEG for the vision API
-                </span>
-              </li>
-              <li>
-                <strong>Context frame</strong>
-                <span>
-                  Full display so the model sees surrounding UI and tabs
-                </span>
-              </li>
-              <li>
-                <strong>Frontmost hint</strong>
-                <span>App name / browser URL when the OS can provide it</span>
-              </li>
-              <li>
-                <strong>Multi-monitor</strong>
-                <span>Overlay tracks the display you marked on</span>
-              </li>
-            </ul>
-          </div>
-        </Reveal>
-      </div>
-    </section>
-  );
-}
-
-export function CrossSection() {
-  return (
-    <section className="section ink" id="cross">
+    <section className="section" id="desktop">
       <div className="container">
         <Reveal>
-          <p className="kicker light">Example walkthrough</p>
-          <h2 className="sec-title">One mark can follow you across tabs.</h2>
-          <p className="sec-lead light">
-            The hero animation is just one story — AWS spike, Datadog timeouts,
-            same chat. Flickctx itself is generic: whatever you circle becomes
-            the question.
-          </p>
-          <div className={styles.flow} aria-hidden>
-            <div className={`${styles.flowNode} ${styles.aws}`}>
-              AWS · ACU spike
-            </div>
-            <div className={styles.flowJoin} />
-            <div className={`${styles.flowNode} ${styles.dd}`}>
-              Datadog · timeouts
-            </div>
-            <div className={styles.flowJoin} />
-            <div className={`${styles.flowNode} ${styles.flick}`}>
-              Flickctx · same incident
-            </div>
+          <div className={styles.narrow}>
+            <p className="kicker">Always findable</p>
+            <h2 className="sec-title">
+              Mark bar across Spaces. Menu bar. Dock. Quit.
+            </h2>
+            <p className="sec-lead">
+              The floating Mark bar stays on every macOS Space. Route and Chat
+              are one tap away. A titled Flickctx menu-bar item and Dock icon
+              keep the app reachable — Quit from the bar when you’re done. On
+              macOS, grant Screen Recording to <strong>Electron</strong>, then
+              restart.
+            </p>
           </div>
-        </Reveal>
-      </div>
-    </section>
-  );
-}
-
-export function SkillsSection() {
-  return (
-    <section className="section" id="skills">
-      <div className="container">
-        <Reveal stagger>
-          <div className={`${styles.split} ${styles.splitReverse}`}>
-            <div className={styles.copy}>
-              <p className="kicker">On-demand skills</p>
-              <h2 className="sec-title">
-                Product knowledge when it needs it — not in every chat.
-              </h2>
-              <p className="sec-lead">
-                Lean skill files for AWS, Datadog, GCP, and more. The agent lists
-                and reads them only when useful, so ambient context stays thin.
-              </p>
-            </div>
-            <ul className={styles.skillRail} aria-label="Example skills">
-              <li>aws</li>
-              <li>datadog</li>
-              <li>gcp</li>
-              <li>kubernetes</li>
-              <li>postgres</li>
-              <li>github</li>
-            </ul>
-          </div>
-        </Reveal>
-      </div>
-    </section>
-  );
-}
-
-export function ToolsSection() {
-  return (
-    <section className="section" id="tools">
-      <div className="container">
-        <Reveal stagger>
-          <p className="kicker">Local + web tools</p>
-          <h2 className="sec-title">From the mark to your repos and the web.</h2>
-          <p className="sec-lead">
-            When the screenshot isn’t enough, Flickctx can search the web, fetch
-            a URL, or dig through the repos you configured — without leaving the
-            chat on that mark.
-          </p>
-          <ul className={styles.toolGrid}>
-            <li>
-              <code>web_search</code>
-              <span>Look up docs, status pages, release notes</span>
-            </li>
-            <li>
-              <code>fetch_url</code>
-              <span>Pull a specific page into the turn</span>
-            </li>
-            <li>
-              <code>list_local_repos</code>
-              <span>Ambient catalog of your search roots</span>
-            </li>
-            <li>
-              <code>grep_local</code> / <code>read_local_file</code>
-              <span>Find the handler that matches the error</span>
-            </li>
-            <li>
-              <code>list_skills</code> / <code>read_skill</code>
-              <span>Load product playbooks only when needed</span>
-            </li>
-            <li>
-              <code>repo_details</code>
-              <span>Orient on a checkout before diving in</span>
-            </li>
-          </ul>
         </Reveal>
       </div>
     </section>
@@ -258,75 +131,38 @@ export function ConfigSection() {
         <Reveal stagger>
           <div className={styles.split}>
             <div className={styles.copy}>
-              <p className="kicker">Easily configurable</p>
+              <p className="kicker">Optional built-in setup</p>
               <h2 className="sec-title">
-                Your key. Your model. Your coding agents.
+                Session routes need no key. Built-in can use yours.
               </h2>
               <p className="sec-lead">
-                Point Flickctx at an API key and model in one CLI command. It
-                also picks up Claude Code and OpenCode context from your machine
-                when those sessions are around — no separate wiring.
+                OpenCode and Claude Code routes use whatever those tools already
+                authenticate with. Flickctx built-in can use a Console key,
+                Claude login, or a Worker proxy.
               </p>
             </div>
             <ul className={styles.splitList}>
               <li>
-                <strong>Any API key</strong>
+                <strong>API key</strong>
                 <span>
-                  <code>ANTHROPIC_API_KEY</code>,{" "}
-                  <code>flickctx config --api-key</code>, or a Cloudflare proxy
-                  URL
+                  <code>flickctx config --api-key</code> or{" "}
+                  <code>ANTHROPIC_API_KEY</code>
                 </span>
               </li>
               <li>
-                <strong>Any model</strong>
+                <strong>Model</strong>
                 <span>
-                  <code>flickctx config --model claude-sonnet-4-5</code> (or
-                  whatever vision-capable model you use)
-                </span>
-              </li>
-              <li>
-                <strong>Claude Code</strong>
-                <span>
-                  Reads recent project / transcript context from{" "}
-                  <code>~/.claude</code> when available
-                </span>
-              </li>
-              <li>
-                <strong>OpenCode</strong>
-                <span>
-                  Pulls OpenCode session / log context automatically when it
-                  finds a local install
+                  <code>flickctx config --model claude-sonnet-4-5</code>
                 </span>
               </li>
               <li>
                 <strong>Repos & hotkey</strong>
                 <span>
-                  Set search roots, project path, and{" "}
-                  <kbd>⌘⇧F</kbd> / <kbd>Ctrl+Shift+F</kbd> in config — edit JSON
-                  under <code>~/.config/flickctx</code> anytime
+                  Search roots and <kbd>⌘⇧F</kbd> / <kbd>Ctrl+Shift+F</kbd> under{" "}
+                  <code>~/.config/flickctx</code>
                 </span>
               </li>
             </ul>
-          </div>
-        </Reveal>
-      </div>
-    </section>
-  );
-}
-
-export function DesktopSection() {
-  return (
-    <section className="section" id="macos">
-      <div className="container">
-        <Reveal>
-          <div className={styles.narrow}>
-            <p className="kicker">Desktop companion</p>
-            <h2 className="sec-title">Electron overlay. Runs on your machine. MIT.</h2>
-            <p className="sec-lead">
-              Local-first. On macOS, grant Screen Recording to{" "}
-              <strong>Electron</strong> in System Settings, then restart. Keep
-              keys on-box or route them through the optional Worker proxy.
-            </p>
           </div>
         </Reveal>
       </div>
@@ -340,18 +176,17 @@ export function InstallSection() {
       <div className="container">
         <Reveal>
           <p className="kicker">Get it running</p>
-          <h2 className="sec-title">Install & configure</h2>
+          <h2 className="sec-title">Install</h2>
           <pre className={styles.installPre}>{`git clone https://github.com/Pegusus/flickctx.git
 cd flickctx && npm install
-# logged into Claude Code? skip the api-key line
-npx flickctx config --api-key sk-ant-… --model claude-sonnet-4-5
-npx flickctx config --search-roots "$HOME/code,$HOME/Projects"
-npm start`}</pre>
+# OpenCode / Claude Code on PATH? skip the api-key line
+npm start
+# optional built-in:
+# npx flickctx config --api-key sk-ant-… --model claude-sonnet-4-5`}</pre>
           <p className={styles.hint}>
-            Uses your Claude Code login automatically when no Console key is
-            set. Or pass <code>--api-key</code> / <code>ANTHROPIC_API_KEY</code>.
-            Local Claude Code / OpenCode context is detected too. Then{" "}
-            <kbd>⌘⇧F</kbd> / <kbd>Ctrl+Shift+F</kbd> — draw, ask, keep chatting.
+            Tap <strong>Route</strong> → Claude Code / OpenCode → session, then
+            Mark. Or use Flickctx built-in with a key / Claude login.{" "}
+            <kbd>⌘⇧F</kbd> / <kbd>Ctrl+Shift+F</kbd> anytime.
           </p>
           <div className={styles.installActions}>
             <a

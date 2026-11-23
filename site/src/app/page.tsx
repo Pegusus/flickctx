@@ -1,15 +1,11 @@
 import { Hero } from "@/components/Hero";
 import {
   ConfigSection,
-  CrossSection,
   DesktopSection,
   HowSection,
   InstallSection,
   SessionsSection,
   SiteFooter,
-  SkillsSection,
-  ToolsSection,
-  VisionSection,
 } from "@/components/Sections";
 import { SiteHeader } from "@/components/SiteHeader";
 
@@ -21,12 +17,8 @@ export default function HomePage() {
         <Hero />
         <HowSection />
         <SessionsSection />
-        <VisionSection />
-        <CrossSection />
-        <SkillsSection />
-        <ToolsSection />
-        <ConfigSection />
         <DesktopSection />
+        <ConfigSection />
         <InstallSection />
       </main>
       <SiteFooter />
