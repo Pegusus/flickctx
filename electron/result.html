@@ -153,6 +153,37 @@
         font-size: 12.5px;
         margin-bottom: 8px;
       }
+      .busy-bar {
+        position: relative;
+        height: 3px;
+        margin: 10px 0 4px;
+        border-radius: 999px;
+        background: rgba(94, 234, 212, 0.12);
+        overflow: hidden;
+      }
+      .busy-bar > span {
+        position: absolute;
+        top: 0;
+        left: 0;
+        height: 100%;
+        width: 36%;
+        border-radius: 999px;
+        background: linear-gradient(
+          90deg,
+          transparent,
+          #5eead4,
+          transparent
+        );
+        animation: busy-shuttle 1.1s ease-in-out infinite alternate;
+      }
+      @keyframes busy-shuttle {
+        from {
+          transform: translateX(0);
+        }
+        to {
+          transform: translateX(180%);
+        }
+      }
       .msg.error {
         color: var(--danger);
         border-color: rgba(251, 113, 133, 0.35);
@@ -836,6 +867,7 @@
                 `</details>`;
             }
             if (m.pending) {
+              html += `<div class="busy-bar" aria-hidden="true"><span></span></div>`;
               if (m.status) {
                 html += `<div class="stream-status">${escapeHtml(m.status)}</div>`;
               }
@@ -843,7 +875,7 @@
                 html += `<div class="md">${renderMarkdown(m.text)}</div>`;
               }
               if (!m.text && !m.status) {
-                html += `<div class="stream-status">Thinking…</div>`;
+                html += `<div class="stream-status">Working…</div>`;
               }
             } else if (m.error) {
               html += escapeHtml(m.text || "Error");
