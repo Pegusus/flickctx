@@ -30,6 +30,11 @@ const {
   guideStepToHighlightPayload,
 } = require("../src/guide");
 const { createGuideHost } = require("./guideHost");
+const { createBrowserBridge } = require("../src/browserBridge");
+const {
+  formatBrowserContext,
+  isBrowserApp,
+} = require("../src/browserContext");
 
 // So dialogs / menus say Flickctx (Screen Recording list still shows “Electron” for npm start)
 app.setName("Flickctx");
@@ -62,6 +67,9 @@ let guideShortcutsRegistered = false;
 /** Ask deferred until the user picks a route */
 let pendingAsk = null;
 const guideHost = createGuideHost();
+const browserBridge = createBrowserBridge();
+/** Latest DOM inspect from the Chrome extension (per mark / guide step) */
+let lastBrowserContext = null;
 
 function resolveInitialRoute(config) {
   if (
@@ -976,7 +984,28 @@ function unregisterGuideShortcuts() {
   // Escape stays if highlights still need it; clearHighlights manages it.
 }
 
-async function presentGuideStep(step, { note } = {}) {
+async function refreshBrowserContext(screenRect) {
+  lastBrowserContext = null;
+  if (!browserBridge.isExtensionConnected()) return null;
+  try {
+    const result = await browserBridge.inspectMark(
+      screenRect || lastMarkMeta?.screenRect || lastMarkMeta?.displayBounds
+    );
+    lastBrowserContext = result;
+    return result;
+  } catch (err) {
+    console.warn("browser inspect failed:", err.message || err);
+    return null;
+  }
+}
+
+function withBrowserContext(prompt) {
+  const block = formatBrowserContext(lastBrowserContext);
+  if (!block) return prompt;
+  return `${prompt}\n\n${block}`;
+}
+
+async function presentGuideStep(step, { note, act = false } = {}) {
   if (!lastMarkMeta?.displayBounds) return;
   const payload = guideStepToHighlightPayload(step);
   const items = payload
@@ -987,6 +1016,21 @@ async function presentGuideStep(step, { note } = {}) {
       })
     : [];
   clearHighlights();
+
+  // Prefer in-page highlight when the extension resolved a selector
+  if (step?.selector && browserBridge.isExtensionConnected()) {
+    try {
+      await browserBridge.highlight([
+        { selector: step.selector, label: step.label || "" },
+      ]);
+      if (act && step.action === "click" && !step.done) {
+        await browserBridge.click(step.selector);
+      }
+    } catch (err) {
+      console.warn("browser guide act failed:", err.message || err);
+    }
+  }
+
   await guideHost.show({
     displayBounds: lastMarkMeta.displayBounds,
     items,
@@ -1006,6 +1050,7 @@ function exitGuide() {
   guideState = null;
   unregisterGuideShortcuts();
   guideHost.destroy();
+  browserBridge.clearHighlights().catch(() => {});
   if (highlightEscRegistered) {
     try {
       globalShortcut.unregister("Escape");
@@ -1026,8 +1071,18 @@ async function advanceGuide() {
   busy = true;
   guideHost.setBusy(true);
   try {
-    // Give the user a beat after clicking the real UI
-    await new Promise((r) => setTimeout(r, 350));
+    // If the current step named a selector, click it before re-capturing
+    const prevSelector = guideState.lastSelector;
+    if (prevSelector && browserBridge.isExtensionConnected()) {
+      try {
+        await browserBridge.click(prevSelector);
+        await new Promise((r) => setTimeout(r, 500));
+      } catch {
+        await new Promise((r) => setTimeout(r, 350));
+      }
+    } else {
+      await new Promise((r) => setTimeout(r, 350));
+    }
     const display = displayFromMarkMeta();
     const shot = await captureDisplayPng(display);
     if (lastContextImagePath && lastContextImagePath !== shot) {
@@ -1045,10 +1100,9 @@ async function advanceGuide() {
       displayBounds: { ...display.bounds },
     };
     guideState.step += 1;
-    const prompt = buildGuideAdvancePrompt(
-      guideState.goal,
-      guideState.step,
-      shot
+    await refreshBrowserContext(display.bounds);
+    const prompt = withBrowserContext(
+      buildGuideAdvancePrompt(guideState.goal, guideState.step, shot)
     );
     const route = guideState.route || activeRoute;
     let result;
@@ -1106,6 +1160,7 @@ async function advanceGuide() {
       });
       return;
     }
+    guideState.lastSelector = step.selector || "";
     if (step.done) {
       guideState.done = true;
       await presentGuideStep(step, { note: cleanText });
@@ -1139,9 +1194,9 @@ async function runExplain(imagePath, question = "", opts = {}) {
     guide,
   });
 
-  const askText = guide
-    ? buildGuideStartPrompt(question, imagePath)
-    : question;
+  const askText = withBrowserContext(
+    guide ? buildGuideStartPrompt(question, imagePath) : question
+  );
 
   try {
     let result;
@@ -1252,6 +1307,7 @@ async function runExplain(imagePath, question = "", opts = {}) {
         step: guideStep.step || 1,
         route: activeRoute,
         done: Boolean(guideStep.done),
+        lastSelector: guideStep.selector || "",
       };
       try {
         await presentGuideStep(guideStep, { note: explanation });
@@ -1477,6 +1533,25 @@ function registerIpc() {
       pendingFrontmost = null;
       conversationHistory = []; // new mark = new chat thread
       clearHighlights();
+      try {
+        await browserBridge.clearHighlights();
+      } catch {
+        /* ignore */
+      }
+      // If the mark is on a browser tab and the extension is connected, resolve DOM
+      if (
+        browserBridge.isExtensionConnected() &&
+        (isBrowserApp(lastFrontmost) || lastFrontmost?.url)
+      ) {
+        await refreshBrowserContext({
+          x: rect.x,
+          y: rect.y,
+          width: rect.width,
+          height: rect.height,
+        });
+      } else {
+        lastBrowserContext = null;
+      }
       lastHighlightPayload = null;
       lastMarkMeta = {
         displayId: display.id,
@@ -1503,6 +1578,11 @@ function registerIpc() {
           hintBits.push(String(fm.url).slice(0, 48));
         }
       }
+      if (lastBrowserContext?.elements?.length) {
+        hintBits.push(`dom:${lastBrowserContext.elements.length}`);
+      } else if (browserBridge.isExtensionConnected()) {
+        hintBits.push("bridge:on");
+      }
       win.webContents.send("result:ready-ask", {
         imagePath: cropped.path,
         previewDataUrl: imagePreviewDataUrl(cropped.path),
@@ -1512,6 +1592,14 @@ function registerIpc() {
         projectPath: config.projectPath,
         frontmostLabel: hintBits.join(" · ") || "",
         hasContextImage: true,
+        browserBridge: browserBridge.getStatus(),
+        browserContext: lastBrowserContext
+          ? {
+              url: lastBrowserContext.url || "",
+              title: lastBrowserContext.title || "",
+              elements: (lastBrowserContext.elements || []).slice(0, 3),
+            }
+          : null,
         route: activeRoute,
         needsRoutePick: !activeRoute,
         sessions: picker.sessions,
@@ -1872,6 +1960,12 @@ if (!gotLock) {
     activeRoute = resolveInitialRoute(loadConfig());
     showLauncherBar();
     broadcastLauncherRoute();
+    try {
+      const port = await browserBridge.start();
+      console.log(`Flickctx browser bridge on http://127.0.0.1:${port}`);
+    } catch (err) {
+      console.warn("browser bridge failed to start:", err.message || err);
+    }
     screen.on("display-metrics-changed", () => {
       if (launcherWindow && !launcherWindow.isDestroyed()) {
         setLauncherExpanded(launcherExpanded);
@@ -1897,6 +1991,7 @@ if (!gotLock) {
 
   app.on("will-quit", () => {
     globalShortcut.unregisterAll();
+    browserBridge.stop().catch(() => {});
   });
 
   app.on("window-all-closed", (e) => {

@@ -56,6 +56,20 @@ Ask “show me where …” or tap Guide me
 
 Implemented in `src/guide.js`, `electron/guideHost.js`, `electron/guide.html`.
 
+## Browser bridge
+
+Optional Chrome extension (`extension/`) talks to a localhost HTTP bridge in the desktop app (`src/browserBridge.js` on `127.0.0.1:19234`):
+
+```
+Mark on a browser tab
+  → extension inspects DOM under the mark (selector, text, href)
+  → session prompt includes browser context
+  → Guide may return CSS selector → in-page highlight / click on Next
+  → pixel overlay still works as fallback (any app)
+```
+
+Load unpacked: Chrome → Extensions → Developer mode → Load unpacked → `extension/`.
+
 ## Open-source / platform stack
 
 | Piece | Where |
@@ -64,6 +78,7 @@ Implemented in `src/guide.js`, `electron/guideHost.js`, `electron/guide.html`.
 | Node.js | `src/` capture, sessions, bridge |
 | screenshot-desktop | display capture |
 | Claude Code / OpenCode | host CLIs |
+| Chrome extension | `extension/` DOM inspect / highlight / click |
 | Next.js | `site/` landing |
 
 ## Key files
@@ -72,5 +87,7 @@ Implemented in `src/guide.js`, `electron/guideHost.js`, `electron/guide.html`.
 - `electron/launcher.html` — Mark / Route / Chat / Quit chip
 - `electron/result.html` — chat UI, streaming, Markdown (incl. tables)
 - `src/sessions.js` — discover Claude / OpenCode sessions; stream marks into them
+- `src/browserBridge.js` / `extension/` — optional browser channel
+- `src/guide.js` / `electron/guide.html` — Guide mode
 - `src/capture.js` / `src/image.js` / `src/frontmost.js` — capture pipeline
 - `site/` — marketing landing (Vercel)

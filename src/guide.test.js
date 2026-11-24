@@ -33,6 +33,12 @@ const done = extractGuideBlock(
 );
 assert.strictEqual(done.step.done, true);
 
+const bySel = extractGuideBlock(
+  '```flickctx-guide\n{"done":false,"step":2,"label":"Open Clusters","action":"click","selector":"a[href*=\\"clusters\\"]"}\n```'
+);
+assert.ok(bySel.step);
+assert.strictEqual(bySel.step.selector.includes("clusters"), true);
+
 assert.ok(buildGuideStartPrompt("find pods", "/tmp/a.png").includes("GUIDE MODE"));
 
 console.log("guide.test.js ok");

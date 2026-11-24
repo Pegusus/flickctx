@@ -31,11 +31,12 @@ function buildGuideStartPrompt(goal, imagePath) {
     "",
     "Reply with a short human sentence (1–2 lines), then exactly one fenced block:",
     "```flickctx-guide",
-    '{"done":false,"step":1,"label":"short action label","action":"click","space":"display","x":0.0,"y":0.0,"w":0.0,"h":0.0}',
+    '{"done":false,"step":1,"label":"short action label","action":"click","selector":"optional CSS selector","space":"display","x":0.0,"y":0.0,"w":0.0,"h":0.0}',
     "```",
     "Rules:",
     "- space MUST be \"display\" (coords relative to the full screenshot).",
     "- x,y,w,h are normalized 0–1 floats for the target control.",
+    "- If browser DOM context / selectors were provided, prefer a precise CSS selector in \"selector\".",
     "- label ≤ 48 chars, imperative (e.g. \"Click Clusters in the left nav\").",
     "- If the goal is already satisfied on this screen, set done:true and omit x/y (or set them to the confirming region).",
     "- If you cannot see a useful target, still return done:false with your best guess box, or done:true with label explaining why.",
@@ -97,25 +98,38 @@ function extractGuideBlock(text) {
   const stepNum = Math.max(1, Number(parsed.step) || 1);
   const space =
     parsed.space === "primary" || parsed.space === "crop" ? "primary" : "display";
+  const selector = String(parsed.selector || parsed.css || "")
+    .trim()
+    .slice(0, 400);
 
   if (done) {
     return {
       cleanText,
-      step: { done: true, step: stepNum, label: label || "Done", action, space },
+      step: {
+        done: true,
+        step: stepNum,
+        label: label || "Done",
+        action,
+        space,
+        selector: selector || "",
+      },
     };
   }
 
   const x = clamp01(parsed.x);
   const y = clamp01(parsed.y);
-  if (x == null || y == null) {
+  // Selector-only steps are valid when the browser bridge can act.
+  if ((x == null || y == null) && !selector) {
     return { cleanText, step: null };
   }
   let w = clamp01(parsed.w ?? parsed.width ?? 0.06) || 0.06;
   let h = clamp01(parsed.h ?? parsed.height ?? 0.05) || 0.05;
   if (w < 0.02) w = 0.06;
   if (h < 0.02) h = 0.05;
-  w = Math.min(w, 1 - x);
-  h = Math.min(h, 1 - y);
+  if (x != null && y != null) {
+    w = Math.min(w, 1 - x);
+    h = Math.min(h, 1 - y);
+  }
 
   return {
     cleanText,
@@ -125,8 +139,9 @@ function extractGuideBlock(text) {
       label: label || "Next",
       action,
       space,
-      x,
-      y,
+      selector: selector || "",
+      x: x == null ? 0.45 : x,
+      y: y == null ? 0.45 : y,
       w,
       h,
     },
