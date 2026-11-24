@@ -1240,6 +1240,14 @@
         if (data.model) bits.push(data.model);
         if (data.thinkingEnabled) bits.push("thinking");
         if (data.highlightCount) bits.push(`highlights:${data.highlightCount}`);
+        if (data.guide) {
+          bits.push("guide:on-screen");
+          messages.push({
+            role: "system",
+            text: "Guide is on screen — follow the pointer, then Next (⌘⇧→ / Ctrl+Shift+→). Esc exits.",
+          });
+          renderChat();
+        }
         meta.textContent = bits.join(" · ");
         footer.classList.remove("hidden");
         if (data.highlightCount > 0) reshowHighlights.classList.remove("hidden");
