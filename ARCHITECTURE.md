@@ -41,6 +41,21 @@ Mark bar / hotkey
 
 Those CLIs use whatever auth and models that session already has.
 
+## Guide mode
+
+Seamless pointer walkthrough (no per-step chat):
+
+```
+Ask “show me where …” or tap Guide me
+  → same session bridge with a guide prompt
+  → model returns ```flickctx-guide``` target box
+  → guide overlay: ring + pointer + Next / Esc
+  → Next (or ⌘⇧→) silently re-captures the display
+  → advance prompt in the same session → next pointer
+```
+
+Implemented in `src/guide.js`, `electron/guideHost.js`, `electron/guide.html`.
+
 ## Open-source / platform stack
 
 | Piece | Where |
