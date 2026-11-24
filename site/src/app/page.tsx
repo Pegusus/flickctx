@@ -3,7 +3,6 @@ import {
   ArchitectureSection,
   DesktopSection,
   HowSection,
-  InstallSection,
   SessionsSection,
   SiteFooter,
 } from "@/components/Sections";
@@ -19,7 +18,6 @@ export default function HomePage() {
         <ArchitectureSection />
         <SessionsSection />
         <DesktopSection />
-        <InstallSection />
       </main>
       <SiteFooter />
     </>

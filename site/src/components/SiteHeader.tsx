@@ -20,7 +20,7 @@ export function SiteHeader() {
   const [active, setActive] = useState("");
 
   useEffect(() => {
-    const ids = ["how", "architecture", "sessions", "desktop", "install"];
+    const ids = ["install", "how", "architecture", "sessions", "desktop"];
     const els = ids
       .map((id) => document.getElementById(id))
       .filter(Boolean) as HTMLElement[];

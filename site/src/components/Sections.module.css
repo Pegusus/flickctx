@@ -62,31 +62,6 @@
   max-width: min(28ch, 100%);
 }
 
-.installPre {
-  margin: 1.25rem 0 1rem;
-  max-width: 100%;
-  padding: 1rem 1.1rem;
-  background: var(--ink);
-  color: #e8e8e8;
-  font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 0.75rem;
-  line-height: 1.7;
-  overflow: auto;
-  border-radius: 6px;
-}
-
-.hint {
-  margin: 0 0 1.15rem;
-  color: var(--mute);
-  font-size: 0.9375rem;
-}
-
-.installActions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-
 .foot {
   display: flex;
   justify-content: space-between;
@@ -129,14 +104,6 @@
     grid-template-columns: 1fr;
     gap: 1.25rem;
     margin-top: 1.75rem;
-  }
-
-  .installActions {
-    flex-direction: column;
-  }
-
-  .installActions :global(.btn) {
-    width: 100%;
   }
 
   .foot a {

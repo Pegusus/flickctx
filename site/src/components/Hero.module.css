@@ -38,12 +38,39 @@
   animation: riseSoft 0.8s var(--ease) 0.08s both;
 }
 
+.install {
+  width: 100%;
+  max-width: 28rem;
+  scroll-margin-top: calc(var(--header-h) + 0.75rem);
+  animation: riseSoft 0.8s var(--ease) 0.14s both;
+}
+
+.installPre {
+  margin: 0;
+  width: 100%;
+  padding: 0.85rem 0.95rem;
+  background: var(--ink);
+  color: #e8e8e8;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.7rem;
+  line-height: 1.65;
+  overflow: auto;
+  border-radius: 6px;
+}
+
+.hint {
+  margin: 0.65rem 0 0;
+  color: var(--mute);
+  font-size: 0.8125rem;
+  line-height: 1.45;
+}
+
 .actions {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
-  margin-top: 0.25rem;
-  animation: riseSoft 0.8s var(--ease) 0.16s both;
+  margin-top: 0.15rem;
+  animation: riseSoft 0.8s var(--ease) 0.2s both;
 }
 
 .theater {
@@ -143,6 +170,10 @@
 
   .line {
     font-size: 1rem;
+    max-width: none;
+  }
+
+  .install {
     max-width: none;
   }
 

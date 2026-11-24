@@ -22,7 +22,6 @@ export function Hero() {
   }, []);
 
   useEffect(() => {
-    // ensure first caption paints visible
     setCaptionVisible(true);
   }, []);
 
@@ -36,6 +35,16 @@ export function Hero() {
           Mark anything on your screen. Continue in the OpenCode or Claude Code
           session you already have open.
         </p>
+
+        <div id="install" className={styles.install}>
+          <pre className={styles.installPre}>{`git clone https://github.com/Pegusus/flickctx.git
+cd flickctx && npm install && npm start`}</pre>
+          <p className={styles.hint}>
+            Route → Claude Code / OpenCode → session, then Mark.{" "}
+            <kbd>⌘⇧F</kbd> / <kbd>Ctrl+Shift+F</kbd>.
+          </p>
+        </div>
+
         <div className={styles.actions}>
           <a
             className="btn"
@@ -43,10 +52,10 @@ export function Hero() {
             target="_blank"
             rel="noreferrer"
           >
-            Clone the repo
+            GitHub
           </a>
-          <a className="btn quiet" href="#install">
-            Install
+          <a className="btn quiet" href="#architecture">
+            Architecture
           </a>
         </div>
       </div>

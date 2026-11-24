@@ -117,43 +117,6 @@ export function DesktopSection() {
   );
 }
 
-export function InstallSection() {
-  return (
-    <section className="section" id="install">
-      <div className="container">
-        <Reveal>
-          <p className="kicker">Install</p>
-          <h2 className="sec-title">Get running.</h2>
-          <pre className={styles.installPre}>{`git clone https://github.com/Pegusus/flickctx.git
-cd flickctx && npm install && npm start`}</pre>
-          <p className={styles.hint}>
-            Route → Claude Code / OpenCode → session, then Mark.{" "}
-            <kbd>⌘⇧F</kbd> / <kbd>Ctrl+Shift+F</kbd>.
-          </p>
-          <div className={styles.installActions}>
-            <a
-              className="btn"
-              href="https://github.com/Pegusus/flickctx"
-              target="_blank"
-              rel="noreferrer"
-            >
-              GitHub
-            </a>
-            <a
-              className="btn quiet"
-              href="https://github.com/Pegusus/flickctx/blob/main/ARCHITECTURE.md"
-              target="_blank"
-              rel="noreferrer"
-            >
-              Architecture
-            </a>
-          </div>
-        </Reveal>
-      </div>
-    </section>
-  );
-}
-
 export function SiteFooter() {
   return (
     <footer className={styles.foot}>
