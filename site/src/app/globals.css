@@ -221,6 +221,18 @@ kbd {
   }
 }
 
+@media (min-width: 960px) {
+  :root {
+    --header-h: 3.75rem;
+  }
+}
+
+@media (min-width: 1280px) {
+  :root {
+    --header-h: 4rem;
+  }
+}
+
 @media (min-width: 1400px) {
   :root {
     --content: min(80rem, calc(100vw - (2 * var(--pad-x))));

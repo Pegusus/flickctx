@@ -54,17 +54,7 @@
   color: var(--ink);
 }
 
-@media (min-width: 960px) {
-  :global(:root) {
-    --header-h: 3.75rem;
-  }
-}
-
 @media (min-width: 1280px) {
-  :global(:root) {
-    --header-h: 4rem;
-  }
-
   .logo {
     font-size: 1.4rem;
   }
