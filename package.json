@@ -37,6 +37,6 @@
     "screenshot-desktop": "^1.15.1"
   },
   "devDependencies": {
-    "electron": "^33.2.1"
+    "electron": "^45.4.1"
   }
 }
