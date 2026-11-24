@@ -43,7 +43,7 @@ export function ArchDiagram() {
     >
       <svg
         className={styles.svg}
-        viewBox="0 0 880 580"
+        viewBox="0 0 880 628"
         role="img"
         aria-labelledby="arch-title arch-desc"
       >
