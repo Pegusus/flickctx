@@ -58,14 +58,9 @@
   border-radius: 3px;
 }
 
-.archWide {
-  --content: 54rem;
-}
-
 .archWide :global(.sec-title) {
-  max-width: 22ch;
+  max-width: min(28ch, 100%);
 }
-
 
 .installPre {
   margin: 1.25rem 0 1rem;
@@ -107,6 +102,26 @@
 .foot a {
   text-decoration: none;
   border-bottom: 1px solid var(--rule);
+}
+
+@media (min-width: 960px) {
+  .splitList {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0 2rem;
+  }
+
+  .splitList li {
+    border-top: 1px solid var(--rule);
+  }
+
+  .splitList li:first-child {
+    border-top: 1px solid var(--rule);
+  }
+
+  .steps {
+    gap: 2rem;
+  }
 }
 
 @media (max-width: 900px) {
