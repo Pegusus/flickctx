@@ -18,6 +18,9 @@ npm install
 npm start
 ```
 
+OpenCode routes use **your** OpenCode settings (`~/.config/opencode/opencode.json` or project `opencode.json`) — e.g. `"model": "github-copilot/gpt-4.1"`. Flickctx passes that as `--model` so headless runs don’t fall back to OpenCode Go free quota.
+
+
 1. Use the **Mark bar** (all Spaces) or menu-bar **Flickctx**, or press ⌘⇧F / Ctrl+Shift+F.
 2. **Route** → Claude Code / OpenCode → session or **+ New**, then **Mark** / **Chat**.
 3. Draw freehand. Thinking + answer stream into the chat panel.

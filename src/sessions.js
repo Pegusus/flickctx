@@ -1078,9 +1078,85 @@ function consumeOpenCodeStreamLine(line, state, onProgress) {
   }
 }
 
-function buildOpenCodeArgs({ sessionId, imagePath, prompt, thinking }) {
+/**
+ * Strip JSONC comments / trailing commas enough for OpenCode config files.
+ */
+function parseJsonc(text) {
+  const stripped = String(text || "")
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/^\s*\/\/.*$/gm, "")
+    .replace(/,\s*([}\]])/g, "$1");
+  return JSON.parse(stripped);
+}
+
+function normalizeOpenCodeModel(model) {
+  if (!model) return "";
+  if (typeof model === "string") return model.trim();
+  if (typeof model === "object") {
+    const provider = String(model.providerID || model.provider || "").trim();
+    const id = String(model.model || model.modelID || "").trim();
+    if (provider && id) return `${provider}/${id}`;
+    if (id.includes("/")) return id;
+  }
+  return "";
+}
+
+function openCodeConfigFilenames(dir) {
+  return [
+    path.join(dir, "opencode.json"),
+    path.join(dir, "opencode.jsonc"),
+  ];
+}
+
+function readOpenCodeModelFromFile(filePath) {
+  try {
+    if (!fs.existsSync(filePath)) return "";
+    const raw = fs.readFileSync(filePath, "utf8");
+    const data = parseJsonc(raw);
+    return normalizeOpenCodeModel(data?.model);
+  } catch {
+    return "";
+  }
+}
+
+/**
+ * Resolve the default model OpenCode would use from its config files.
+ * Later paths override earlier ones (project beats global).
+ * Does NOT invent OpenCode Go — if unset, returns "" and CLI uses its own default.
+ */
+function resolveOpenCodeModel(startDir = process.cwd()) {
+  const candidates = [];
+  const globalDir = path.join(os.homedir(), ".config", "opencode");
+  candidates.push(...openCodeConfigFilenames(globalDir));
+
+  const chain = [];
+  let dir = path.resolve(startDir || process.cwd());
+  while (true) {
+    chain.push(dir);
+    const parent = path.dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  // farthest → closest so project overrides global/repo root
+  for (const d of chain.slice().reverse()) {
+    candidates.push(...openCodeConfigFilenames(d));
+    candidates.push(...openCodeConfigFilenames(path.join(d, ".opencode")));
+  }
+
+  let model = "";
+  for (const file of candidates) {
+    const m = readOpenCodeModelFromFile(file);
+    if (m) model = m;
+  }
+  return model;
+}
+
+function buildOpenCodeArgs({ sessionId, imagePath, prompt, thinking, model }) {
   const args = ["run"];
   if (sessionId) args.push("--session", sessionId);
+  // Always prefer the user's configured OpenCode model (e.g. github-copilot/…)
+  // so headless `run` does not fall back to OpenCode Go free quota.
+  if (model) args.push("--model", model);
   args.push("--format", "json");
   if (thinking) args.push("--thinking");
   args.push("--file", imagePath, prompt);
@@ -1109,6 +1185,8 @@ async function sendToOpenCodeSession({
   // Prefer an explicit new id (create-if-missing on OpenCode 2.1.4+).
   // If that fails, retry with no --session so the CLI allocates one.
   const createdId = creating ? newOpenCodeSessionId() : "";
+  const configuredModel =
+    normalizeOpenCodeModel(session?.model) || resolveOpenCodeModel(cwd);
   const state = {
     text: "",
     textParts: [],
@@ -1122,14 +1200,24 @@ async function sendToOpenCodeSession({
     text: "",
     reasoning: "",
     status: creating
-      ? "OpenCode · creating session…"
-      : "OpenCode · starting…",
+      ? configuredModel
+        ? `OpenCode · creating · ${configuredModel}`
+        : "OpenCode · creating session…"
+      : configuredModel
+        ? `OpenCode · ${configuredModel}`
+        : "OpenCode · starting…",
   });
 
   async function runOnce(sessionId, thinking) {
     return spawnStreaming(
       bin,
-      buildOpenCodeArgs({ sessionId, imagePath, prompt, thinking }),
+      buildOpenCodeArgs({
+        sessionId,
+        imagePath,
+        prompt,
+        thinking,
+        model: configuredModel,
+      }),
       {
         cwd,
         timeout: 240_000,
@@ -1152,6 +1240,17 @@ async function sendToOpenCodeSession({
     } else if (/thinking|unknown|unexpected/i.test(msg)) {
       const result = await runOnce(creating ? createdId : session.id, false);
       stdout = result.stdout || "";
+    } else if (/quota|usage limit|429|opencode go/i.test(msg) && !configuredModel) {
+      throw new Error(
+        `${msg}\n\nFlickctx could not find a model in your OpenCode config. ` +
+          `Set "model" in ~/.config/opencode/opencode.json (e.g. "github-copilot/gpt-4.1") ` +
+          `or pick that model once in the OpenCode TUI with /models.`
+      );
+    } else if (/quota|usage limit|429|opencode go/i.test(msg) && configuredModel) {
+      throw new Error(
+        `${msg}\n\nFlickctx passed --model ${configuredModel} from your OpenCode settings. ` +
+          `If this still hits OpenCode Go, check that provider is connected (/connect) and the model id is correct.`
+      );
     } else {
       throw err;
     }
@@ -1159,13 +1258,21 @@ async function sendToOpenCodeSession({
 
   const text = state.text || extractOpenCodeText(stdout) || "";
   if (!text) {
-    throw new Error(state.error || "OpenCode returned an empty response.");
+    const emptyMsg = state.error || "OpenCode returned an empty response.";
+    if (/quota|usage limit|429|opencode go/i.test(emptyMsg)) {
+      throw new Error(
+        configuredModel
+          ? `${emptyMsg}\n\nFlickctx used --model ${configuredModel} from OpenCode settings.`
+          : `${emptyMsg}\n\nSet "model" in ~/.config/opencode/opencode.json to your Copilot (or other) model so Flickctx does not fall back to OpenCode Go.`
+      );
+    }
+    throw new Error(emptyMsg);
   }
   const routeId = state.sessionId || createdId || session.id;
   return {
     explanation: text,
     reasoning: state.reasoning || "",
-    model: "opencode-session",
+    model: configuredModel || "opencode-session",
     route: {
       provider: "opencode",
       id: routeId,
@@ -1174,6 +1281,7 @@ async function sendToOpenCodeSession({
           ? `OpenCode · ${String(routeId).slice(0, 12)}`
           : session.title || routeId,
       directory: cwd,
+      model: configuredModel || "",
       isNew: false,
     },
     followUpPrompt: text,
@@ -1210,6 +1318,9 @@ module.exports = {
   listOpenCodeSessions,
   listOpenCodeSessionsFromDb,
   resolveOpenCodeDbPath,
+  resolveOpenCodeModel,
+  normalizeOpenCodeModel,
+  buildOpenCodeArgs,
   sendToAgentSession,
   buildMarkPrompt,
   which,

@@ -8,7 +8,7 @@
     "flickctx": "./bin/flickctx.js"
   },
   "scripts": {
-    "test": "node src/highlights.test.js && node src/config.test.js && node src/claudeAuth.test.js && node src/sessions.test.js && node src/paths.test.js && node src/net.test.js",
+    "test": "node src/highlights.test.js && node src/config.test.js && node src/claudeAuth.test.js && node src/sessions.test.js && node src/paths.test.js && node src/net.test.js && node src/opencodeModel.test.js",
     "start": "electron .",
     "cli": "node bin/flickctx.js",
     "test:context": "node scripts/test-context.js"
