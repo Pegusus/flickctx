@@ -29,6 +29,8 @@ contextBridge.exposeInMainWorld("flickctx", {
   copyText: (text) => ipcRenderer.send("result:copy", text),
   openConfig: () => ipcRenderer.send("result:open-config"),
   listSessions: () => ipcRenderer.invoke("sessions:list"),
+  loadSessionHistory: (session) =>
+    ipcRenderer.invoke("sessions:history", session || {}),
   setRoute: (payload) => ipcRenderer.invoke("sessions:set-route", payload),
   changeRoute: () => ipcRenderer.send("result:change-route"),
   onOverlayReset: (cb) => {

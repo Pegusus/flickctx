@@ -21,6 +21,470 @@ function newOpenCodeSessionId() {
 }
 
 const DEFAULT_LIMIT = 40;
+const HISTORY_LIMIT = 80;
+
+function isHistoryNoise(text) {
+  const t = String(text || "").trim();
+  if (!t) return true;
+  if (t.startsWith("<local-command")) return true;
+  if (t.startsWith("<command-")) return true;
+  return false;
+}
+
+function findClaudeSessionFile(sessionId) {
+  const id = String(sessionId || "");
+  if (!id) return "";
+  const root = path.join(claudeConfigDir(), "projects");
+  if (!fs.existsSync(root)) return "";
+  const files = collectJsonlFiles(root);
+  for (const f of files) {
+    const base = path.basename(f.full, ".jsonl");
+    if (base === id) return f.full;
+    const summary = summarizeClaudeTranscript(f.full);
+    if (summary?.id === id) return f.full;
+  }
+  return "";
+}
+
+function assistantTextFromClaudeMessage(message) {
+  if (!message) return { text: "", reasoning: "" };
+  const content = message.content;
+  if (typeof content === "string") {
+    return { text: content.trim(), reasoning: "" };
+  }
+  if (!Array.isArray(content)) return { text: "", reasoning: "" };
+  const texts = [];
+  const thinks = [];
+  for (const block of content) {
+    if (!block) continue;
+    if (block.type === "text" && block.text) texts.push(block.text);
+    if (block.type === "thinking" && block.thinking) thinks.push(block.thinking);
+  }
+  return {
+    text: texts.join("\n\n").trim(),
+    reasoning: thinks.join("\n\n").trim(),
+  };
+}
+
+function loadClaudeSessionHistory(session, limit = HISTORY_LIMIT) {
+  if (isNewAgentSession(session)) return [];
+  const filePath =
+    session.sessionFile ||
+    findClaudeSessionFile(session.id) ||
+    "";
+  if (!filePath || !fs.existsSync(filePath)) return [];
+  const raw = safeRead(filePath, 2_500_000) || "";
+  const out = [];
+  for (const line of raw.split("\n")) {
+    if (!line.trim()) continue;
+    let record;
+    try {
+      record = JSON.parse(line);
+    } catch {
+      continue;
+    }
+    const type = String(record.type || "");
+    if (type !== "user" && type !== "assistant") continue;
+    if (!record.message) continue;
+    if (type === "user") {
+      const text = cleanTitle(extractMessageText(record.message));
+      if (isHistoryNoise(text)) continue;
+      out.push({ role: "user", text });
+      continue;
+    }
+    const { text, reasoning } = assistantTextFromClaudeMessage(record.message);
+    if (isHistoryNoise(text) && !reasoning) continue;
+    out.push({
+      role: "assistant",
+      text: text || "(empty)",
+      reasoning: reasoning || "",
+    });
+  }
+  return out.slice(-limit);
+}
+
+function parseJsonMaybe(value) {
+  if (value == null) return null;
+  if (typeof value === "object") return value;
+  const s = String(value).trim();
+  if (!s) return null;
+  try {
+    return JSON.parse(s);
+  } catch {
+    return null;
+  }
+}
+
+function textFromOpenCodePartData(data) {
+  const d = parseJsonMaybe(data);
+  if (!d) return "";
+  const type = String(d.type || "");
+  if (type === "text") {
+    return String(d.text || d.part?.text || "").trim();
+  }
+  return "";
+}
+
+function reasoningFromOpenCodePartData(data) {
+  const d = parseJsonMaybe(data);
+  if (!d) return "";
+  const type = String(d.type || "");
+  if (type === "reasoning") {
+    return String(d.text || d.part?.text || "").trim();
+  }
+  return "";
+}
+
+function openCodeMessageRole(data) {
+  const d = parseJsonMaybe(data);
+  if (!d) return "";
+  if (d.role) return String(d.role).toLowerCase();
+  if (d.type === "user" || d.type === "assistant") return d.type;
+  return "";
+}
+
+function loadOpenCodeHistoryFromDb(sessionId, limit = HISTORY_LIMIT) {
+  const dbPath = resolveOpenCodeDbPath();
+  if (!fs.existsSync(dbPath)) return null;
+  const sid = String(sessionId || "");
+  if (!sid) return [];
+
+  let rows = null;
+  const viaNode = queryOpenCodeHistoryWithNodeSqlite(dbPath, sid, limit);
+  if (Array.isArray(viaNode)) rows = viaNode;
+  else {
+    const viaCli = queryOpenCodeHistoryWithSqlite3(dbPath, sid, limit);
+    if (Array.isArray(viaCli)) rows = viaCli;
+  }
+  return rows;
+}
+
+function mapOpenCodeHistoryRows(messageRows, partsByMessage) {
+  const out = [];
+  for (const row of messageRows || []) {
+    const role = openCodeMessageRole(row.data);
+    if (role !== "user" && role !== "assistant") continue;
+    const parts = partsByMessage.get(row.id) || [];
+    const textChunks = [];
+    const reasoningChunks = [];
+    for (const p of parts) {
+      const t = textFromOpenCodePartData(p);
+      if (t) textChunks.push(t);
+      const r = reasoningFromOpenCodePartData(p);
+      if (r) reasoningChunks.push(r);
+    }
+    const d = parseJsonMaybe(row.data);
+    if (!textChunks.length && d?.summary?.body) {
+      textChunks.push(String(d.summary.body).trim());
+    }
+    const text = textChunks.join("\n\n").trim();
+    const reasoning = reasoningChunks.join("\n\n").trim();
+    if (role === "user") {
+      if (isHistoryNoise(text)) continue;
+      out.push({ role: "user", text });
+    } else {
+      if (isHistoryNoise(text) && !reasoning) continue;
+      out.push({
+        role: "assistant",
+        text: text || "(empty)",
+        reasoning,
+      });
+    }
+  }
+  return out;
+}
+
+function queryOpenCodeHistoryWithNodeSqlite(dbPath, sessionId, limit) {
+  let DatabaseSync;
+  try {
+    ({ DatabaseSync } = require("node:sqlite"));
+  } catch {
+    return null;
+  }
+  try {
+    const db = new DatabaseSync(dbPath, { readOnly: true });
+    try {
+      const tables = new Set(
+        db
+          .prepare(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('message','part','session_message')"
+          )
+          .all()
+          .map((r) => r.name)
+      );
+      if (tables.has("message")) {
+        const messages = db
+          .prepare(
+            `SELECT id, data, time_created FROM message
+             WHERE session_id = ?
+             ORDER BY time_created ASC, id ASC
+             LIMIT ?`
+          )
+          .all(sessionId, Number(limit) || HISTORY_LIMIT);
+        const partsByMessage = new Map();
+        if (tables.has("part")) {
+          for (const m of messages) {
+            const parts = db
+              .prepare(
+                `SELECT data FROM part
+                 WHERE message_id = ?
+                 ORDER BY id ASC`
+              )
+              .all(m.id);
+            partsByMessage.set(m.id, parts.map((p) => p.data));
+          }
+        }
+        return mapOpenCodeHistoryRows(messages, partsByMessage);
+      }
+      if (tables.has("session_message")) {
+        const events = db
+          .prepare(
+            `SELECT data, type FROM session_message
+             WHERE session_id = ?
+             ORDER BY seq ASC
+             LIMIT ?`
+          )
+          .all(sessionId, Number(limit) || HISTORY_LIMIT);
+        const out = [];
+        for (const ev of events) {
+          const d = parseJsonMaybe(ev.data);
+          if (!d) continue;
+          const role = String(d.role || ev.type || "").toLowerCase();
+          if (role === "user") {
+            const text = cleanTitle(
+              d.summary?.body || d.text || d.content || ""
+            );
+            if (!isHistoryNoise(text)) out.push({ role: "user", text });
+          } else if (role === "assistant") {
+            const text = cleanTitle(d.text || d.content || "");
+            const reasoning = cleanTitle(d.reasoning || "");
+            if (!isHistoryNoise(text) || reasoning) {
+              out.push({
+                role: "assistant",
+                text: text || "(empty)",
+                reasoning,
+              });
+            }
+          }
+        }
+        return out;
+      }
+      return [];
+    } finally {
+      try {
+        db.close();
+      } catch {
+        /* ignore */
+      }
+    }
+  } catch {
+    return null;
+  }
+}
+
+function queryOpenCodeHistoryWithSqlite3(dbPath, sessionId, limit) {
+  const sqlite3 = which("sqlite3");
+  if (!sqlite3) return null;
+  try {
+    const tablesRaw = execFileSync(
+      sqlite3,
+      [dbPath, "SELECT name FROM sqlite_master WHERE type='table';"],
+      {
+        encoding: "utf8",
+        timeout: 5000,
+        stdio: ["ignore", "pipe", "ignore"],
+        env: expandedEnv(),
+      }
+    );
+    const tables = new Set(
+      tablesRaw
+        .split(/\r?\n/)
+        .map((t) => t.trim())
+        .filter(Boolean)
+    );
+    if (!tables.has("message")) {
+      if (tables.has("session_message")) {
+        const sql = `SELECT data, type FROM session_message WHERE session_id = '${sessionId.replace(/'/g, "''")}' ORDER BY seq ASC LIMIT ${Number(limit) || HISTORY_LIMIT};`;
+        const out = execFileSync(sqlite3, ["-json", dbPath, sql], {
+          encoding: "utf8",
+          timeout: 8000,
+          stdio: ["ignore", "pipe", "ignore"],
+          env: expandedEnv(),
+        });
+        const events = JSON.parse(out || "[]");
+        const mapped = [];
+        for (const ev of events) {
+          const d = parseJsonMaybe(ev.data);
+          if (!d) continue;
+          const role = String(d.role || ev.type || "").toLowerCase();
+          if (role === "user") {
+            const text = cleanTitle(
+              d.summary?.body || d.text || d.content || ""
+            );
+            if (!isHistoryNoise(text)) mapped.push({ role: "user", text });
+          } else if (role === "assistant") {
+            const text = cleanTitle(d.text || d.content || "");
+            const reasoning = cleanTitle(d.reasoning || "");
+            if (!isHistoryNoise(text) || reasoning) {
+              mapped.push({
+                role: "assistant",
+                text: text || "(empty)",
+                reasoning,
+              });
+            }
+          }
+        }
+        return mapped;
+      }
+      return [];
+    }
+    const msgSql = `SELECT id, data, time_created FROM message WHERE session_id = '${sessionId.replace(/'/g, "''")}' ORDER BY time_created ASC, id ASC LIMIT ${Number(limit) || HISTORY_LIMIT};`;
+    const messages = JSON.parse(
+      execFileSync(sqlite3, ["-json", dbPath, msgSql], {
+        encoding: "utf8",
+        timeout: 8000,
+        stdio: ["ignore", "pipe", "ignore"],
+        env: expandedEnv(),
+      }) || "[]"
+    );
+    const partsByMessage = new Map();
+    if (tables.has("part")) {
+      for (const m of messages) {
+        const partSql = `SELECT data FROM part WHERE message_id = '${String(m.id).replace(/'/g, "''")}' ORDER BY id ASC;`;
+        const parts = JSON.parse(
+          execFileSync(sqlite3, ["-json", dbPath, partSql], {
+            encoding: "utf8",
+            timeout: 8000,
+            stdio: ["ignore", "pipe", "ignore"],
+            env: expandedEnv(),
+          }) || "[]"
+        );
+        partsByMessage.set(m.id, parts.map((p) => p.data));
+      }
+    }
+    return mapOpenCodeHistoryRows(messages, partsByMessage);
+  } catch {
+    return null;
+  }
+}
+
+function loadOpenCodeHistoryFromStorage(sessionId, limit = HISTORY_LIMIT) {
+  const root = path.join(opencodeDataDir(), "storage", "message");
+  if (!fs.existsSync(root)) return [];
+  const sid = String(sessionId || "");
+  const matches = [];
+  const walk = (dir, depth = 0) => {
+    if (depth > 5) return;
+    let entries = [];
+    try {
+      entries = fs.readdirSync(dir);
+    } catch {
+      return;
+    }
+    for (const name of entries) {
+      const full = path.join(dir, name);
+      let stat;
+      try {
+        stat = fs.statSync(full);
+      } catch {
+        continue;
+      }
+      if (stat.isDirectory()) walk(full, depth + 1);
+      else if (name.endsWith(".json")) {
+        const json = parseJsonMaybe(safeRead(full, 120_000));
+        if (!json) continue;
+        const id = String(json.sessionID || json.session_id || json.sessionId || "");
+        if (id !== sid) continue;
+        matches.push({ json, mtime: stat.mtimeMs, file: full });
+      }
+    }
+  };
+  walk(root);
+  matches.sort((a, b) => (a.mtime || 0) - (b.mtime || 0));
+  const out = [];
+  for (const { json } of matches) {
+    const role = String(json.role || json.type || "").toLowerCase();
+    if (role === "user" || role === "assistant") {
+      const text = cleanTitle(
+        json.summary?.body ||
+          json.text ||
+          json.content ||
+          (Array.isArray(json.parts)
+            ? json.parts
+                .map((p) => (p?.type === "text" ? p.text : ""))
+                .filter(Boolean)
+                .join("\n\n")
+            : "")
+      );
+      const reasoning = cleanTitle(json.reasoning || "");
+      if (role === "user") {
+        if (!isHistoryNoise(text)) out.push({ role: "user", text });
+      } else if (!isHistoryNoise(text) || reasoning) {
+        out.push({
+          role: "assistant",
+          text: text || "(empty)",
+          reasoning,
+        });
+      }
+      continue;
+    }
+    if (Array.isArray(json.parts)) {
+      const text = json.parts
+        .map((p) => (p?.type === "text" ? p.text : ""))
+        .filter(Boolean)
+        .join("\n\n")
+        .trim();
+      const reasoning = json.parts
+        .map((p) => (p?.type === "reasoning" ? p.text : ""))
+        .filter(Boolean)
+        .join("\n\n")
+        .trim();
+      const guessRole = String(json.role || "assistant").toLowerCase();
+      if (guessRole === "user" && !isHistoryNoise(text)) {
+        out.push({ role: "user", text });
+      } else if (!isHistoryNoise(text) || reasoning) {
+        out.push({
+          role: "assistant",
+          text: text || "(empty)",
+          reasoning,
+        });
+      }
+    }
+  }
+  return out.slice(-limit);
+}
+
+function loadOpenCodeSessionHistory(session, limit = HISTORY_LIMIT) {
+  if (isNewAgentSession(session)) return [];
+  const sid = String(session.id || "");
+  if (!sid) return [];
+  const fromDb = loadOpenCodeHistoryFromDb(sid, limit);
+  if (Array.isArray(fromDb) && fromDb.length) return fromDb.slice(-limit);
+  const fromStorage = loadOpenCodeHistoryFromStorage(sid, limit);
+  if (fromStorage.length) return fromStorage;
+  return Array.isArray(fromDb) ? fromDb : [];
+}
+
+/**
+ * Load prior chat turns for an existing Claude / OpenCode session.
+ * @returns {{ messages: Array<{role:'user'|'assistant',text:string,reasoning?:string}> }}
+ */
+function loadSessionHistory(session, options = {}) {
+  const limit = options.limit || HISTORY_LIMIT;
+  if (!session || session.provider === "flickctx") {
+    return { messages: [] };
+  }
+  if (isNewAgentSession(session)) {
+    return { messages: [] };
+  }
+  if (session.provider === "claude") {
+    return { messages: loadClaudeSessionHistory(session, limit) };
+  }
+  if (session.provider === "opencode") {
+    return { messages: loadOpenCodeSessionHistory(session, limit) };
+  }
+  return { messages: [] };
+}
 
 const EXTRA_PATH_DIRS = [
   "/opt/homebrew/bin",
@@ -1328,4 +1792,8 @@ module.exports = {
   consumeClaudeStreamLine,
   consumeOpenCodeStreamLine,
   isNewAgentSession,
+  loadSessionHistory,
+  findClaudeSessionFile,
+  loadClaudeSessionHistory,
+  loadOpenCodeSessionHistory,
 };

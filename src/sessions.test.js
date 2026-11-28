@@ -17,6 +17,8 @@ const {
   buildMarkPrompt,
   listAgentSessions,
   listOpenCodeSessionsFromDb,
+  loadSessionHistory,
+  loadClaudeSessionHistory,
 } = require("./sessions");
 
 const projectDir = path.join(TMP, ".claude", "projects", "-Users-demo-app");
@@ -94,6 +96,47 @@ assert.strictEqual(named.title, "Checkout incidents");
 const prompt = buildMarkPrompt("what is this?", "/tmp/mark.png");
 assert.match(prompt, /\/tmp\/mark\.png/);
 
+// Session history from Claude jsonl
+fs.appendFileSync(
+  sessionFile,
+  [
+    JSON.stringify({
+      type: "assistant",
+      sessionId: "abc123def",
+      message: {
+        content: [
+          { type: "thinking", thinking: "check logs" },
+          { type: "text", text: "Payments fail when checkout times out." },
+        ],
+      },
+    }),
+  ].join("\n") + "\n"
+);
+delete require.cache[require.resolve("./sessions")];
+const sessionsReloaded = require("./sessions");
+const hist = sessionsReloaded.loadClaudeSessionHistory({
+  provider: "claude",
+  id: "abc123def",
+  sessionFile,
+});
+assert.ok(hist.some((m) => m.role === "user" && /payments failing/i.test(m.text)));
+assert.ok(
+  hist.some(
+    (m) =>
+      m.role === "assistant" &&
+      /checkout times out/i.test(m.text) &&
+      /check logs/i.test(m.reasoning)
+  )
+);
+const flick = sessionsReloaded.loadSessionHistory({ provider: "flickctx", id: "x" });
+assert.deepStrictEqual(flick.messages, []);
+const newSess = sessionsReloaded.loadSessionHistory({
+  provider: "claude",
+  id: "new",
+  isNew: true,
+});
+assert.deepStrictEqual(newSess.messages, []);
+
 const listed = listAgentSessions({ limit: 10 });
 assert.ok(listed.sessions.some((s) => s.id === "abc123def"));
 assert.ok(listed.byProvider.claude.some((s) => s.id === "abc123def"));
@@ -159,9 +202,79 @@ if (sqlite3) {
     "OpenCode sessions stay visible beside many Claude chats"
   );
   assert.ok(listed2.counts.opencode >= 1);
+
+  // OpenCode message/part history
+  execFileSync(sqlite3, [
+    dbPath,
+    `CREATE TABLE message (
+      id TEXT PRIMARY KEY,
+      session_id TEXT NOT NULL,
+      time_created INTEGER,
+      time_updated INTEGER,
+      data TEXT NOT NULL
+    );
+    CREATE TABLE part (
+      id TEXT PRIMARY KEY,
+      message_id TEXT NOT NULL,
+      session_id TEXT NOT NULL,
+      time_created INTEGER,
+      time_updated INTEGER,
+      data TEXT NOT NULL
+    );
+    INSERT INTO message VALUES
+      ('msg_u','ses_hist',1000,1000,'{"role":"user"}'),
+      ('msg_a','ses_hist',2000,2000,'{"role":"assistant"}');
+    INSERT INTO part VALUES
+      ('p1','msg_u','ses_hist',1000,1000,'{"type":"text","text":"hello from opencode"}'),
+      ('p2','msg_a','ses_hist',2000,2000,'{"type":"text","text":"reply from opencode"}');`,
+  ]);
+  delete require.cache[require.resolve("./sessions")];
+  const ocHist = require("./sessions").loadSessionHistory({
+    provider: "opencode",
+    id: "ses_hist",
+  });
+  assert.ok(
+    ocHist.messages.some(
+      (m) => m.role === "user" && /hello from opencode/i.test(m.text)
+    )
+  );
+  assert.ok(
+    ocHist.messages.some(
+      (m) => m.role === "assistant" && /reply from opencode/i.test(m.text)
+    )
+  );
 } else {
   console.log("sessions.test.js: sqlite3 missing — skipped OpenCode DB checks");
 }
+
+// OpenCode storage JSON tree fallback
+const storageMsg = path.join(
+  TMP,
+  "share",
+  "opencode",
+  "storage",
+  "message",
+  "msg-fallback.json"
+);
+fs.mkdirSync(path.dirname(storageMsg), { recursive: true });
+fs.writeFileSync(
+  storageMsg,
+  JSON.stringify({
+    sessionID: "ses_storage",
+    role: "user",
+    parts: [{ type: "text", text: "storage tree question" }],
+  })
+);
+delete require.cache[require.resolve("./sessions")];
+const storageHist = require("./sessions").loadSessionHistory({
+  provider: "opencode",
+  id: "ses_storage",
+});
+assert.ok(
+  storageHist.messages.some(
+    (m) => m.role === "user" && /storage tree question/i.test(m.text)
+  )
+);
 
 // Stream passthrough parsers
 {

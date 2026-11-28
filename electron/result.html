@@ -11,17 +11,17 @@
     />
     <style>
       :root {
-        --bg: #f6f5f3;
-        --panel: #fff;
-        --text: #12141a;
-        --muted: #5c6570;
+        --bg: #111318;
+        --panel: #181b22;
+        --text: #e8eaef;
+        --muted: #9aa3b2;
         --accent: #e85d04;
-        --accent-soft: #fff1e6;
-        --accent-ink: #c44a00;
-        --danger: #e11d48;
-        --line: #e6e3de;
-        --user: #fff1e6;
-        --bot: #fff;
+        --accent-soft: rgba(232, 93, 4, 0.14);
+        --accent-ink: #ff7a2e;
+        --danger: #fb7185;
+        --line: rgba(255, 255, 255, 0.08);
+        --user: #1a2430;
+        --bot: #151820;
       }
       * {
         box-sizing: border-box;
@@ -56,8 +56,24 @@
       }
       #actions {
         display: flex;
-        gap: 8px;
+        align-items: center;
+        gap: 10px;
         -webkit-app-region: no-drag;
+      }
+      #routeStatus {
+        font-size: 11px;
+        font-weight: 500;
+        color: var(--muted);
+        max-width: 220px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      #routeStatus.has-route {
+        color: var(--accent);
+      }
+      #routeStatus.hidden {
+        display: none;
       }
       button {
         border: 1px solid var(--line);
@@ -269,7 +285,7 @@
       .md code {
         font-family: "IBM Plex Mono", ui-monospace, monospace;
         font-size: 0.92em;
-        background: rgba(18, 20, 26, 0.06);
+        background: rgba(255, 255, 255, 0.06);
         padding: 0.1em 0.35em;
         border-radius: 4px;
       }
@@ -344,7 +360,7 @@
         resize: vertical;
         border-radius: 8px;
         border: 1px solid var(--line);
-        background: #fff;
+        background: var(--bot);
         color: var(--text);
         padding: 8px 10px;
         font: inherit;
@@ -352,28 +368,16 @@
       }
       #composer-actions {
         display: flex;
+        flex-wrap: wrap;
         gap: 8px;
         margin-top: 8px;
       }
       #composer-actions button {
-        flex: 1;
+        flex: 1 1 calc(33% - 8px);
+        min-width: 88px;
       }
-      #footer {
-        flex-shrink: 0;
-        padding: 8px 14px 12px;
-        border-top: 1px solid var(--line);
-        background: var(--panel);
-        display: flex;
-        gap: 8px;
-      }
-      #footer.hidden {
-        display: none;
-      }
-      #footer button {
-        flex: 1;
-      }
-      #footer button.hidden {
-        display: none;
+      #composer-actions button.primary-action {
+        flex: 1 1 100%;
       }
 
       #reshowHighlights {
@@ -434,21 +438,14 @@
         margin-top: 10px; font-size: 11px; color: var(--muted);
       }
       #route-remember input { accent-color: var(--accent); }
-      #routeChip {
-        border-color: rgba(232, 93, 4, 0.35);
-        color: var(--accent);
-      }
     </style>
   </head>
   <body>
     <div id="chrome">
       <div id="brand">Flick<span>ctx</span></div>
       <div id="actions">
-        <button id="routeChip" class="hidden" title="Change Claude Code / OpenCode session">Route</button>
-        <button id="clear" title="Clear this chat">Clear</button>
-        <button id="cfg" title="Open config">Config</button>
+        <span id="routeStatus" class="hidden" aria-live="polite"></span>
         <button id="close" title="Hide chat">Close</button>
-        <button id="quitApp" title="Quit Flickctx">Quit</button>
       </div>
     </div>
     <div id="meta">Mark a region, then keep chatting about it.</div>
@@ -477,19 +474,17 @@
         placeholder="Ask a follow-up… (Enter to send, Shift+Enter for newline)"
       ></textarea>
       <div id="composer-actions">
-        <button id="askBtn" class="primary">Send</button>
+        <button id="askBtn" class="primary primary-action">Send</button>
         <button id="explainBtn">Explain mark</button>
+        <button id="clear" title="Clear this chat">Clear</button>
+        <button id="copy">Copy answer</button>
+        <button id="reshowHighlights" class="hidden">Highlights</button>
+        <button id="copyPrompt">Copy prompt</button>
       </div>
-    </div>
-    <div id="footer" class="hidden">
-      <button id="copy" class="primary">Copy last answer</button>
-      <button id="reshowHighlights" class="hidden">Show highlights</button>
-      <button id="copyPrompt">Copy agent prompt</button>
     </div>
     <script>
       const chat = document.getElementById("chat");
       const meta = document.getElementById("meta");
-      const footer = document.getElementById("footer");
       const composer = document.getElementById("composer");
       const questionEl = document.getElementById("question");
       const askBtn = document.getElementById("askBtn");
@@ -502,7 +497,7 @@
       const routePickerLabel = document.getElementById("route-picker-label");
       const routePickerHint = document.getElementById("route-picker-hint");
       const rememberRoute = document.getElementById("rememberRoute");
-      const routeChip = document.getElementById("routeChip");
+      const routeStatus = document.getElementById("routeStatus");
       let last = null;
       let pendingImagePath = null;
       let busy = false;
@@ -549,20 +544,66 @@
         return pendingSessions.filter((s) => s.provider === provider);
       }
 
-      function setRouteChip(route) {
+      function setRouteStatus(route) {
         activeRoute = route || null;
         if (!route) {
-          routeChip.classList.add("hidden");
-          routeChip.textContent = "Route";
+          routeStatus.classList.add("hidden");
+          routeStatus.textContent = "";
+          routeStatus.classList.remove("has-route");
           return;
         }
-        routeChip.classList.remove("hidden");
-        routeChip.textContent =
+        routeStatus.classList.remove("hidden");
+        routeStatus.classList.add("has-route");
+        routeStatus.textContent =
           route.provider === "flickctx"
-            ? "Flickctx"
-            : (route.provider === "claude" ? "Claude" : "OpenCode") +
+            ? "Flickctx built-in"
+            : (route.provider === "claude" ? "Claude Code" : "OpenCode") +
               " · " +
-              String(route.title || route.id || "").slice(0, 28);
+              String(route.title || route.id || "").slice(0, 36);
+      }
+
+      let hydratedRouteKey = "";
+      function routeHistoryKey(route) {
+        if (!route) return "";
+        return [route.provider, route.id || "", route.sessionFile || ""].join(
+          ":"
+        );
+      }
+
+      async function hydrateSessionHistory(route, options = {}) {
+        const key = routeHistoryKey(route);
+        if (!key || key === hydratedRouteKey) return;
+        if (!route || route.provider === "flickctx") {
+          hydratedRouteKey = key;
+          return;
+        }
+        const isNew = Boolean(route.isNew) || route.id === "new" || !route.id;
+        if (isNew) {
+          hydratedRouteKey = key;
+          return;
+        }
+        if (!window.flickctx.loadSessionHistory) {
+          hydratedRouteKey = key;
+          return;
+        }
+        try {
+          const data = await window.flickctx.loadSessionHistory(route);
+          const history = Array.isArray(data?.messages) ? data.messages : [];
+          hydratedRouteKey = key;
+          if (!history.length) return;
+          const banner =
+            options.systemMessage ||
+            `Loaded ${history.length} prior message${
+              history.length === 1 ? "" : "s"
+            } from ${route.provider === "claude" ? "Claude Code" : "OpenCode"} · ${route.title || route.id}.`;
+          const keep = messages.filter(
+            (m) => m.pending || (m.role === "user" && options.keepLocal)
+          );
+          messages = [{ role: "system", text: banner }, ...history, ...keep];
+          renderChat();
+        } catch {
+          hydratedRouteKey = key;
+        }
       }
 
       function hideRoutePicker() {
@@ -752,21 +793,20 @@
                 remember,
               };
         const res = await window.flickctx.setRoute(payload);
-        setRouteChip(res?.route || payload);
+        setRouteStatus(res?.route || payload);
         hideRoutePicker();
         composer.classList.remove("hidden");
         const route = activeRoute || res?.route || payload;
         const isNew = Boolean(route.isNew) || route.id === "new";
-        messages = [{
-          role: "system",
-          text:
-            route.provider === "flickctx"
-              ? "Using Flickctx built-in. Ask about the marked snippet."
-              : isNew
-                ? `New ${route.provider === "claude" ? "Claude Code" : "OpenCode"} session. Ask anything — the session is created on first send (no Flickctx API key).`
-                : `Routing into ${route.provider} · ${route.title || route.id}. Uses that session’s configs — no Flickctx API key required.`,
-        }];
+        const sysText =
+          route.provider === "flickctx"
+            ? "Using Flickctx built-in. Ask about the marked snippet."
+            : isNew
+              ? `New ${route.provider === "claude" ? "Claude Code" : "OpenCode"} session. Ask anything — the session is created on first send (no Flickctx API key).`
+              : `Routing into ${route.provider} · ${route.title || route.id}. Uses that session’s configs — no Flickctx API key required.`;
+        messages = [{ role: "system", text: sysText }];
         renderChat();
+        await hydrateSessionHistory(route, { systemMessage: sysText });
         meta.textContent =
           route.provider === "flickctx"
             ? "Route · Flickctx built-in"
@@ -1031,14 +1071,6 @@
 
       document.getElementById("close").onclick = () =>
         window.flickctx.closeResult();
-      document.getElementById("quitApp").onclick = () =>
-        window.flickctx.quitApp && window.flickctx.quitApp();
-      document.getElementById("cfg").onclick = () =>
-        window.flickctx.openConfig();
-      routeChip.onclick = () => {
-        if (busy) return;
-        window.flickctx.changeRoute && window.flickctx.changeRoute();
-      };
       document.getElementById("clear").onclick = () => {
         if (busy) return;
         messages = pendingImagePath
@@ -1050,7 +1082,8 @@
             ]
           : [];
         last = null;
-        footer.classList.add("hidden");
+        hydratedRouteKey = "";
+        reshowHighlights.classList.add("hidden");
         renderChat();
         window.flickctx.clearChat && window.flickctx.clearChat();
         questionEl.focus();
@@ -1075,14 +1108,15 @@
         }
       });
 
-      window.flickctx.onResultReadyAsk((data) => {
+      window.flickctx.onResultReadyAsk(async (data) => {
         last = null;
         pendingImagePath = data.imagePath;
         setBusy(false);
-        footer.classList.add("hidden");
+        reshowHighlights.classList.add("hidden");
         showMarkPreview(data);
         if (data.needsRoutePick || !data.route) {
-          setRouteChip(null);
+          setRouteStatus(null);
+          hydratedRouteKey = "";
           showRoutePicker(data);
           messages = [{
             role: "system",
@@ -1091,7 +1125,7 @@
           renderChat();
           meta.textContent = "Pick Claude Code or OpenCode";
         } else {
-          setRouteChip(data.route);
+          setRouteStatus(data.route);
           hideRoutePicker();
           composer.classList.remove("hidden");
           const isScreenshot =
@@ -1100,15 +1134,14 @@
             data.route.provider === "flickctx"
               ? "Flickctx built-in"
               : `${data.route.provider === "claude" ? "Claude Code" : data.route.provider === "opencode" ? "OpenCode" : data.route.provider} · ${data.route.title || data.route.id}`;
-          messages = [{
-            role: "system",
-            text: isScreenshot
-              ? `Screenshot ready — routed to ${routeLabel}. Ask about what’s on screen.`
-              : data.route.provider === "flickctx"
-                ? "Region captured. Using Flickctx built-in — ask about the snippet."
-                : `Region captured. Continuing in ${data.route.provider} · ${data.route.title || data.route.id}.`,
-          }];
+          const sysText = isScreenshot
+            ? `Screenshot ready — routed to ${routeLabel}. Ask about what’s on screen.`
+            : data.route.provider === "flickctx"
+              ? "Region captured. Using Flickctx built-in — ask about the snippet."
+              : `Region captured. Continuing in ${data.route.provider} · ${data.route.title || data.route.id}.`;
+          messages = [{ role: "system", text: sysText }];
           renderChat();
+          await hydrateSessionHistory(data.route, { systemMessage: sysText });
           const metaBits = [];
           metaBits.push(
             data.route.provider === "flickctx"
@@ -1127,7 +1160,8 @@
       });
 
       window.flickctx.onResultPickRoute((data) => {
-        setRouteChip(null);
+        setRouteStatus(null);
+        hydratedRouteKey = "";
         showRoutePicker(data || {});
         messages.push({
           role: "system",
@@ -1138,19 +1172,18 @@
       });
 
       if (window.flickctx.onResultRouteSet) {
-        window.flickctx.onResultRouteSet((data) => {
+        window.flickctx.onResultRouteSet(async (data) => {
           if (!data?.route) return;
-          setRouteChip(data.route);
+          setRouteStatus(data.route);
           hideRoutePicker();
           composer.classList.remove("hidden");
-          messages = [{
-            role: "system",
-            text:
-              data.route.isNew || data.route.id === "new"
-                ? `New ${data.route.provider === "claude" ? "Claude Code" : "OpenCode"} session ready. Mark something or ask to start chatting.`
-                : `Routed to ${data.route.provider} · ${data.route.title || data.route.id}.`,
-          }];
+          const sysText =
+            data.route.isNew || data.route.id === "new"
+              ? `New ${data.route.provider === "claude" ? "Claude Code" : "OpenCode"} session ready. Mark something or ask to start chatting.`
+              : `Routed to ${data.route.provider} · ${data.route.title || data.route.id}.`;
+          messages = [{ role: "system", text: sysText }];
           renderChat();
+          await hydrateSessionHistory(data.route, { systemMessage: sysText });
           meta.textContent =
             data.route.isNew || data.route.id === "new"
               ? `Route · new ${data.route.provider} session`
@@ -1211,7 +1244,7 @@
         renderChat();
         const bits = [];
         if (data.route?.provider && data.route.provider !== "flickctx") {
-          setRouteChip(data.route);
+          setRouteStatus(data.route);
           activeRoute = { ...activeRoute, ...data.route, isNew: false };
           bits.push(data.route.provider);
           bits.push(String(data.route.title || data.route.id || "").slice(0, 32));
@@ -1234,7 +1267,6 @@
         if (data.thinkingEnabled) bits.push("thinking");
         if (data.highlightCount) bits.push(`highlights:${data.highlightCount}`);
         meta.textContent = bits.join(" · ");
-        footer.classList.remove("hidden");
         if (data.highlightCount > 0) reshowHighlights.classList.remove("hidden");
         else reshowHighlights.classList.add("hidden");
         composer.classList.remove("hidden");

@@ -22,7 +22,11 @@ const { explainSelection } = require("../src/explain");
 const { captureFullScreenPng, tmpPng } = require("../src/capture");
 const { detectFrontmost } = require("../src/frontmost");
 const { toScreenHighlights } = require("../src/highlights");
-const { listAgentSessions, sendToAgentSession } = require("../src/sessions");
+const {
+  listAgentSessions,
+  sendToAgentSession,
+  loadSessionHistory,
+} = require("../src/sessions");
 const {
   resolveScreenshotDir,
   startScreenshotWatch,
@@ -564,7 +568,7 @@ function createResultWindow() {
     show: false,
     focusable: true,
     fullscreenable: false,
-    backgroundColor: "#f6f5f3",
+    backgroundColor: "#111318",
     // panel = join every macOS Space (same as the Mark chip)
     type: process.platform === "darwin" ? "panel" : "toolbar",
     webPreferences: {
@@ -1352,6 +1356,10 @@ function registerIpc() {
 
   ipcMain.handle("sessions:list", () => {
     return loadSessionCatalog();
+  });
+
+  ipcMain.handle("sessions:history", (_e, payload) => {
+    return loadSessionHistory(payload || {});
   });
 
   ipcMain.handle("sessions:set-route", (_e, payload) => {
