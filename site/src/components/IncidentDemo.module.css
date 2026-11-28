@@ -61,7 +61,7 @@
   width: 8px;
   height: 8px;
   border-radius: 2px;
-  background: #0f766e;
+  background: var(--accent);
   display: block;
 }
 
@@ -476,11 +476,11 @@
 }
 
 .routeOn {
-  color: #5eead4;
+  color: #f4a261;
 }
 
 .routeOn em {
-  color: rgba(94, 234, 212, 0.65);
+  color: rgba(244, 162, 97, 0.75);
 }
 
 /* Marks */
@@ -498,7 +498,7 @@
 
 .stroke {
   fill: none;
-  stroke: #14b8a6;
+  stroke: var(--accent);
   stroke-width: 2.5;
   stroke-linecap: round;
   stroke-linejoin: round;
@@ -508,8 +508,8 @@
 }
 
 .bbox {
-  fill: rgba(20, 184, 166, 0.06);
-  stroke: rgba(20, 184, 166, 0.65);
+  fill: rgba(232, 93, 4, 0.08);
+  stroke: rgba(232, 93, 4, 0.72);
   stroke-width: 1.2;
   stroke-dasharray: 4 3;
   opacity: 0;

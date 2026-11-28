@@ -18,9 +18,25 @@ const LINKS = [
 
 export function SiteHeader() {
   const [active, setActive] = useState("");
+  const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
-    const ids = ["install", "how", "architecture", "sessions", "desktop"];
+    const onScroll = () => setScrolled(window.scrollY > 6);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  useEffect(() => {
+    const ids = [
+      "how",
+      "use-cases",
+      "compare",
+      "architecture",
+      "sessions",
+      "install",
+      "desktop",
+    ];
     const els = ids
       .map((id) => document.getElementById(id))
       .filter(Boolean) as HTMLElement[];
@@ -40,7 +56,11 @@ export function SiteHeader() {
   }, []);
 
   return (
-    <header className={styles.mast}>
+    <header
+      className={[styles.mast, scrolled ? styles.scrolled : ""]
+        .filter(Boolean)
+        .join(" ")}
+    >
       <div className={styles.inner}>
         <a className={styles.logo} href="./">
           Flick<span>ctx</span>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 export function Reveal({
   children,
@@ -13,19 +13,20 @@ export function Reveal({
   cascade?: boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);
+  const [visible, setVisible] = useState(false);
 
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      el.classList.add("in");
+      setVisible(true);
       return;
     }
     const io = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
           if (!entry.isIntersecting) continue;
-          entry.target.classList.add("in");
+          setVisible(true);
           io.unobserve(entry.target);
         }
       },
@@ -38,7 +39,12 @@ export function Reveal({
   return (
     <div
       ref={ref}
-      className={["reveal", cascade ? "reveal-cascade" : "", className]
+      className={[
+        "reveal",
+        visible ? "in" : "",
+        cascade ? "reveal-cascade" : "",
+        className,
+      ]
         .filter(Boolean)
         .join(" ")}
     >

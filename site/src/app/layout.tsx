@@ -1,9 +1,9 @@
 import type { Metadata, Viewport } from "next";
-import { Instrument_Sans, JetBrains_Mono } from "next/font/google";
+import { JetBrains_Mono, Outfit } from "next/font/google";
 import { ScrollTop } from "@/components/ScrollTop";
 import "./globals.css";
 
-const sans = Instrument_Sans({
+const sans = Outfit({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
   variable: "--font-sans",
@@ -34,7 +34,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: "#f7f7f7",
+  themeColor: "#faf6f2",
 };
 
 export default function RootLayout({
