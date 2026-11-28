@@ -119,14 +119,14 @@ const STEPS: Step[] = [
     id: "dd-answer",
     app: "dd",
     caption: "Response: check AWS — ACU limit on payments-db.",
-    ms: 3200,
+    ms: 4800,
     dim: false,
     hint: false,
     draw: false,
     drawn: true,
     markBar: true,
     chat: true,
-    preview: true,
+    preview: false,
     typed: true,
     answer: true,
   },
@@ -134,7 +134,7 @@ const STEPS: Step[] = [
     id: "aws-console",
     app: "aws",
     caption: "AWS RDS · Monitoring — there it is: ACU limit exceeded.",
-    ms: 2600,
+    ms: 2800,
     dim: false,
     hint: false,
     draw: false,
@@ -561,14 +561,13 @@ export function IncidentDemo({
                     <p>
                       Yes — Aurora hit the max ACU cap on{" "}
                       <code>payments-db</code>. Same root cause as the Datadog
-                      timeouts. Scale ACU or trim long <code>FOR UPDATE</code>{" "}
-                      transactions.
+                      timeouts.
                     </p>
                   ) : (
                     <p>
-                      Check AWS. Those timeouts line up with an Aurora ACU limit
-                      on <code>payments-db</code> — open RDS Monitoring and look
-                      at ACU utilization.
+                      Check AWS. This looks like an Aurora ACU limit on{" "}
+                      <code>payments-db</code> — open RDS Monitoring and look at
+                      ACU utilization.
                     </p>
                   )}
                 </div>
@@ -580,7 +579,7 @@ export function IncidentDemo({
                   step.typed && !step.answer ? styles.composerBusy : ""
                 }`}
               >
-                {step.typed ? (
+                {step.typed && !step.answer ? (
                   <span className={styles.composerQ}>{askText}</span>
                 ) : (
                   <span className={styles.composerPh}>
@@ -590,7 +589,7 @@ export function IncidentDemo({
               </div>
               <span
                 className={`${styles.sendBtn} ${
-                  step.typed ? styles.sendBtnOn : ""
+                  step.typed && !step.answer ? styles.sendBtnOn : ""
                 }`}
               >
                 Send
