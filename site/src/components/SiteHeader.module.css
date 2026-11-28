@@ -69,6 +69,18 @@
   color: var(--accent) !important;
 }
 
+.github {
+  padding: 0 0.55rem !important;
+  min-width: 2.5rem;
+  justify-content: center;
+}
+
+.githubIcon {
+  display: block;
+  width: 1.15em;
+  height: 1.15em;
+}
+
 .scrolled .nav a:hover {
   background: var(--accent-soft);
 }
