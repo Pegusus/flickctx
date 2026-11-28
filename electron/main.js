@@ -280,6 +280,7 @@ function createOverlayForDisplay(display) {
     }
   }
   win.loadFile(path.join(__dirname, "overlay.html"));
+  protectFromCapture(win);
   return win;
 }
 
@@ -461,6 +462,31 @@ function pinAcrossSpaces(win) {
   }
 }
 
+function protectFromCapture(win) {
+  try {
+    win.setContentProtection(true);
+  } catch {
+    /* ignore */
+  }
+}
+
+function hideFlickctxChrome() {
+  hideTrayMenu();
+  if (launcherWindow && !launcherWindow.isDestroyed()) {
+    launcherWindow.hide();
+  }
+  if (resultWindow && !resultWindow.isDestroyed()) {
+    resultWindow.hide();
+  }
+  if (
+    highlightWindow &&
+    !highlightWindow.isDestroyed() &&
+    highlightWindow.isVisible()
+  ) {
+    highlightWindow.hide();
+  }
+}
+
 function launcherBounds(expanded = launcherExpanded) {
   const area = primaryWorkArea();
   const size = expanded ? LAUNCHER_EXPANDED : LAUNCHER_COLLAPSED;
@@ -560,6 +586,7 @@ function createResultWindow() {
   win.on("show", () => pinAcrossSpaces(win));
   win.on("focus", () => pinAcrossSpaces(win));
   win.loadFile(path.join(__dirname, "result.html"));
+  protectFromCapture(win);
   return win;
 }
 
@@ -602,6 +629,7 @@ function createLauncher() {
   win.webContents.on("did-finish-load", () => {
     win.webContents.send("launcher:mode", "collapsed");
   });
+  protectFromCapture(win);
   return win;
 }
 
@@ -677,24 +705,44 @@ async function ingestScreenshotPath(imagePath, opts = {}) {
 async function ingestSystemScreenshot(srcPath) {
   if (busy) return;
   busy = true;
+  hideFlickctxChrome();
   try {
-    const ext = path.extname(srcPath) || ".png";
-    const dest = path.join(
-      os.tmpdir(),
-      `flickctx-shot-${Date.now()}-${Math.random().toString(36).slice(2, 8)}${ext}`
-    );
-    fs.copyFileSync(srcPath, dest);
+    await new Promise((r) => setTimeout(r, 160));
+    const pt = screen.getCursorScreenPoint();
+    const display = screen.getDisplayNearestPoint(pt);
+    let dest = null;
+    try {
+      const captured = await captureDisplayPng(display);
+      if (
+        captured &&
+        fs.existsSync(captured) &&
+        fs.statSync(captured).size > 0
+      ) {
+        dest = captured;
+      }
+    } catch (err) {
+      console.warn("clean re-capture failed:", err.message || err);
+    }
+    if (!dest) {
+      const ext = path.extname(srcPath) || ".png";
+      dest = path.join(
+        os.tmpdir(),
+        `flickctx-shot-${Date.now()}-${Math.random().toString(36).slice(2, 8)}${ext}`
+      );
+      fs.copyFileSync(srcPath, dest);
+    }
     let fm = null;
     try {
       fm = detectFrontmost();
     } catch {
       fm = null;
     }
-    await ingestScreenshotPath(dest, { fm });
+    await ingestScreenshotPath(dest, { fm, display });
   } catch (err) {
     console.warn("system screenshot ingest:", err.message || err);
   } finally {
     busy = false;
+    showLauncherBar();
   }
 }
 
@@ -721,18 +769,12 @@ async function captureScreenshotIntoFlickctx() {
   if (busy) return;
   ensureMacScreenPermission();
   busy = true;
-  hideTrayMenu();
+  hideFlickctxChrome();
   let fm = null;
   try {
     fm = detectFrontmost();
   } catch {
     fm = null;
-  }
-  if (launcherWindow && !launcherWindow.isDestroyed()) {
-    launcherWindow.hide();
-  }
-  if (resultWindow && !resultWindow.isDestroyed()) {
-    resultWindow.hide();
   }
   try {
     await new Promise((r) => setTimeout(r, 140));
@@ -998,6 +1040,7 @@ function createTrayMenuWindow() {
   }
   win.loadFile(path.join(__dirname, "tray-menu.html"));
   win.on("blur", () => hideTrayMenu());
+  protectFromCapture(win);
   return win;
 }
 
@@ -1107,6 +1150,7 @@ function createHighlightWindow(displayBounds) {
     }
   }
   win.loadFile(path.join(__dirname, "highlight.html"));
+  protectFromCapture(win);
   highlightWindow = win;
   return win;
 }
