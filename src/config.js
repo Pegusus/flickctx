@@ -15,8 +15,7 @@ const DEFAULTS = {
   model: "claude-sonnet-4-5",
   projectPath: "",
   hotkey: process.platform === "darwin" ? "Command+Shift+F" : "Control+Shift+F",
-  screenshotHotkey:
-    process.platform === "darwin" ? "Command+Shift+S" : "Control+Shift+S",
+  watchSystemScreenshots: true,
   maxTranscriptChars: 6000,
   maxDiffChars: 4000,
   searchRoots: [],
@@ -128,7 +127,7 @@ function loadConfig() {
 const IPC_CONFIG_KEYS = [
   "model",
   "hotkey",
-  "screenshotHotkey",
+  "watchSystemScreenshots",
   "projectPath",
   "searchRoots",
   "maxRepos",
@@ -167,7 +166,12 @@ function saveConfig(partial) {
     model: patch.model ?? current.model,
     projectPath: patch.projectPath ?? current.projectPath,
     hotkey: patch.hotkey ?? current.hotkey,
-    screenshotHotkey: patch.screenshotHotkey ?? current.screenshotHotkey,
+    watchSystemScreenshots:
+      patch.watchSystemScreenshots !== undefined
+        ? Boolean(patch.watchSystemScreenshots)
+        : file.watchSystemScreenshots === undefined
+          ? DEFAULTS.watchSystemScreenshots
+          : Boolean(file.watchSystemScreenshots),
     maxTranscriptChars:
       patch.maxTranscriptChars ?? current.maxTranscriptChars,
     maxDiffChars: patch.maxDiffChars ?? current.maxDiffChars,

@@ -14,6 +14,7 @@ const {
   dialog,
 } = require("electron");
 const fs = require("fs");
+const os = require("os");
 const path = require("path");
 const { execFileSync } = require("child_process");
 const { loadConfig, saveConfig, pickConfigPatch } = require("../src/config");
@@ -22,6 +23,10 @@ const { captureFullScreenPng, tmpPng } = require("../src/capture");
 const { detectFrontmost } = require("../src/frontmost");
 const { toScreenHighlights } = require("../src/highlights");
 const { listAgentSessions, sendToAgentSession } = require("../src/sessions");
+const {
+  resolveScreenshotDir,
+  startScreenshotWatch,
+} = require("../src/screenshotWatch");
 
 // So dialogs / menus say Flickctx (Screen Recording list still shows “Electron” for npm start)
 app.setName("Flickctx");
@@ -48,6 +53,8 @@ let conversationHistory = [];
 let activeRoute = null;
 let highlightEscRegistered = false;
 let highlightGen = 0;
+/** @type {{ stop: () => void } | null} */
+let screenshotWatchHandle = null;
 
 function resolveInitialRoute(config) {
   if (
@@ -556,6 +563,118 @@ function createLauncher() {
   return win;
 }
 
+async function ingestScreenshotPath(imagePath, opts = {}) {
+  const fm = opts.fm ?? null;
+  const pt = screen.getCursorScreenPoint();
+  const display = opts.display || screen.getDisplayNearestPoint(pt);
+
+  if (lastContextImagePath && lastContextImagePath !== imagePath) {
+    try {
+      fs.unlinkSync(lastContextImagePath);
+    } catch {
+      /* ignore */
+    }
+  }
+  lastContextImagePath = null;
+  lastImagePath = imagePath;
+  lastFrontmost = fm;
+  conversationHistory = [];
+  clearHighlights();
+  lastHighlightPayload = null;
+  lastMarkMeta = {
+    displayId: display.id,
+    screenRect: {
+      x: display.bounds.x,
+      y: display.bounds.y,
+      width: display.bounds.width,
+      height: display.bounds.height,
+    },
+    displayBounds: { ...display.bounds },
+    captureMode: "screenshot",
+  };
+  const config = loadConfig();
+  activeRoute = resolveInitialRoute(config);
+  const sessionCatalog = loadSessionCatalog();
+  const picker = sessionPickerPayload(sessionCatalog, config);
+  const win = showResultWindow();
+  const img = nativeImage.createFromPath(imagePath);
+  const size = img.getSize();
+  let bytes = 0;
+  try {
+    bytes = fs.statSync(imagePath).size;
+  } catch {
+    bytes = 0;
+  }
+  const hintBits = ["screenshot"];
+  if (fm?.appName) hintBits.push(fm.appName);
+  if (fm?.url) {
+    try {
+      hintBits.push(new URL(fm.url).hostname);
+    } catch {
+      hintBits.push(String(fm.url).slice(0, 48));
+    }
+  }
+  win.webContents.send("result:ready-ask", {
+    imagePath,
+    previewDataUrl: imagePreviewDataUrl(imagePath),
+    width: size.width,
+    height: size.height,
+    bytes,
+    projectPath: config.projectPath,
+    frontmostLabel: hintBits.join(" · "),
+    hasContextImage: false,
+    captureMode: "screenshot",
+    route: activeRoute,
+    needsRoutePick: !activeRoute,
+    sessions: picker.sessions,
+    byProvider: picker.byProvider,
+    sessionMeta: picker.sessionMeta,
+  });
+}
+
+async function ingestSystemScreenshot(srcPath) {
+  if (busy) return;
+  busy = true;
+  try {
+    const ext = path.extname(srcPath) || ".png";
+    const dest = path.join(
+      os.tmpdir(),
+      `flickctx-shot-${Date.now()}-${Math.random().toString(36).slice(2, 8)}${ext}`
+    );
+    fs.copyFileSync(srcPath, dest);
+    let fm = null;
+    try {
+      fm = detectFrontmost();
+    } catch {
+      fm = null;
+    }
+    await ingestScreenshotPath(dest, { fm });
+  } catch (err) {
+    console.warn("system screenshot ingest:", err.message || err);
+  } finally {
+    busy = false;
+  }
+}
+
+function startSystemScreenshotWatcher() {
+  stopSystemScreenshotWatcher();
+  const config = loadConfig();
+  if (process.platform !== "darwin") return;
+  if (config.watchSystemScreenshots === false) return;
+  const dir = resolveScreenshotDir();
+  screenshotWatchHandle = startScreenshotWatch(dir, (p) => {
+    ingestSystemScreenshot(p);
+  });
+  console.log(`Watching macOS screenshots in ${dir} (⌘⇧3 / ⌘⇧4)`);
+}
+
+function stopSystemScreenshotWatcher() {
+  if (screenshotWatchHandle) {
+    screenshotWatchHandle.stop();
+    screenshotWatchHandle = null;
+  }
+}
+
 async function captureScreenshotIntoFlickctx() {
   if (busy) return;
   ensureMacScreenPermission();
@@ -578,68 +697,7 @@ async function captureScreenshotIntoFlickctx() {
     const pt = screen.getCursorScreenPoint();
     const display = screen.getDisplayNearestPoint(pt);
     const full = await captureDisplayPng(display);
-    if (lastContextImagePath && lastContextImagePath !== full) {
-      try {
-        fs.unlinkSync(lastContextImagePath);
-      } catch {
-        /* ignore */
-      }
-    }
-    lastContextImagePath = null;
-    lastImagePath = full;
-    lastFrontmost = fm;
-    conversationHistory = [];
-    clearHighlights();
-    lastHighlightPayload = null;
-    lastMarkMeta = {
-      displayId: display.id,
-      screenRect: {
-        x: display.bounds.x,
-        y: display.bounds.y,
-        width: display.bounds.width,
-        height: display.bounds.height,
-      },
-      displayBounds: { ...display.bounds },
-      captureMode: "screenshot",
-    };
-    const config = loadConfig();
-    activeRoute = resolveInitialRoute(config);
-    const sessionCatalog = loadSessionCatalog();
-    const picker = sessionPickerPayload(sessionCatalog, config);
-    const win = showResultWindow();
-    const img = nativeImage.createFromPath(full);
-    const size = img.getSize();
-    let bytes = 0;
-    try {
-      bytes = fs.statSync(full).size;
-    } catch {
-      bytes = 0;
-    }
-    const hintBits = ["screenshot"];
-    if (fm?.appName) hintBits.push(fm.appName);
-    if (fm?.url) {
-      try {
-        hintBits.push(new URL(fm.url).hostname);
-      } catch {
-        hintBits.push(String(fm.url).slice(0, 48));
-      }
-    }
-    win.webContents.send("result:ready-ask", {
-      imagePath: full,
-      previewDataUrl: imagePreviewDataUrl(full),
-      width: size.width,
-      height: size.height,
-      bytes,
-      projectPath: config.projectPath,
-      frontmostLabel: hintBits.join(" · "),
-      hasContextImage: false,
-      captureMode: "screenshot",
-      route: activeRoute,
-      needsRoutePick: !activeRoute,
-      sessions: picker.sessions,
-      byProvider: picker.byProvider,
-      sessionMeta: picker.sessionMeta,
-    });
+    await ingestScreenshotPath(full, { fm, display });
   } catch (err) {
     const win = showResultWindow();
     win.webContents.send("result:error", {
@@ -939,7 +997,10 @@ function showTrayMenu() {
   const trayConfig = loadConfig();
   trayMenuWindow.webContents.send("tray:meta", {
     hotkey: formatHotkeyLabel(trayConfig.hotkey),
-    screenshotHotkey: formatHotkeyLabel(trayConfig.screenshotHotkey),
+    screenshotHotkey:
+      process.platform === "darwin" && trayConfig.watchSystemScreenshots !== false
+        ? "⌘⇧3 auto"
+        : "",
   });
   trayMenuWindow.show();
   pinAcrossSpaces(trayMenuWindow);
@@ -1535,8 +1596,7 @@ function buildTray() {
       click: () => showOverlay(),
     },
     {
-      label: "Screenshot → Flickctx",
-      accelerator: "CommandOrControl+Shift+S",
+      label: "Import display (Shot)",
       click: () => captureScreenshotIntoFlickctx(),
     },
     {
@@ -1624,8 +1684,7 @@ function buildDock() {
       Menu.buildFromTemplate([
         { label: "Mark region", click: () => showOverlay() },
         {
-          label: "Screenshot → Flickctx",
-          accelerator: "CommandOrControl+Shift+S",
+          label: "Import display (Shot)",
           click: () => captureScreenshotIntoFlickctx(),
         },
         { label: "Show Mark bar", click: () => setLauncherExpanded(true) },
@@ -1673,19 +1732,12 @@ function registerHotkey() {
   if (!ok) {
     console.error("Failed to register hotkey", config.hotkey);
   }
-  const shotKey = config.screenshotHotkey;
-  if (shotKey) {
-    const okShot = globalShortcut.register(shotKey, () =>
-      captureScreenshotIntoFlickctx()
-    );
-    if (!okShot) {
-      console.error("Failed to register screenshot hotkey", shotKey);
-    }
-  }
   if (ok) {
-    console.log(
-      `Flickctx ready — press ${config.hotkey} to mark, ${shotKey || "Screenshot hotkey"} for full display`
-    );
+    const shotNote =
+      process.platform === "darwin" && config.watchSystemScreenshots !== false
+        ? "macOS ⌘⇧3/⌘⇧4 screenshots auto-import"
+        : "Import display (Shot) from tray or Mark bar";
+    console.log(`Flickctx ready — press ${config.hotkey} to mark. ${shotNote}`);
   }
 }
 
@@ -1702,6 +1754,7 @@ if (!gotLock) {
     // and hiding Dock left users with no visible Flickctx UI at all.
     buildDock();
     registerHotkey();
+    startSystemScreenshotWatcher();
     trayMenuWindow = createTrayMenuWindow();
     resultWindow = createResultWindow();
     // Always-on Mark bar + menu-bar “Flickctx” title.
@@ -1727,11 +1780,12 @@ if (!gotLock) {
       /* permission may still be pending */
     }
     console.log(
-      "Flickctx ready — look top-right menu bar for “Flickctx”, or the Mark bar under it. ⌘⇧F to mark, ⌘⇧S for screenshot."
+      "Flickctx ready — look top-right menu bar for “Flickctx”, or the Mark bar under it. ⌘⇧F to mark; ⌘⇧3/⌘⇧4 screenshots auto-import."
     );
   });
 
   app.on("will-quit", () => {
+    stopSystemScreenshotWatcher();
     globalShortcut.unregisterAll();
   });
 

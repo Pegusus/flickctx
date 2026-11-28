@@ -17,7 +17,7 @@ Electron main process
 
 | Step | What happens |
 |------|----------------|
-| Discover | Mark bar (all Spaces) + menu-bar **Flickctx** + hotkey `⌘⇧F` / `Ctrl+Shift+F` |
+| Discover | Mark bar (all Spaces) + menu-bar **Flickctx** + hotkey `⌘⇧F` / `Ctrl+Shift+F`; on macOS, `⌘⇧3`/`⌘⇧4` saves are watched (`src/screenshotWatch.js`) |
 | Route | Pick **Claude Code** or **OpenCode**, then a saved session or **+ New**. Remembered until you change it |
 | Mark | Per-display overlay; freehand stroke → bounding box |
 | Capture | Screenshot of that display, crop to the mark; keep full display as secondary context |
@@ -57,5 +57,5 @@ Those CLIs use whatever auth and models that session already has.
 - `electron/launcher.html` — Mark / Route / Chat / Quit chip
 - `electron/result.html` — chat UI, streaming, Markdown (incl. tables)
 - `src/sessions.js` — discover Claude / OpenCode sessions; stream marks into them
-- `src/capture.js` / `src/image.js` / `src/frontmost.js` — capture pipeline
+- `src/capture.js` / `src/image.js` / `src/frontmost.js` / `src/screenshotWatch.js` — capture pipeline + macOS screenshot folder watch
 - `site/` — marketing landing (Vercel)

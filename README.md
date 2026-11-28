@@ -23,7 +23,7 @@ OpenCode routes use **your** OpenCode settings (`~/.config/opencode/opencode.jso
 
 1. Use the **Mark bar** (all Spaces) or menu-bar **Flickctx**:
    - **Mark** (freehand region): ⌘⇧F / Ctrl+Shift+F
-   - **Shot** (full display under cursor): ⌘⇧S / Ctrl+Shift+S
+   - **Shot** (full display under cursor) or **⌘⇧3** / **⌘⇧4** — macOS screenshots in your save folder auto-import into Flickctx while it runs
 2. **Route** → Claude Code / OpenCode → session or **+ New**, then **Mark** / **Shot** / **Chat**.
 3. Draw freehand. Thinking + answer stream into the chat panel.
 4. Follow-ups stay on the same mark and route.
