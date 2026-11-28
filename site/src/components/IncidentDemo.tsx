@@ -253,7 +253,6 @@ export function IncidentDemo({
       <div className={cameraClass}>
         <div className={styles.laptop}>
           <div className={styles.laptopBezel}>
-            <div className={styles.cam} aria-hidden />
             <div className={styles.laptopScreen}>
               {/* App tabs */}
               <div className={styles.appTabs} aria-hidden>
