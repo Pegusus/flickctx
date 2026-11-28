@@ -2,10 +2,20 @@
   position: sticky;
   top: 0;
   z-index: 40;
-  background: rgba(247, 247, 247, 0.92);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border-bottom: 1px solid var(--rule);
+  background: rgba(250, 246, 242, 0.88);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-bottom: 1px solid transparent;
+  transition:
+    background 0.25s var(--ease),
+    border-color 0.25s var(--ease),
+    box-shadow 0.25s var(--ease);
+}
+
+.scrolled {
+  background: rgba(255, 253, 251, 0.94);
+  border-bottom-color: var(--rule);
+  box-shadow: 0 4px 24px rgba(26, 20, 16, 0.06);
 }
 
 .inner {
@@ -20,7 +30,7 @@
 }
 
 .logo {
-  font-weight: 650;
+  font-weight: 700;
   font-size: clamp(1.05rem, 1.35vw, 1.35rem);
   letter-spacing: -0.03em;
   text-decoration: none;
@@ -46,12 +56,22 @@
   display: inline-flex;
   align-items: center;
   padding: 0 clamp(0.55rem, 0.9vw, 0.85rem);
-  transition: color 0.15s var(--ease);
+  border-radius: 4px;
+  transition:
+    color 0.15s var(--ease),
+    background 0.15s var(--ease);
 }
 
-.nav a:hover,
-.active {
+.nav a:hover {
   color: var(--ink);
+}
+
+.active {
+  color: var(--accent) !important;
+}
+
+.scrolled .nav a:hover {
+  background: var(--accent-soft);
 }
 
 @media (min-width: 1280px) {

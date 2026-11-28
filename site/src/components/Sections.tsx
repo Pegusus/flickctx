@@ -44,12 +44,100 @@ export function HowSection() {
   );
 }
 
+export function UseCasesSection() {
+  return (
+    <section className="section" id="use-cases">
+      <div className="container">
+        <Reveal>
+          <p className="kicker">Use cases</p>
+          <h2 className="sec-title">When a screenshot needs your real session.</h2>
+          <p className="sec-lead">
+            Flickctx is built for the moments you are already inside Claude Code
+            or OpenCode and need to point at live UI — not start a separate chat.
+          </p>
+        </Reveal>
+        <Reveal cascade>
+          <ul className={styles.useGrid}>
+            <li>
+              <h3>Incident triage</h3>
+              <p>
+                Mark a spike in CloudWatch, an error row in Datadog, or a
+                latency chart in GCP. Route into the session debugging that
+                service.
+              </p>
+            </li>
+            <li>
+              <h3>Code review context</h3>
+              <p>
+                Circle a diff or stack trace in the IDE. Continue in the Claude
+                Code conversation that already knows the repo.
+              </p>
+            </li>
+            <li>
+              <h3>Dashboard walkthrough</h3>
+              <p>
+                Highlight a panel on any web UI. Ask follow-ups in OpenCode with
+                the same model and MCP tools you configured there.
+              </p>
+            </li>
+          </ul>
+        </Reveal>
+      </div>
+    </section>
+  );
+}
+
+export function CompareSection() {
+  return (
+    <section className="section" id="compare">
+      <div className="container">
+        <Reveal>
+          <p className="kicker">Compare</p>
+          <h2 className="sec-title">Flickctx vs pasting into ChatGPT.</h2>
+          <p className="sec-lead">
+            Both can look at a screen region. The difference is where the
+            conversation lives and what context comes with it.
+          </p>
+        </Reveal>
+        <Reveal cascade>
+          <div className={styles.compareGrid}>
+            <div className={styles.compareCol}>
+              <h3>ChatGPT (browser)</h3>
+              <ul>
+                <li>Upload or paste a screenshot into a web thread</li>
+                <li>Separate from your terminal CLIs and project files</li>
+                <li>No tie-in to an existing Claude Code or OpenCode session</li>
+                <li>Follow-ups stay in that web chat, not your dev workflow</li>
+              </ul>
+            </div>
+            <div className={`${styles.compareCol} ${styles.compareAccent}`}>
+              <h3>Flickctx</h3>
+              <ul>
+                <li>Mark in place with a global hotkey — no switching apps to crop</li>
+                <li>
+                  Routes into <strong>your</strong> OpenCode or Claude Code
+                  session
+                </li>
+                <li>
+                  Uses the models, config, and repo context that session already
+                  has
+                </li>
+                <li>Streams thinking and answers in the Flickctx chat panel</li>
+              </ul>
+            </div>
+          </div>
+        </Reveal>
+      </div>
+    </section>
+  );
+}
+
 export function ArchitectureSection() {
   return (
     <section className="section" id="architecture">
       <div className={`container ${styles.archWide}`}>
         <Reveal>
-          <p className="kicker">Technical design</p>
+          <p className="kicker">Architecture</p>
           <h2 className="sec-title">How Flickctx works under the hood.</h2>
           <p className="sec-lead">
             An Electron main process owns floating windows over IPC. A local
@@ -69,7 +157,7 @@ export function SessionsSection() {
     <section className="section" id="sessions">
       <div className="container">
         <Reveal>
-          <p className="kicker">Session routing</p>
+          <p className="kicker">Sessions</p>
           <h2 className="sec-title">Use the session you already opened.</h2>
           <p className="sec-lead">
             Pick the OpenCode or Claude Code session you already opened.
@@ -93,6 +181,31 @@ export function SessionsSection() {
               </span>
             </li>
           </ul>
+        </Reveal>
+      </div>
+    </section>
+  );
+}
+
+export function InstallSection() {
+  return (
+    <section className="section" id="install">
+      <div className="container">
+        <Reveal>
+          <p className="kicker">Install</p>
+          <h2 className="sec-title">Clone and run from source.</h2>
+          <p className="sec-lead">
+            Have <code>opencode</code> or <code>claude</code> on PATH with
+            sessions you want to route into, then start the Electron app.
+          </p>
+          <pre className={styles.installPre}>{`git clone https://github.com/Pegusus/flickctx.git
+cd flickctx
+npm install
+npm start`}</pre>
+          <p className={styles.installHint}>
+            Route → Claude Code / OpenCode → session, then Mark.{" "}
+            <kbd>⌘⇧F</kbd> / <kbd>Ctrl+Shift+F</kbd>.
+          </p>
         </Reveal>
       </div>
     </section>

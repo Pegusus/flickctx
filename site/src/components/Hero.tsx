@@ -31,23 +31,21 @@ export function Hero() {
         <p className={styles.brand}>
           Flick<span>ctx</span>
         </p>
+        <h1 className={styles.headline}>
+          Point at your screen. Route into the session you already have open.
+        </h1>
         <p className={styles.line}>
-          Mark anything on your screen. Continue in the OpenCode or Claude Code
-          session you already have open.
+          Circle charts, logs, or code on any display. Flickctx captures the
+          mark and continues in your OpenCode or Claude Code session — with the
+          models and project context already there.
         </p>
 
-        <div id="install" className={styles.install}>
-          <pre className={styles.installPre}>{`git clone https://github.com/Pegusus/flickctx.git
-cd flickctx && npm install && npm start`}</pre>
-          <p className={styles.hint}>
-            Route → Claude Code / OpenCode → session, then Mark.{" "}
-            <kbd>⌘⇧F</kbd> / <kbd>Ctrl+Shift+F</kbd>.
-          </p>
-        </div>
-
         <div className={styles.actions}>
+          <a className="btn" href="#install">
+            Install
+          </a>
           <a
-            className="btn"
+            className="btn quiet"
             href="https://github.com/Pegusus/flickctx"
             target="_blank"
             rel="noreferrer"

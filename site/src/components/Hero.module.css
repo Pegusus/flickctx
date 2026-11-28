@@ -18,10 +18,10 @@
 
 .brand {
   margin: 0;
-  font-weight: 650;
-  font-size: clamp(2.75rem, 6vw, 4.25rem);
-  letter-spacing: -0.045em;
-  line-height: 0.95;
+  font-weight: 700;
+  font-size: clamp(3.25rem, 9vw, 5.5rem);
+  letter-spacing: -0.05em;
+  line-height: 0.92;
   animation: riseSoft 0.8s var(--ease) both;
 }
 
@@ -29,48 +29,32 @@
   color: var(--accent);
 }
 
+.headline {
+  margin: 0;
+  font-weight: 600;
+  font-size: clamp(1.35rem, 2.2vw, 1.75rem);
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+  max-width: 26rem;
+  text-wrap: balance;
+  animation: riseSoft 0.8s var(--ease) 0.06s both;
+}
+
 .line {
   margin: 0;
   color: var(--mute);
-  font-size: clamp(1.05rem, 1.35vw, 1.2rem);
+  font-size: clamp(1.05rem, 1.35vw, 1.15rem);
   line-height: 1.5;
   max-width: 32rem;
-  animation: riseSoft 0.8s var(--ease) 0.08s both;
-}
-
-.install {
-  width: 100%;
-  max-width: 28rem;
-  scroll-margin-top: calc(var(--header-h) + 0.75rem);
-  animation: riseSoft 0.8s var(--ease) 0.14s both;
-}
-
-.installPre {
-  margin: 0;
-  width: 100%;
-  padding: 0.85rem 0.95rem;
-  background: var(--ink);
-  color: #e8e8e8;
-  font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 0.7rem;
-  line-height: 1.65;
-  overflow: auto;
-  border-radius: 6px;
-}
-
-.hint {
-  margin: 0.65rem 0 0;
-  color: var(--mute);
-  font-size: 0.8125rem;
-  line-height: 1.45;
+  animation: riseSoft 0.8s var(--ease) 0.1s both;
 }
 
 .actions {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
-  margin-top: 0.15rem;
-  animation: riseSoft 0.8s var(--ease) 0.2s both;
+  margin-top: 0.35rem;
+  animation: riseSoft 0.8s var(--ease) 0.16s both;
 }
 
 .theater {
@@ -78,7 +62,7 @@
   margin: 0 auto;
   padding: 0 var(--pad-x) 1.75rem;
   box-sizing: border-box;
-  animation: riseSoft 0.9s var(--ease) 0.2s both;
+  animation: riseSoft 0.9s var(--ease) 0.18s both;
 }
 
 .stage {
@@ -89,9 +73,9 @@
   min-height: 16rem;
   background: var(--screen);
   overflow: hidden;
-  border: 1px solid #d8d8d8;
+  border: 1px solid rgba(26, 20, 16, 0.12);
   border-radius: 8px;
-  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.04);
+  box-shadow: 0 8px 32px rgba(232, 93, 4, 0.08);
 }
 
 .caption {
@@ -118,11 +102,10 @@
   }
 }
 
-/* Laptop+: brand + demo side by side — fills the first viewport */
 @media (min-width: 960px) {
   .hero {
     display: grid;
-    grid-template-columns: minmax(17rem, 0.85fr) minmax(26rem, 1.35fr);
+    grid-template-columns: minmax(18rem, 0.85fr) minmax(26rem, 1.35fr);
     align-items: center;
     column-gap: clamp(1.5rem, 3vw, 3rem);
     width: min(100%, var(--content));
@@ -149,7 +132,7 @@
 
 @media (min-width: 1280px) {
   .hero {
-    grid-template-columns: minmax(18rem, 0.75fr) minmax(32rem, 1.4fr);
+    grid-template-columns: minmax(20rem, 0.75fr) minmax(32rem, 1.4fr);
     column-gap: 3.25rem;
   }
 
@@ -165,15 +148,16 @@
   }
 
   .brand {
-    font-size: clamp(2.25rem, 9vw, 2.75rem);
+    font-size: clamp(2.75rem, 14vw, 3.5rem);
+  }
+
+  .headline {
+    max-width: none;
+    font-size: 1.25rem;
   }
 
   .line {
     font-size: 1rem;
-    max-width: none;
-  }
-
-  .install {
     max-width: none;
   }
 
@@ -195,6 +179,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .brand,
+  .headline,
   .line,
   .actions,
   .theater {

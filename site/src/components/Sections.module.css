@@ -12,6 +12,7 @@
   font-size: 1rem;
   font-weight: 600;
   letter-spacing: -0.02em;
+  color: var(--accent);
 }
 
 .steps p {
@@ -19,6 +20,79 @@
   color: var(--mute);
   font-size: 0.9375rem;
   line-height: 1.5;
+}
+
+.useGrid {
+  list-style: none;
+  margin: 1.75rem 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1.25rem;
+}
+
+.useGrid h3 {
+  margin: 0 0 0.4rem;
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.useGrid p {
+  margin: 0;
+  color: var(--mute);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+
+.useGrid li {
+  padding: 1.1rem 1.15rem;
+  background: #fff;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+}
+
+.compareGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.25rem;
+  margin-top: 1.75rem;
+}
+
+.compareCol {
+  padding: 1.25rem 1.35rem;
+  background: #fff;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+}
+
+.compareCol h3 {
+  margin: 0 0 0.85rem;
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.compareAccent {
+  border-color: rgba(232, 93, 4, 0.35);
+  background: linear-gradient(180deg, #fff 0%, #fff8f4 100%);
+  box-shadow: 0 4px 20px rgba(232, 93, 4, 0.08);
+}
+
+.compareAccent h3 {
+  color: var(--accent);
+}
+
+.compareCol ul {
+  margin: 0;
+  padding: 0 0 0 1.1rem;
+  color: var(--mute);
+  font-size: 0.9375rem;
+  line-height: 1.55;
+}
+
+.compareCol li + li {
+  margin-top: 0.45rem;
 }
 
 .splitList {
@@ -53,9 +127,30 @@
   font-family: var(--font-mono), ui-monospace, monospace;
   font-size: 0.84em;
   color: var(--ink);
-  background: #eee;
+  background: rgba(26, 20, 16, 0.06);
   padding: 0.1em 0.3em;
   border-radius: 3px;
+}
+
+.installPre {
+  margin: 1.5rem 0 0;
+  width: 100%;
+  max-width: 28rem;
+  padding: 0.85rem 0.95rem;
+  background: var(--ink);
+  color: #f0ebe6;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.7rem;
+  line-height: 1.65;
+  overflow: auto;
+  border-radius: 6px;
+}
+
+.installHint {
+  margin: 0.65rem 0 0;
+  color: var(--mute);
+  font-size: 0.8125rem;
+  line-height: 1.45;
 }
 
 .archWide :global(.sec-title) {
@@ -79,6 +174,11 @@
   border-bottom: 1px solid var(--rule);
 }
 
+.foot a:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
 @media (min-width: 960px) {
   .splitList {
     display: grid;
@@ -100,7 +200,9 @@
 }
 
 @media (max-width: 900px) {
-  .steps {
+  .steps,
+  .useGrid,
+  .compareGrid {
     grid-template-columns: 1fr;
     gap: 1.25rem;
     margin-top: 1.75rem;
