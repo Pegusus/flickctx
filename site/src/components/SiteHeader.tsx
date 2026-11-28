@@ -43,7 +43,6 @@ export function SiteHeader() {
     const ids = [
       "how",
       "use-cases",
-      "compare",
       "architecture",
       "sessions",
       "install",

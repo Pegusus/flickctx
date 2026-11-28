@@ -109,51 +109,6 @@ export function UseCasesSection() {
   );
 }
 
-export function CompareSection() {
-  return (
-    <section className="section" id="compare">
-      <div className="container">
-        <Reveal>
-          <p className="kicker">Compare</p>
-          <h2 className="sec-title">Flickctx vs pasting into ChatGPT.</h2>
-          <p className="sec-lead">
-            Both can look at a screen region. The difference is where the
-            conversation lives and what context comes with it.
-          </p>
-        </Reveal>
-        <Reveal cascade>
-          <div className={styles.compareGrid}>
-            <div className={styles.compareCol}>
-              <h3>ChatGPT (browser)</h3>
-              <ul>
-                <li>Upload or paste a screenshot into a web thread</li>
-                <li>Separate from your terminal CLIs and project files</li>
-                <li>No tie-in to an existing Claude Code or OpenCode session</li>
-                <li>Follow-ups stay in that web chat, not your dev workflow</li>
-              </ul>
-            </div>
-            <div className={`${styles.compareCol} ${styles.compareAccent}`}>
-              <h3>Flickctx</h3>
-              <ul>
-                <li>Mark in place with a global hotkey — no switching apps to crop</li>
-                <li>
-                  Routes into <strong>your</strong> OpenCode or Claude Code
-                  session
-                </li>
-                <li>
-                  Uses the models, config, and repo context that session already
-                  has
-                </li>
-                <li>Streams thinking and answers in the Flickctx chat panel</li>
-              </ul>
-            </div>
-          </div>
-        </Reveal>
-      </div>
-    </section>
-  );
-}
-
 export function ArchitectureSection() {
   return (
     <section className="section" id="architecture">
