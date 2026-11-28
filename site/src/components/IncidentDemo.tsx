@@ -23,132 +23,221 @@ type Step = {
   answer: boolean;
 };
 
-function flowFor(
-  app: AppId,
-  cfg: { consoleCaption: string; route: string }
-): Step[] {
-  const p = app;
-  return [
-    {
-      id: `${p}-console`,
-      app,
-      caption: cfg.consoleCaption,
-      ms: 2000,
-      dim: false,
-      hint: false,
-      draw: false,
-      drawn: false,
-      markBar: false,
-      chat: false,
-      preview: false,
-      typed: false,
-      answer: false,
-    },
-    {
-      id: `${p}-hint`,
-      app,
-      caption: "Draw freehand around what you want — Esc to cancel.",
-      ms: 900,
-      dim: true,
-      hint: true,
-      draw: false,
-      drawn: false,
-      markBar: false,
-      chat: false,
-      preview: false,
-      typed: false,
-      answer: false,
-    },
-    {
-      id: `${p}-draw`,
-      app,
-      caption: "Freehand mark becomes the focus.",
-      ms: 1800,
-      dim: true,
-      hint: true,
-      draw: true,
-      drawn: false,
-      markBar: false,
-      chat: false,
-      preview: false,
-      typed: false,
-      answer: false,
-    },
-    {
-      id: `${p}-drawn`,
-      app,
-      caption: "Crop locked — ease in on the mark.",
-      ms: 1800,
-      dim: true,
-      hint: false,
-      draw: false,
-      drawn: true,
-      markBar: false,
-      chat: false,
-      preview: false,
-      typed: false,
-      answer: false,
-    },
-    {
-      id: `${p}-chat`,
-      app,
-      caption: `Flickctx opens · ${cfg.route}.`,
-      ms: 2200,
-      dim: false,
-      hint: false,
-      draw: false,
-      drawn: true,
-      markBar: true,
-      chat: true,
-      preview: true,
-      typed: false,
-      answer: false,
-    },
-    {
-      id: `${p}-ask`,
-      app,
-      caption: "Ask about the marked region — Send.",
-      ms: 1800,
-      dim: false,
-      hint: false,
-      draw: false,
-      drawn: true,
-      markBar: true,
-      chat: true,
-      preview: true,
-      typed: true,
-      answer: false,
-    },
-    {
-      id: `${p}-answer`,
-      app,
-      caption: "Answer streams in the session you already had open.",
-      ms: 3600,
-      dim: false,
-      hint: false,
-      draw: false,
-      drawn: true,
-      markBar: true,
-      chat: true,
-      preview: true,
-      typed: true,
-      answer: true,
-    },
-  ];
-}
-
+/** One incident story: Datadog first → answer says check AWS → then see RDS ACU. */
 const STEPS: Step[] = [
-  ...flowFor("aws", {
-    consoleCaption: "AWS RDS · Monitoring — ACU limit on payments-db.",
-    route: "OpenCode · payments-incident",
-  }),
-  ...flowFor("dd", {
-    consoleCaption: "Datadog · Log Explorer — payment timeouts.",
-    route: "Claude Code · checkout-debug",
-  }),
+  {
+    id: "dd-console",
+    app: "dd",
+    caption: "Datadog · Log Explorer — payment timeouts.",
+    ms: 2000,
+    dim: false,
+    hint: false,
+    draw: false,
+    drawn: false,
+    markBar: false,
+    chat: false,
+    preview: false,
+    typed: false,
+    answer: false,
+  },
+  {
+    id: "dd-hint",
+    app: "dd",
+    caption: "Draw freehand around what you want — Esc to cancel.",
+    ms: 900,
+    dim: true,
+    hint: true,
+    draw: false,
+    drawn: false,
+    markBar: false,
+    chat: false,
+    preview: false,
+    typed: false,
+    answer: false,
+  },
+  {
+    id: "dd-draw",
+    app: "dd",
+    caption: "Freehand mark becomes the focus.",
+    ms: 1800,
+    dim: true,
+    hint: true,
+    draw: true,
+    drawn: false,
+    markBar: false,
+    chat: false,
+    preview: false,
+    typed: false,
+    answer: false,
+  },
+  {
+    id: "dd-drawn",
+    app: "dd",
+    caption: "Crop locked — ease in on the mark.",
+    ms: 1600,
+    dim: true,
+    hint: false,
+    draw: false,
+    drawn: true,
+    markBar: false,
+    chat: false,
+    preview: false,
+    typed: false,
+    answer: false,
+  },
+  {
+    id: "dd-chat",
+    app: "dd",
+    caption: "Flickctx opens · Claude Code · checkout-debug.",
+    ms: 2000,
+    dim: false,
+    hint: false,
+    draw: false,
+    drawn: true,
+    markBar: true,
+    chat: true,
+    preview: true,
+    typed: false,
+    answer: false,
+  },
+  {
+    id: "dd-ask",
+    app: "dd",
+    caption: "Ask about the marked region — Send.",
+    ms: 1800,
+    dim: false,
+    hint: false,
+    draw: false,
+    drawn: true,
+    markBar: true,
+    chat: true,
+    preview: true,
+    typed: true,
+    answer: false,
+  },
+  {
+    id: "dd-answer",
+    app: "dd",
+    caption: "Response: check AWS — ACU limit on payments-db.",
+    ms: 3200,
+    dim: false,
+    hint: false,
+    draw: false,
+    drawn: true,
+    markBar: true,
+    chat: true,
+    preview: true,
+    typed: true,
+    answer: true,
+  },
+  {
+    id: "aws-console",
+    app: "aws",
+    caption: "AWS RDS · Monitoring — there it is: ACU limit exceeded.",
+    ms: 2600,
+    dim: false,
+    hint: false,
+    draw: false,
+    drawn: false,
+    markBar: false,
+    chat: false,
+    preview: false,
+    typed: false,
+    answer: false,
+  },
+  {
+    id: "aws-hint",
+    app: "aws",
+    caption: "Mark the ACU spike to keep the trail in-session.",
+    ms: 900,
+    dim: true,
+    hint: true,
+    draw: false,
+    drawn: false,
+    markBar: false,
+    chat: false,
+    preview: false,
+    typed: false,
+    answer: false,
+  },
+  {
+    id: "aws-draw",
+    app: "aws",
+    caption: "Freehand mark on the ACU chart.",
+    ms: 1800,
+    dim: true,
+    hint: true,
+    draw: true,
+    drawn: false,
+    markBar: false,
+    chat: false,
+    preview: false,
+    typed: false,
+    answer: false,
+  },
+  {
+    id: "aws-drawn",
+    app: "aws",
+    caption: "Crop locked — ACU at 97%.",
+    ms: 1600,
+    dim: true,
+    hint: false,
+    draw: false,
+    drawn: true,
+    markBar: false,
+    chat: false,
+    preview: false,
+    typed: false,
+    answer: false,
+  },
+  {
+    id: "aws-chat",
+    app: "aws",
+    caption: "Same session · OpenCode · payments-incident.",
+    ms: 2200,
+    dim: false,
+    hint: false,
+    draw: false,
+    drawn: true,
+    markBar: true,
+    chat: true,
+    preview: true,
+    typed: false,
+    answer: false,
+  },
+  {
+    id: "aws-ask",
+    app: "aws",
+    caption: "Confirm the ACU limit in chat.",
+    ms: 1600,
+    dim: false,
+    hint: false,
+    draw: false,
+    drawn: true,
+    markBar: true,
+    chat: true,
+    preview: true,
+    typed: true,
+    answer: false,
+  },
+  {
+    id: "aws-answer",
+    app: "aws",
+    caption: "Confirmed — Aurora hit the max ACU cap.",
+    ms: 3600,
+    dim: false,
+    hint: false,
+    draw: false,
+    drawn: true,
+    markBar: true,
+    chat: true,
+    preview: true,
+    typed: true,
+    answer: true,
+  },
 ];
 
-const AWS_ASK = "What caused the ACU spike on this cluster?";
+const AWS_ASK = "Is this the ACU limit on payments-db?";
 const DD_ASK = "Why are payments-api errors spiking?";
 
 const LASSO_AWS =
@@ -185,7 +274,9 @@ export function IncidentDemo({
 
   useEffect(() => {
     if (reduceRef.current) {
-      setStep(STEPS.find((s) => s.id === "aws-answer") || STEPS[STEPS.length - 1]);
+      setStep(
+        STEPS.find((s) => s.id === "dd-answer") || STEPS[STEPS.length - 1]
+      );
       return;
     }
     let cancelled = false;
@@ -257,19 +348,19 @@ export function IncidentDemo({
               <div className={styles.appTabs} aria-hidden>
                 <div
                   className={`${styles.appTab} ${
-                    isAws ? styles.appTabOn : ""
-                  }`}
-                >
-                  <AwsMark className={styles.appTabMark} />
-                  AWS
-                </div>
-                <div
-                  className={`${styles.appTab} ${
                     !isAws ? styles.appTabOn : ""
                   }`}
                 >
                   <DatadogMark className={styles.appTabMark} />
                   Datadog
+                </div>
+                <div
+                  className={`${styles.appTab} ${
+                    isAws ? styles.appTabOn : ""
+                  }`}
+                >
+                  <AwsMark className={styles.appTabMark} />
+                  AWS
                 </div>
               </div>
 
@@ -468,15 +559,16 @@ export function IncidentDemo({
                   <p className={styles.msgRole}>Assistant</p>
                   {isAws ? (
                     <p>
-                      Aurora hit the max ACU cap while connections held locks on{" "}
-                      <code>payments-db</code>. Scale ACU or trim long
-                      transactions in checkout.
+                      Yes — Aurora hit the max ACU cap on{" "}
+                      <code>payments-db</code>. Same root cause as the Datadog
+                      timeouts. Scale ACU or trim long <code>FOR UPDATE</code>{" "}
+                      transactions.
                     </p>
                   ) : (
                     <p>
-                      Three timeouts correlate with the ACU limit on{" "}
-                      <code>payments-db</code>. The FOR UPDATE path is blocking —
-                      same incident as the RDS spike.
+                      Check AWS. Those timeouts line up with an Aurora ACU limit
+                      on <code>payments-db</code> — open RDS Monitoring and look
+                      at ACU utilization.
                     </p>
                   )}
                 </div>
