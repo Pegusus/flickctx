@@ -1081,10 +1081,17 @@
           setRouteChip(data.route);
           hideRoutePicker();
           composer.classList.remove("hidden");
+          const isScreenshot =
+            data.captureMode === "screenshot" || data.captureMode === "system";
+          const routeLabel =
+            data.route.provider === "flickctx"
+              ? "Flickctx built-in"
+              : `${data.route.provider === "claude" ? "Claude Code" : data.route.provider === "opencode" ? "OpenCode" : data.route.provider} · ${data.route.title || data.route.id}`;
           messages = [{
             role: "system",
-            text:
-              data.route.provider === "flickctx"
+            text: isScreenshot
+              ? `Screenshot ready — routed to ${routeLabel}. Ask about what’s on screen.`
+              : data.route.provider === "flickctx"
                 ? "Region captured. Using Flickctx built-in — ask about the snippet."
                 : `Region captured. Continuing in ${data.route.provider} · ${data.route.title || data.route.id}.`,
           }];
@@ -1097,7 +1104,10 @@
           );
           if (data.frontmostLabel) metaBits.push(data.frontmostLabel);
           if (data.hasContextImage) metaBits.push("full-screen context");
-          meta.textContent = "Mark attached · " + metaBits.join(" · ");
+          meta.textContent = isScreenshot
+            ? `Screenshot ready · routed to ${routeLabel}` +
+              (data.frontmostLabel ? " · " + data.frontmostLabel : "")
+            : "Mark attached · " + metaBits.join(" · ");
           questionEl.value = "";
           questionEl.focus();
         }

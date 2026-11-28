@@ -56,9 +56,16 @@ let highlightGen = 0;
 /** @type {{ stop: () => void } | null} */
 let screenshotWatchHandle = null;
 
-function resolveInitialRoute(config) {
+function resolveInitialRoute(config, catalog) {
+  const cat = catalog || {
+    sessions: [],
+    claudeAvailable: false,
+    opencodeAvailable: false,
+  };
+  const sessions = cat.sessions || [];
+
   if (
-    config.rememberSessionRoute &&
+    config.rememberSessionRoute !== false &&
     config.preferredSession &&
     config.preferredSession.provider &&
     config.preferredSession.provider !== "ask"
@@ -71,6 +78,41 @@ function resolveInitialRoute(config) {
       };
     }
     return { ...config.preferredSession };
+  }
+
+  let picked = null;
+  const pr = config.preferredRoute;
+  if (sessions.length > 0) {
+    if (pr === "claude" || pr === "opencode") {
+      picked = sessions.find((s) => s.provider === pr) || sessions[0];
+    } else {
+      picked = sessions[0];
+    }
+  } else if (cat.claudeAvailable || cat.opencodeAvailable) {
+    const provider =
+      cat.opencodeAvailable && cat.claudeAvailable
+        ? "opencode"
+        : cat.opencodeAvailable
+          ? "opencode"
+          : "claude";
+    const label = provider === "claude" ? "Claude Code" : "OpenCode";
+    picked = {
+      provider,
+      id: "new",
+      isNew: true,
+      title: `New ${label} session`,
+      directory: config.projectPath || process.cwd(),
+    };
+  }
+
+  if (picked) {
+    const route = { ...picked };
+    saveConfig({
+      preferredSession: route,
+      preferredRoute: route.provider,
+      rememberSessionRoute: true,
+    });
+    return route;
   }
   return null;
 }
@@ -593,9 +635,9 @@ async function ingestScreenshotPath(imagePath, opts = {}) {
     captureMode: "screenshot",
   };
   const config = loadConfig();
-  activeRoute = resolveInitialRoute(config);
   const sessionCatalog = loadSessionCatalog();
-  const picker = sessionPickerPayload(sessionCatalog, config);
+  activeRoute = resolveInitialRoute(config, sessionCatalog);
+  const picker = sessionPickerPayload(sessionCatalog, loadConfig());
   const win = showResultWindow();
   const img = nativeImage.createFromPath(imagePath);
   const size = img.getSize();
@@ -1378,9 +1420,9 @@ function registerIpc() {
         displayBounds: { ...display.bounds },
       };
       const config = loadConfig();
-      activeRoute = resolveInitialRoute(config);
       const sessionCatalog = loadSessionCatalog();
-      const picker = sessionPickerPayload(sessionCatalog, config);
+      activeRoute = resolveInitialRoute(config, sessionCatalog);
+      const picker = sessionPickerPayload(sessionCatalog, loadConfig());
       const win = showResultWindow();
       const fm = lastFrontmost;
       const hintBits = [];
@@ -1758,7 +1800,8 @@ if (!gotLock) {
     trayMenuWindow = createTrayMenuWindow();
     resultWindow = createResultWindow();
     // Always-on Mark bar + menu-bar “Flickctx” title.
-    activeRoute = resolveInitialRoute(loadConfig());
+    const bootConfig = loadConfig();
+    activeRoute = resolveInitialRoute(bootConfig, loadSessionCatalog());
     showLauncherBar();
     broadcastLauncherRoute();
     screen.on("display-metrics-changed", () => {
