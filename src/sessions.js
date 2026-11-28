@@ -22,6 +22,32 @@ function newOpenCodeSessionId() {
 
 const DEFAULT_LIMIT = 40;
 const HISTORY_LIMIT = 80;
+const HISTORY_PAGE_DEFAULT = 12;
+const HISTORY_SCAN_LIMIT = 300;
+
+function pageSessionHistory(all, options = {}) {
+  const total = Array.isArray(all) ? all.length : 0;
+  if (!total) {
+    return { messages: [], hasMore: false, nextBefore: 0, total: 0 };
+  }
+  const pageSize = Math.max(
+    1,
+    Number(options.limit) || HISTORY_PAGE_DEFAULT
+  );
+  let end = total;
+  const before = options.before;
+  if (before !== undefined && before !== null && before !== "") {
+    const b = Number(before);
+    if (Number.isFinite(b) && b > 0) end = Math.min(total, Math.floor(b));
+  }
+  const start = Math.max(0, end - pageSize);
+  return {
+    messages: all.slice(start, end),
+    hasMore: start > 0,
+    nextBefore: start,
+    total,
+  };
+}
 
 function isHistoryNoise(text) {
   const t = String(text || "").trim();
@@ -66,7 +92,7 @@ function assistantTextFromClaudeMessage(message) {
   };
 }
 
-function loadClaudeSessionHistory(session, limit = HISTORY_LIMIT) {
+function loadClaudeSessionHistory(session, limit = HISTORY_SCAN_LIMIT) {
   if (isNewAgentSession(session)) return [];
   const filePath =
     session.sessionFile ||
@@ -100,7 +126,7 @@ function loadClaudeSessionHistory(session, limit = HISTORY_LIMIT) {
       reasoning: reasoning || "",
     });
   }
-  return out.slice(-limit);
+  return out.slice(-Math.max(1, Number(limit) || HISTORY_SCAN_LIMIT));
 }
 
 function parseJsonMaybe(value) {
@@ -143,7 +169,7 @@ function openCodeMessageRole(data) {
   return "";
 }
 
-function loadOpenCodeHistoryFromDb(sessionId, limit = HISTORY_LIMIT) {
+function loadOpenCodeHistoryFromDb(sessionId, limit = HISTORY_SCAN_LIMIT) {
   const dbPath = resolveOpenCodeDbPath();
   if (!fs.existsSync(dbPath)) return null;
   const sid = String(sessionId || "");
@@ -213,14 +239,16 @@ function queryOpenCodeHistoryWithNodeSqlite(dbPath, sessionId, limit) {
           .map((r) => r.name)
       );
       if (tables.has("message")) {
+        const scan = Number(limit) || HISTORY_SCAN_LIMIT;
         const messages = db
           .prepare(
             `SELECT id, data, time_created FROM message
              WHERE session_id = ?
-             ORDER BY time_created ASC, id ASC
+             ORDER BY time_created DESC, id DESC
              LIMIT ?`
           )
-          .all(sessionId, Number(limit) || HISTORY_LIMIT);
+          .all(sessionId, scan)
+          .reverse();
         const partsByMessage = new Map();
         if (tables.has("part")) {
           for (const m of messages) {
@@ -237,14 +265,16 @@ function queryOpenCodeHistoryWithNodeSqlite(dbPath, sessionId, limit) {
         return mapOpenCodeHistoryRows(messages, partsByMessage);
       }
       if (tables.has("session_message")) {
+        const scan = Number(limit) || HISTORY_SCAN_LIMIT;
         const events = db
           .prepare(
             `SELECT data, type FROM session_message
              WHERE session_id = ?
-             ORDER BY seq ASC
+             ORDER BY seq DESC
              LIMIT ?`
           )
-          .all(sessionId, Number(limit) || HISTORY_LIMIT);
+          .all(sessionId, scan)
+          .reverse();
         const out = [];
         for (const ev of events) {
           const d = parseJsonMaybe(ev.data);
@@ -304,7 +334,8 @@ function queryOpenCodeHistoryWithSqlite3(dbPath, sessionId, limit) {
     );
     if (!tables.has("message")) {
       if (tables.has("session_message")) {
-        const sql = `SELECT data, type FROM session_message WHERE session_id = '${sessionId.replace(/'/g, "''")}' ORDER BY seq ASC LIMIT ${Number(limit) || HISTORY_LIMIT};`;
+        const scan = Number(limit) || HISTORY_SCAN_LIMIT;
+        const sql = `SELECT data, type FROM session_message WHERE session_id = '${sessionId.replace(/'/g, "''")}' ORDER BY seq DESC LIMIT ${scan};`;
         const out = execFileSync(sqlite3, ["-json", dbPath, sql], {
           encoding: "utf8",
           timeout: 8000,
@@ -334,11 +365,12 @@ function queryOpenCodeHistoryWithSqlite3(dbPath, sessionId, limit) {
             }
           }
         }
-        return mapped;
+        return mapped.slice().reverse();
       }
       return [];
     }
-    const msgSql = `SELECT id, data, time_created FROM message WHERE session_id = '${sessionId.replace(/'/g, "''")}' ORDER BY time_created ASC, id ASC LIMIT ${Number(limit) || HISTORY_LIMIT};`;
+    const scan = Number(limit) || HISTORY_SCAN_LIMIT;
+    const msgSql = `SELECT id, data, time_created FROM message WHERE session_id = '${sessionId.replace(/'/g, "''")}' ORDER BY time_created DESC, id DESC LIMIT ${scan};`;
     const messages = JSON.parse(
       execFileSync(sqlite3, ["-json", dbPath, msgSql], {
         encoding: "utf8",
@@ -346,7 +378,7 @@ function queryOpenCodeHistoryWithSqlite3(dbPath, sessionId, limit) {
         stdio: ["ignore", "pipe", "ignore"],
         env: expandedEnv(),
       }) || "[]"
-    );
+    ).reverse();
     const partsByMessage = new Map();
     if (tables.has("part")) {
       for (const m of messages) {
@@ -368,7 +400,7 @@ function queryOpenCodeHistoryWithSqlite3(dbPath, sessionId, limit) {
   }
 }
 
-function loadOpenCodeHistoryFromStorage(sessionId, limit = HISTORY_LIMIT) {
+function loadOpenCodeHistoryFromStorage(sessionId, limit = HISTORY_SCAN_LIMIT) {
   const root = path.join(opencodeDataDir(), "storage", "message");
   if (!fs.existsSync(root)) return [];
   const sid = String(sessionId || "");
@@ -451,39 +483,42 @@ function loadOpenCodeHistoryFromStorage(sessionId, limit = HISTORY_LIMIT) {
       }
     }
   }
-  return out.slice(-limit);
+  return out.slice(-Math.max(1, Number(limit) || HISTORY_SCAN_LIMIT));
 }
 
-function loadOpenCodeSessionHistory(session, limit = HISTORY_LIMIT) {
+function loadOpenCodeSessionHistory(session, limit = HISTORY_SCAN_LIMIT) {
   if (isNewAgentSession(session)) return [];
   const sid = String(session.id || "");
   if (!sid) return [];
-  const fromDb = loadOpenCodeHistoryFromDb(sid, limit);
-  if (Array.isArray(fromDb) && fromDb.length) return fromDb.slice(-limit);
-  const fromStorage = loadOpenCodeHistoryFromStorage(sid, limit);
+  const scan = Math.max(1, Number(limit) || HISTORY_SCAN_LIMIT);
+  const fromDb = loadOpenCodeHistoryFromDb(sid, scan);
+  if (Array.isArray(fromDb) && fromDb.length) return fromDb;
+  const fromStorage = loadOpenCodeHistoryFromStorage(sid, scan);
   if (fromStorage.length) return fromStorage;
   return Array.isArray(fromDb) ? fromDb : [];
 }
 
 /**
  * Load prior chat turns for an existing Claude / OpenCode session.
- * @returns {{ messages: Array<{role:'user'|'assistant',text:string,reasoning?:string}> }}
+ * @returns {{ messages: Array<{role:'user'|'assistant',text:string,reasoning?:string}>, hasMore: boolean, nextBefore: number, total: number }}
  */
 function loadSessionHistory(session, options = {}) {
-  const limit = options.limit || HISTORY_LIMIT;
+  const empty = { messages: [], hasMore: false, nextBefore: 0, total: 0 };
   if (!session || session.provider === "flickctx") {
-    return { messages: [] };
+    return empty;
   }
   if (isNewAgentSession(session)) {
-    return { messages: [] };
+    return empty;
   }
+  let all = [];
   if (session.provider === "claude") {
-    return { messages: loadClaudeSessionHistory(session, limit) };
+    all = loadClaudeSessionHistory(session, HISTORY_SCAN_LIMIT);
+  } else if (session.provider === "opencode") {
+    all = loadOpenCodeSessionHistory(session, HISTORY_SCAN_LIMIT);
+  } else {
+    return empty;
   }
-  if (session.provider === "opencode") {
-    return { messages: loadOpenCodeSessionHistory(session, limit) };
-  }
-  return { messages: [] };
+  return pageSessionHistory(all, options);
 }
 
 const EXTRA_PATH_DIRS = [
@@ -1793,7 +1828,10 @@ module.exports = {
   consumeOpenCodeStreamLine,
   isNewAgentSession,
   loadSessionHistory,
+  pageSessionHistory,
   findClaudeSessionFile,
   loadClaudeSessionHistory,
   loadOpenCodeSessionHistory,
+  HISTORY_PAGE_DEFAULT,
+  HISTORY_SCAN_LIMIT,
 };

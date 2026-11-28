@@ -1359,7 +1359,16 @@ function registerIpc() {
   });
 
   ipcMain.handle("sessions:history", (_e, payload) => {
-    return loadSessionHistory(payload || {});
+    const p = payload && typeof payload === "object" ? { ...payload } : {};
+    const limit = p.limit;
+    const before = p.before;
+    delete p.limit;
+    delete p.before;
+    const routed = p.route || p.session;
+    delete p.route;
+    delete p.session;
+    const session = routed || (p.provider ? p : {});
+    return loadSessionHistory(session, { limit, before });
   });
 
   ipcMain.handle("sessions:set-route", (_e, payload) => {

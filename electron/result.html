@@ -563,6 +563,12 @@
       }
 
       let hydratedRouteKey = "";
+      const HISTORY_PAGE_SIZE = 12;
+      const SCROLL_LOAD_THRESHOLD = 56;
+      let sessionHistoryHasMore = false;
+      let sessionHistoryNextBefore = 0;
+      let sessionHistoryLoading = false;
+
       function routeHistoryKey(route) {
         if (!route) return "";
         return [route.provider, route.id || "", route.sessionFile || ""].join(
@@ -570,41 +576,117 @@
         );
       }
 
+      function historyScrollBanner(route, historyLen, hasMore) {
+        if (hasMore) return "Scroll up for earlier messages";
+        if (!historyLen) return "";
+        return `Loaded ${historyLen} prior message${
+          historyLen === 1 ? "" : "s"
+        } from ${route.provider === "claude" ? "Claude Code" : "OpenCode"} · ${route.title || route.id}.`;
+      }
+
+      async function loadOlderSessionHistory() {
+        if (
+          sessionHistoryLoading ||
+          !sessionHistoryHasMore ||
+          !activeRoute ||
+          activeRoute.provider === "flickctx"
+        ) {
+          return;
+        }
+        if (!window.flickctx.loadSessionHistory) return;
+        sessionHistoryLoading = true;
+        const prevScrollHeight = chat.scrollHeight;
+        const prevScrollTop = chat.scrollTop;
+        try {
+          const data = await window.flickctx.loadSessionHistory(activeRoute, {
+            limit: HISTORY_PAGE_SIZE,
+            before: sessionHistoryNextBefore,
+          });
+          const older = Array.isArray(data?.messages) ? data.messages : [];
+          sessionHistoryHasMore = Boolean(data?.hasMore);
+          sessionHistoryNextBefore =
+            typeof data?.nextBefore === "number" ? data.nextBefore : 0;
+          if (!older.length) return;
+          const sysIdx = messages.findIndex((m) => m.role === "system");
+          const insertAt = sysIdx >= 0 ? sysIdx + 1 : 0;
+          messages.splice(insertAt, 0, ...older);
+          if (sysIdx >= 0) {
+            const loaded =
+              (typeof data?.total === "number" ? data.total : 0) ||
+              messages.filter((m) => m.role === "user" || m.role === "assistant")
+                .length;
+            messages[sysIdx].text = historyScrollBanner(
+              activeRoute,
+              loaded,
+              sessionHistoryHasMore
+            );
+          }
+          renderChat({
+            preserveScroll: true,
+            prevScrollHeight,
+            prevScrollTop,
+          });
+        } catch {
+          /* ignore */
+        } finally {
+          sessionHistoryLoading = false;
+        }
+      }
+
       async function hydrateSessionHistory(route, options = {}) {
         const key = routeHistoryKey(route);
         if (!key || key === hydratedRouteKey) return;
         if (!route || route.provider === "flickctx") {
           hydratedRouteKey = key;
+          sessionHistoryHasMore = false;
+          sessionHistoryNextBefore = 0;
           return;
         }
         const isNew = Boolean(route.isNew) || route.id === "new" || !route.id;
         if (isNew) {
           hydratedRouteKey = key;
+          sessionHistoryHasMore = false;
+          sessionHistoryNextBefore = 0;
           return;
         }
         if (!window.flickctx.loadSessionHistory) {
           hydratedRouteKey = key;
+          sessionHistoryHasMore = false;
+          sessionHistoryNextBefore = 0;
           return;
         }
         try {
-          const data = await window.flickctx.loadSessionHistory(route);
+          const data = await window.flickctx.loadSessionHistory(route, {
+            limit: HISTORY_PAGE_SIZE,
+          });
           const history = Array.isArray(data?.messages) ? data.messages : [];
+          sessionHistoryHasMore = Boolean(data?.hasMore);
+          sessionHistoryNextBefore =
+            typeof data?.nextBefore === "number" ? data.nextBefore : 0;
           hydratedRouteKey = key;
           if (!history.length) return;
           const banner =
             options.systemMessage ||
-            `Loaded ${history.length} prior message${
-              history.length === 1 ? "" : "s"
-            } from ${route.provider === "claude" ? "Claude Code" : "OpenCode"} · ${route.title || route.id}.`;
+            historyScrollBanner(route, history.length, sessionHistoryHasMore);
           const keep = messages.filter(
             (m) => m.pending || (m.role === "user" && options.keepLocal)
           );
-          messages = [{ role: "system", text: banner }, ...history, ...keep];
+          messages = banner
+            ? [{ role: "system", text: banner }, ...history, ...keep]
+            : [...history, ...keep];
           renderChat();
         } catch {
           hydratedRouteKey = key;
+          sessionHistoryHasMore = false;
+          sessionHistoryNextBefore = 0;
         }
       }
+
+      chat.addEventListener("scroll", () => {
+        if (chat.scrollTop <= SCROLL_LOAD_THRESHOLD) {
+          void loadOlderSessionHistory();
+        }
+      });
 
       function hideRoutePicker() {
         routePicker.classList.remove("visible");
@@ -973,7 +1055,9 @@
         return out.join("\n");
       }
 
-      function renderChat() {
+      function renderChat(scrollOpts = {}) {
+        const prevScrollHeight = scrollOpts.prevScrollHeight;
+        const prevScrollTop = scrollOpts.prevScrollTop;
         chat.innerHTML = "";
         for (const m of messages) {
           const el = document.createElement("div");
@@ -1022,7 +1106,12 @@
           }
           chat.appendChild(el);
         }
-        chat.scrollTop = chat.scrollHeight;
+        if (scrollOpts.preserveScroll) {
+          chat.scrollTop =
+            prevScrollTop + (chat.scrollHeight - prevScrollHeight);
+        } else {
+          chat.scrollTop = chat.scrollHeight;
+        }
       }
 
       function setBusy(isBusy) {

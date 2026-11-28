@@ -136,6 +136,59 @@ const newSess = sessionsReloaded.loadSessionHistory({
   isNew: true,
 });
 assert.deepStrictEqual(newSess.messages, []);
+assert.strictEqual(newSess.hasMore, false);
+assert.strictEqual(newSess.total, 0);
+
+// Session history pagination (newest page first; before loads older)
+{
+  const paginateFile = path.join(projectDir, "paginate-turns.jsonl");
+  const paginateLines = [
+    JSON.stringify({
+      type: "summary",
+      summary: "Paginate test",
+      sessionId: "paginate-turns",
+    }),
+  ];
+  for (let i = 0; i < 20; i++) {
+    paginateLines.push(
+      JSON.stringify({
+        type: "user",
+        sessionId: "paginate-turns",
+        message: { content: `history-msg-${i}` },
+      })
+    );
+  }
+  fs.writeFileSync(paginateFile, paginateLines.join("\n") + "\n");
+  delete require.cache[require.resolve("./sessions")];
+  const paginate = require("./sessions").loadSessionHistory(
+    {
+      provider: "claude",
+      id: "paginate-turns",
+      sessionFile: paginateFile,
+    },
+    { limit: 12 }
+  );
+  assert.strictEqual(paginate.total, 20);
+  assert.strictEqual(paginate.messages.length, 12);
+  assert.ok(paginate.hasMore);
+  assert.strictEqual(paginate.nextBefore, 8);
+  assert.strictEqual(
+    paginate.messages[paginate.messages.length - 1].text,
+    "history-msg-19"
+  );
+  const older = require("./sessions").loadSessionHistory(
+    {
+      provider: "claude",
+      id: "paginate-turns",
+      sessionFile: paginateFile,
+    },
+    { limit: 12, before: paginate.nextBefore }
+  );
+  assert.strictEqual(older.messages.length, 8);
+  assert.strictEqual(older.hasMore, false);
+  assert.strictEqual(older.messages[0].text, "history-msg-0");
+  assert.strictEqual(older.messages[older.messages.length - 1].text, "history-msg-7");
+}
 
 const listed = listAgentSessions({ limit: 10 });
 assert.ok(listed.sessions.some((s) => s.id === "abc123def"));
