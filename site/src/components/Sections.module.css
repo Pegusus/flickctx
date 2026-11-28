@@ -1,3 +1,37 @@
+.pitch {
+  margin: 1.75rem 0 0;
+  padding: 0;
+  max-width: min(52rem, 100%);
+}
+
+.pitchVideo {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border: none;
+  border-radius: 14px;
+  background: rgba(26, 20, 16, 0.04);
+  box-shadow: 0 22px 56px rgba(26, 20, 16, 0.1);
+  /* Soft dissolve into the page wash — no hard black frame */
+  -webkit-mask-image: radial-gradient(
+    ellipse 96% 94% at 50% 50%,
+    #000 70%,
+    transparent 100%
+  );
+  mask-image: radial-gradient(
+    ellipse 96% 94% at 50% 50%,
+    #000 70%,
+    transparent 100%
+  );
+}
+
+.pitchCap {
+  margin: 0.75rem 0 0;
+  font-size: 0.8125rem;
+  color: var(--mute);
+}
+
 .steps {
   list-style: none;
   margin: 1.75rem 0 0;

@@ -1,3 +1,4 @@
+import { HOW_VIDEO_URL } from "@/lib/media";
 import { ArchDiagram } from "./ArchDiagram";
 import { Reveal } from "./Reveal";
 import styles from "./Sections.module.css";
@@ -14,6 +15,27 @@ export function HowSection() {
             Claude Code session that already has your configs and context.
           </p>
         </Reveal>
+
+        {HOW_VIDEO_URL ? (
+          <Reveal>
+            <figure className={styles.pitch}>
+              <video
+                className={styles.pitchVideo}
+                src={HOW_VIDEO_URL}
+                controls
+                playsInline
+                preload="metadata"
+                title="Flickctx product pitch"
+              >
+                Your browser does not support embedded video.
+              </video>
+              <figcaption className={styles.pitchCap}>
+                Mark a region → route into your session → keep chatting.
+              </figcaption>
+            </figure>
+          </Reveal>
+        ) : null}
+
         <Reveal cascade>
           <ol className={styles.steps}>
             <li>
