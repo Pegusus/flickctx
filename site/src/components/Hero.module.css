@@ -71,11 +71,12 @@
   aspect-ratio: 16 / 9;
   max-height: min(32rem, 52vh);
   min-height: 16rem;
-  background: var(--screen);
+  /* Blend with page — no hard black frame around the demo */
+  background: transparent;
   overflow: hidden;
-  border: 1px solid rgba(26, 20, 16, 0.12);
-  border-radius: 8px;
-  box-shadow: 0 8px 32px rgba(232, 93, 4, 0.08);
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
 }
 
 .caption {

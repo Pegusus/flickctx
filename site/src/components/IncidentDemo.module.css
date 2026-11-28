@@ -7,11 +7,14 @@
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background: radial-gradient(
-    ellipse 80% 70% at 50% 40%,
-    #161a22 0%,
-    #0b0d10 65%
-  );
+  /* Soft page-matched stage — avoid a boxed black border */
+  background:
+    radial-gradient(
+      ellipse 70% 60% at 55% 40%,
+      rgba(232, 93, 4, 0.07),
+      transparent 60%
+    ),
+    transparent;
 }
 
 .camera {
@@ -153,6 +156,57 @@
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
 }
 
+/* App switcher tabs */
+.appTabs {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 4;
+  display: flex;
+  gap: 0;
+  pointer-events: none;
+  background: transparent;
+}
+
+.appTab {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px 4px;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: rgba(234, 237, 237, 0.55);
+  background: rgba(35, 47, 62, 0.92);
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.appTabOn {
+  color: #fff;
+  background: #232f3e;
+}
+
+.appTabMark {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+}
+
+.sceneOn {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  z-index: 0;
+}
+
+.sceneOff {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+
 /* AWS light console */
 .awsConsole {
   position: absolute;
@@ -162,6 +216,100 @@
   background: #f9fafb;
   color: #16191f;
   font-size: 10px;
+  transition: opacity 0.35s var(--ease);
+}
+
+/* Datadog Log Explorer */
+.ddConsole {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: #1a1d27;
+  color: #e8eaef;
+  font-size: 10px;
+  transition: opacity 0.35s var(--ease);
+}
+
+.ddTop {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 28px 10px 8px;
+  background: #12141c;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 10px;
+}
+
+.ddTop strong {
+  font-weight: 600;
+  color: #fff;
+}
+
+.ddPill {
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: rgba(99, 44, 255, 0.25);
+  color: #b9a0ff;
+  font-size: 9px;
+  font-weight: 600;
+}
+
+.ddFilter {
+  font-family: var(--font-mono), monospace;
+  font-size: 9px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #9aa3b2;
+}
+
+.ddLogs {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  padding: 6px 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.ddRow {
+  display: grid;
+  grid-template-columns: 52px 42px 1fr;
+  gap: 6px;
+  align-items: baseline;
+  padding: 5px 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  color: #c5cad3;
+  line-height: 1.35;
+}
+
+.ddTs {
+  font-family: var(--font-mono), monospace;
+  font-size: 8px;
+  color: #6b7280;
+}
+
+.ddLvl {
+  font-family: var(--font-mono), monospace;
+  font-size: 8px;
+  text-transform: uppercase;
+  color: #9aa3b2;
+}
+
+.ddErr .ddLvl {
+  color: #f87171;
+}
+
+.ddErr {
+  background: rgba(248, 113, 113, 0.06);
+}
+
+.ddHl {
+  outline: 1px solid rgba(232, 93, 4, 0.55);
+  outline-offset: -1px;
+  background: rgba(232, 93, 4, 0.1);
 }
 
 .awsHeader {
@@ -169,7 +317,7 @@
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
-  padding: 7px 10px;
+  padding: 28px 10px 7px;
   background: #232f3e;
   color: #eaeded;
   font-size: 10px;
