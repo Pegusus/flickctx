@@ -14,6 +14,28 @@
   );
 }
 
+.camera {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform-origin: 54% 46%;
+  transition: transform 0.95s var(--ease);
+}
+
+.zoomWide {
+  transform: scale(1);
+}
+
+.zoomMark {
+  transform: scale(1.42);
+}
+
+.zoomFlick {
+  transform: scale(1.28) translate(-9%, 1.5%);
+}
+
 /* Mark bar */
 .markBar {
   position: absolute;
@@ -83,11 +105,14 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  transition: transform 0.5s var(--ease);
+  transition:
+    opacity 0.95s var(--ease),
+    filter 0.95s var(--ease);
 }
 
-.chatOpen .laptop {
-  transform: translateX(-12%);
+.zoomFlick .laptop {
+  opacity: 0.82;
+  filter: brightness(0.88);
 }
 
 .laptopBezel {
@@ -424,14 +449,18 @@
   border-right: none;
   border-radius: 12px 0 0 12px;
   box-shadow: -12px 0 40px rgba(0, 0, 0, 0.5);
-  transform: translateX(102%);
-  transition: transform 0.55s var(--ease);
+  transform: translateX(104%) scale(0.92);
+  opacity: 0.94;
+  transition:
+    transform 0.95s var(--ease),
+    opacity 0.95s var(--ease);
   overflow: hidden;
   pointer-events: none;
 }
 
 .chatPanelOn {
-  transform: translateX(0);
+  transform: translateX(0) scale(1);
+  opacity: 1;
 }
 
 .chatChrome {
@@ -652,8 +681,8 @@
     width: min(94%, 100%);
   }
 
-  .chatOpen .laptop {
-    transform: translateX(-6%);
+  .zoomFlick {
+    transform: scale(1.22) translate(-6%, 1%);
   }
 
   .chatPanel {
@@ -679,6 +708,17 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .camera {
+    transform: none !important;
+    transition: none !important;
+  }
+
+  .zoomMark,
+  .zoomFlick,
+  .zoomWide {
+    transform: none !important;
+  }
+
   .stroke,
   .bbox,
   .chatPanel,
@@ -688,6 +728,11 @@
   .laptop {
     animation: none !important;
     transition: none !important;
+  }
+
+  .zoomFlick .laptop {
+    opacity: 1;
+    filter: none;
   }
 
   .strokeActive,

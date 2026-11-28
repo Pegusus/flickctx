@@ -168,13 +168,22 @@ export function IncidentDemo({
     step.dim ? styles.dimmed : "",
     step.draw ? styles.drawing : "",
     step.drawn ? styles.drawn : "",
-    step.chat ? styles.chatOpen : "",
   ]
     .filter(Boolean)
     .join(" ");
 
+  const cameraClass = [
+    styles.camera,
+    step.chat
+      ? styles.zoomFlick
+      : step.draw || step.drawn
+        ? styles.zoomMark
+        : styles.zoomWide,
+  ].join(" ");
+
   return (
     <div className={demoClass}>
+      <div className={cameraClass}>
       <div
         className={`${styles.markBar} ${step.markBar ? styles.markBarOn : ""}`}
         aria-hidden
@@ -361,6 +370,7 @@ export function IncidentDemo({
           </span>
         </footer>
       </aside>
+      </div>
     </div>
   );
 }
