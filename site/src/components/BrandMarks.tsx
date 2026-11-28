@@ -7,6 +7,8 @@ export function AwsMark({ className, title = "AWS" }: MarkProps) {
     <svg
       className={className}
       viewBox="0 0 24 24"
+      width={16}
+      height={16}
       role="img"
       aria-label={title}
     >
@@ -24,6 +26,8 @@ export function DatadogMark({ className, title = "Datadog" }: MarkProps) {
     <svg
       className={className}
       viewBox="0 0 24 24"
+      width={16}
+      height={16}
       role="img"
       aria-label={title}
     >
@@ -41,6 +45,8 @@ export function GcpMark({ className, title = "Google Cloud" }: MarkProps) {
     <svg
       className={className}
       viewBox="0 0 24 24"
+      width={16}
+      height={16}
       role="img"
       aria-label={title}
     >

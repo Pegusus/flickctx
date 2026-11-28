@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { AwsMark, DatadogMark } from "./BrandMarks";
 import styles from "./IncidentDemo.module.css";
@@ -370,12 +369,12 @@ export function IncidentDemo({
                 }`}
               >
                 <header className={styles.awsHeader}>
-                  <Image
+                  <img
                     src="/brands/aws.svg"
                     alt=""
                     width={36}
                     height={22}
-                    unoptimized
+                    style={{ width: 36, height: 22, objectFit: "contain" }}
                     aria-hidden
                   />
                   <span>Amazon RDS</span>
@@ -443,12 +442,12 @@ export function IncidentDemo({
                 }`}
               >
                 <header className={styles.ddTop}>
-                  <Image
+                  <img
                     src="/brands/datadog.svg"
                     alt=""
                     width={18}
                     height={20}
-                    unoptimized
+                    style={{ width: 18, height: 20, objectFit: "contain" }}
                     aria-hidden
                   />
                   <strong>Log Explorer</strong>

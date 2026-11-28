@@ -206,6 +206,10 @@
   visibility: hidden;
   pointer-events: none;
   z-index: 0;
+  /* Keep inactive scene from contributing layout/paint if CSS partially loads */
+  position: absolute !important;
+  inset: 0;
+  overflow: hidden;
 }
 
 /* AWS light console */
