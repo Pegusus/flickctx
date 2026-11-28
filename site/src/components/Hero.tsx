@@ -26,7 +26,10 @@ export function Hero() {
   }, []);
 
   return (
-    <section className={styles.hero} aria-label="Flickctx overview">
+    <section
+      className={styles.hero}
+      aria-label="Flickctx — mark screen, route to OpenCode or Claude Code"
+    >
       <div className={styles.rail}>
         <p className={styles.brand}>
           Flick<span>ctx</span>
@@ -60,7 +63,7 @@ export function Hero() {
 
       <div
         className={styles.theater}
-        aria-label="Demo: mark AWS, Datadog, or GCP, then route into a session"
+        aria-label="Demo: AWS RDS monitoring on a laptop, freehand mark, Flickctx chat with OpenCode"
       >
         <div className={styles.stage}>
           <IncidentDemo onCaption={onCaption} />
