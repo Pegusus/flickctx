@@ -3,23 +3,29 @@
   <head>
     <meta charset="UTF-8" />
     <title>Flickctx</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
     <style>
       html,
       body {
         margin: 0;
         background: transparent;
         overflow: hidden;
-        font-family: -apple-system, "SF Pro Text", "IBM Plex Sans", sans-serif;
-        color: #f2f4f8;
+        font-family: "Outfit", -apple-system, "Segoe UI", sans-serif;
+        color: #12141a;
         user-select: none;
       }
       #menu {
         margin: 4px;
         padding: 6px;
         border-radius: 12px;
-        background: rgba(28, 30, 36, 0.92);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+        background: rgba(255, 255, 255, 0.96);
+        border: 1px solid #e6e3de;
+        box-shadow: 0 12px 40px rgba(18, 20, 26, 0.14);
         backdrop-filter: blur(18px);
         -webkit-backdrop-filter: blur(18px);
       }
@@ -40,25 +46,25 @@
         cursor: pointer;
       }
       .item:hover {
-        background: rgba(94, 234, 212, 0.16);
+        background: #fff1e6;
       }
       .item .kbd {
         font-size: 11px;
-        color: #9aa3b2;
+        color: #5c6570;
       }
       .sep {
         height: 1px;
         margin: 4px 6px;
-        background: rgba(255, 255, 255, 0.08);
+        background: #e6e3de;
       }
       .danger:hover {
-        background: rgba(248, 113, 113, 0.16);
+        background: rgba(225, 29, 72, 0.1);
       }
       .brand {
         padding: 6px 10px 8px;
         font-size: 11px;
         letter-spacing: 0.04em;
-        color: #5eead4;
+        color: #e85d04;
         font-weight: 650;
       }
     </style>

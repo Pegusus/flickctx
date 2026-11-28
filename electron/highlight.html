@@ -3,6 +3,12 @@
   <head>
     <meta charset="UTF-8" />
     <title>Flickctx highlights</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
     <style>
       html,
       body {
@@ -11,7 +17,7 @@
         height: 100%;
         overflow: hidden;
         background: transparent;
-        font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+        font-family: "Outfit", "Segoe UI", sans-serif;
         user-select: none;
         pointer-events: none;
       }
@@ -21,12 +27,12 @@
       }
       .box {
         position: absolute;
-        border: 2.5px solid #2ec4a8;
+        border: 2.5px solid #e85d04;
         border-radius: 8px;
         box-shadow:
-          0 0 0 1px rgba(0, 0, 0, 0.35),
-          0 0 18px rgba(46, 196, 168, 0.45);
-        background: rgba(46, 196, 168, 0.1);
+          0 0 0 1px rgba(18, 20, 26, 0.12),
+          0 0 18px rgba(232, 93, 4, 0.45);
+        background: rgba(232, 93, 4, 0.1);
         animation: pop 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
       }
       .label {
@@ -36,14 +42,14 @@
         max-width: 220px;
         padding: 4px 8px;
         border-radius: 6px;
-        background: rgba(16, 18, 20, 0.92);
-        color: #e8f8f4;
+        background: rgba(255, 255, 255, 0.96);
+        color: #12141a;
         font-size: 12px;
         font-weight: 500;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
-        border: 1px solid rgba(46, 196, 168, 0.45);
+        border: 1px solid rgba(232, 93, 4, 0.45);
       }
       .box:nth-child(1) {
         animation-delay: 0.02s;
@@ -61,10 +67,10 @@
         transform: translateX(-50%);
         padding: 8px 14px;
         border-radius: 999px;
-        background: rgba(16, 18, 20, 0.92);
-        color: #dce8e4;
+        background: rgba(255, 255, 255, 0.96);
+        color: #12141a;
         font-size: 12px;
-        border: 1px solid rgba(46, 196, 168, 0.35);
+        border: 1px solid rgba(232, 93, 4, 0.35);
         opacity: 0;
         transition: opacity 0.25s ease;
       }

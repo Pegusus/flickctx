@@ -564,7 +564,7 @@ function createResultWindow() {
     show: false,
     focusable: true,
     fullscreenable: false,
-    backgroundColor: "#111318",
+    backgroundColor: "#f6f5f3",
     // panel = join every macOS Space (same as the Mark chip)
     type: process.platform === "darwin" ? "panel" : "toolbar",
     webPreferences: {

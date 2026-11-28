@@ -3,6 +3,12 @@
   <head>
     <meta charset="UTF-8" />
     <title>Flickctx mark</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
     <style>
       html,
       body {
@@ -12,7 +18,7 @@
         overflow: hidden;
         cursor: crosshair;
         background: transparent;
-        font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+        font-family: "Outfit", "Segoe UI", sans-serif;
         user-select: none;
       }
       #dim {
@@ -37,11 +43,11 @@
         z-index: 3;
         padding: 10px 16px;
         border-radius: 999px;
-        background: rgba(17, 19, 24, 0.92);
-        color: #e8eaef;
+        background: rgba(255, 255, 255, 0.96);
+        color: #12141a;
         font-size: 13px;
         letter-spacing: 0.02em;
-        border: 1px solid rgba(255, 255, 255, 0.08);
+        border: 1px solid #e6e3de;
         pointer-events: none;
       }
       #hint kbd {
@@ -53,7 +59,7 @@
       }
       #bounds {
         position: fixed;
-        border: 1px dashed rgba(94, 234, 212, 0.7);
+        border: 1px dashed rgba(232, 93, 4, 0.7);
         pointer-events: none;
         z-index: 3;
         display: none;
@@ -98,9 +104,9 @@
         if (points.length < 2) return;
         ctx.lineCap = "round";
         ctx.lineJoin = "round";
-        ctx.strokeStyle = "#5eead4";
+        ctx.strokeStyle = "#e85d04";
         ctx.lineWidth = 3.5;
-        ctx.shadowColor = "rgba(94, 234, 212, 0.45)";
+        ctx.shadowColor = "rgba(232, 93, 4, 0.45)";
         ctx.shadowBlur = 8;
         ctx.beginPath();
         ctx.moveTo(points[0].x, points[0].y);

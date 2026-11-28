@@ -3,14 +3,20 @@
   <head>
     <meta charset="UTF-8" />
     <title>Flickctx</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
     <style>
       html,
       body {
         margin: 0;
         height: 100%;
         background: transparent;
-        color: #e8eaef;
-        font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+        color: #12141a;
+        font-family: "Outfit", "Segoe UI", sans-serif;
         overflow: hidden;
         user-select: none;
       }
@@ -18,9 +24,9 @@
       #bar {
         height: 100%;
         box-sizing: border-box;
-        background: #111318;
-        border: 1px solid rgba(94, 234, 212, 0.28);
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+        background: #fff;
+        border: 1px solid rgba(232, 93, 4, 0.28);
+        box-shadow: 0 8px 24px rgba(18, 20, 26, 0.12);
         -webkit-app-region: drag;
       }
       #chip {
@@ -34,10 +40,10 @@
         -webkit-app-region: no-drag;
       }
       #chip:hover {
-        border-color: rgba(94, 234, 212, 0.55);
+        border-color: rgba(232, 93, 4, 0.55);
       }
       #chip .mark {
-        color: #5eead4;
+        color: #e85d04;
         font-size: 11px;
         font-weight: 650;
         letter-spacing: 0.04em;
@@ -46,7 +52,7 @@
         width: 6px;
         height: 6px;
         border-radius: 50%;
-        background: #5eead4;
+        background: #e85d04;
         flex-shrink: 0;
       }
       #bar {
@@ -69,13 +75,13 @@
         white-space: nowrap;
       }
       #brand span {
-        color: #5eead4;
+        color: #e85d04;
       }
       button {
         -webkit-app-region: no-drag;
-        border: 1px solid rgba(94, 234, 212, 0.35);
-        background: rgba(94, 234, 212, 0.12);
-        color: #5eead4;
+        border: 1px solid rgba(232, 93, 4, 0.35);
+        background: #fff1e6;
+        color: #c44a00;
         border-radius: 8px;
         padding: 6px 10px;
         font-size: 12px;
@@ -83,32 +89,32 @@
         white-space: nowrap;
       }
       button:hover {
-        border-color: rgba(94, 234, 212, 0.6);
+        border-color: rgba(232, 93, 4, 0.6);
       }
       #route {
         max-width: 140px;
         overflow: hidden;
         text-overflow: ellipsis;
-        border-color: rgba(154, 163, 178, 0.4);
-        background: #0d0f14;
-        color: #e8eaef;
+        border-color: #e6e3de;
+        background: #f6f5f3;
+        color: #12141a;
       }
       #route.has-route {
-        border-color: rgba(94, 234, 212, 0.45);
-        color: #5eead4;
+        border-color: rgba(232, 93, 4, 0.45);
+        color: #e85d04;
       }
       #collapse,
       #quit {
-        border-color: rgba(154, 163, 178, 0.35);
+        border-color: #e6e3de;
         background: transparent;
-        color: #9aa3b2;
+        color: #5c6570;
         padding: 4px 8px;
         font-size: 13px;
         line-height: 1;
       }
       #quit:hover {
-        border-color: rgba(251, 113, 133, 0.55);
-        color: #fb7185;
+        border-color: rgba(225, 29, 72, 0.45);
+        color: #e11d48;
       }
     </style>
   </head>
