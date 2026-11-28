@@ -77,8 +77,8 @@ function flowFor(
     {
       id: `${p}-drawn`,
       app,
-      caption: "Crop locked — camera pushes into the mark.",
-      ms: 2200,
+      caption: "Crop locked — ease in on the mark.",
+      ms: 1800,
       dim: true,
       hint: false,
       draw: false,
@@ -92,7 +92,7 @@ function flowFor(
     {
       id: `${p}-chat`,
       app,
-      caption: `Pull to Flickctx · ${cfg.route}.`,
+      caption: `Flickctx opens · ${cfg.route}.`,
       ms: 2200,
       dim: false,
       hint: false,
@@ -220,7 +220,7 @@ export function IncidentDemo({
     .filter(Boolean)
     .join(" ");
 
-  // Wide → punch into mark (after crop) → pan to Flickctx. No zoom while drawing.
+  // Mild mark ease-in, then ease back so Flickctx + screen stay fully visible.
   const cameraClass = [
     styles.camera,
     step.chat
@@ -234,7 +234,6 @@ export function IncidentDemo({
 
   return (
     <div className={demoClass}>
-      {/* Outside .camera so it does not scale into a thick black strip during zoom */}
       <div
         className={`${styles.markBar} ${step.markBar ? styles.markBarOn : ""}`}
         aria-hidden
@@ -431,83 +430,82 @@ export function IncidentDemo({
               </div>
             </div>
           </div>
-          <div className={styles.laptopBase} aria-hidden />
-        </div>
 
-        <aside
-          className={`${styles.chatPanel} ${
-            step.chat ? styles.chatPanelOn : ""
-          }`}
-          aria-hidden
-        >
-          <header className={styles.chatChrome}>
-            <span className={styles.chatBrand}>
-              Flick<span>ctx</span>
-            </span>
-            <span className={styles.chatRoute}>{routeLabel}</span>
-          </header>
-          <div
-            className={`${styles.markPreview} ${
-              step.preview ? styles.markPreviewOn : ""
+          <aside
+            className={`${styles.chatPanel} ${
+              step.chat ? styles.chatPanelOn : ""
             }`}
+            aria-hidden
           >
-            <p className={styles.previewLbl}>Marked region</p>
-            <div className={styles.previewThumb}>
-              <div className={styles.previewMock}>
-                <span className={styles.previewVal}>{previewVal}</span>
-                <div className={styles.previewSpark} />
+            <header className={styles.chatChrome}>
+              <span className={styles.chatBrand}>
+                Flick<span>ctx</span>
+              </span>
+              <span className={styles.chatRoute}>{routeLabel}</span>
+            </header>
+            <div
+              className={`${styles.markPreview} ${
+                step.preview ? styles.markPreviewOn : ""
+              }`}
+            >
+              <p className={styles.previewLbl}>Marked region</p>
+              <div className={styles.previewThumb}>
+                <div className={styles.previewMock}>
+                  <span className={styles.previewVal}>{previewVal}</span>
+                  <div className={styles.previewSpark} />
+                </div>
               </div>
             </div>
-          </div>
-          <div className={styles.chatThread}>
-            {step.typed ? (
-              <div className={styles.msgUser}>
-                <p className={styles.msgRole}>You</p>
-                <p>{askText}</p>
-              </div>
-            ) : null}
-            {step.answer ? (
-              <div className={styles.msgBot}>
-                <p className={styles.msgRole}>Assistant</p>
-                {isAws ? (
-                  <p>
-                    Aurora hit the max ACU cap while connections held locks on{" "}
-                    <code>payments-db</code>. Scale ACU or trim long
-                    transactions in checkout.
-                  </p>
+            <div className={styles.chatThread}>
+              {step.typed ? (
+                <div className={styles.msgUser}>
+                  <p className={styles.msgRole}>You</p>
+                  <p>{askText}</p>
+                </div>
+              ) : null}
+              {step.answer ? (
+                <div className={styles.msgBot}>
+                  <p className={styles.msgRole}>Assistant</p>
+                  {isAws ? (
+                    <p>
+                      Aurora hit the max ACU cap while connections held locks on{" "}
+                      <code>payments-db</code>. Scale ACU or trim long
+                      transactions in checkout.
+                    </p>
+                  ) : (
+                    <p>
+                      Three timeouts correlate with the ACU limit on{" "}
+                      <code>payments-db</code>. The FOR UPDATE path is blocking —
+                      same incident as the RDS spike.
+                    </p>
+                  )}
+                </div>
+              ) : null}
+            </div>
+            <footer className={styles.composer}>
+              <div
+                className={`${styles.composerField} ${
+                  step.typed && !step.answer ? styles.composerBusy : ""
+                }`}
+              >
+                {step.typed ? (
+                  <span className={styles.composerQ}>{askText}</span>
                 ) : (
-                  <p>
-                    Three timeouts correlate with the ACU limit on{" "}
-                    <code>payments-db</code>. The FOR UPDATE path is blocking —
-                    same incident as the RDS spike.
-                  </p>
+                  <span className={styles.composerPh}>
+                    Ask about the marked region…
+                  </span>
                 )}
               </div>
-            ) : null}
-          </div>
-          <footer className={styles.composer}>
-            <div
-              className={`${styles.composerField} ${
-                step.typed && !step.answer ? styles.composerBusy : ""
-              }`}
-            >
-              {step.typed ? (
-                <span className={styles.composerQ}>{askText}</span>
-              ) : (
-                <span className={styles.composerPh}>
-                  Ask about the marked region…
-                </span>
-              )}
-            </div>
-            <span
-              className={`${styles.sendBtn} ${
-                step.typed ? styles.sendBtnOn : ""
-              }`}
-            >
-              Send
-            </span>
-          </footer>
-        </aside>
+              <span
+                className={`${styles.sendBtn} ${
+                  step.typed ? styles.sendBtnOn : ""
+                }`}
+              >
+                Send
+              </span>
+            </footer>
+          </aside>
+        </div>
       </div>
     </div>
   );

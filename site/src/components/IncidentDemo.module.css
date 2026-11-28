@@ -8,16 +8,18 @@
   height: 100%;
   overflow: hidden;
   background: transparent;
-  /* Soft dissolve into the page/header wash — no hard stage edge */
+  /* Long soft falloff so the screen dissolves into the header wash */
   -webkit-mask-image: radial-gradient(
-    ellipse 78% 72% at 50% 48%,
-    #000 42%,
-    transparent 78%
+    ellipse 92% 88% at 50% 50%,
+    #000 55%,
+    rgba(0, 0, 0, 0.55) 72%,
+    transparent 92%
   );
   mask-image: radial-gradient(
-    ellipse 78% 72% at 50% 48%,
-    #000 42%,
-    transparent 78%
+    ellipse 92% 88% at 50% 50%,
+    #000 55%,
+    rgba(0, 0, 0, 0.55) 72%,
+    transparent 92%
   );
 }
 
@@ -27,28 +29,27 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transform-origin: 50% 48%;
+  transform-origin: 52% 48%;
   will-change: transform;
-  transition: transform 1.15s var(--ease);
+  transition: transform 1s var(--ease);
 }
 
 .zoomWide {
   transform: scale(1) translate(0, 0);
 }
 
-/* Punch into AWS ACU spike — keep framed on the chart, not the bezel edge */
+/* Gentle nudge toward the mark — keep the full screen readable */
 .zoomMarkAws {
-  transform: scale(2.05) translate(-4%, 8%);
+  transform: scale(1.18) translate(-2%, 3%);
 }
 
-/* Punch into Datadog error rows (mid logs) */
 .zoomMarkDd {
-  transform: scale(1.95) translate(0%, 2%);
+  transform: scale(1.14) translate(0%, 1%);
 }
 
-/* Pull back and pan so Flickctx panel owns the frame */
+/* Ease back so Flickctx + monitor stay fully in view */
 .zoomFlick {
-  transform: scale(1.5) translate(-20%, 0%);
+  transform: scale(1) translate(0, 0);
 }
 
 /* Mark bar */
@@ -112,42 +113,22 @@
   text-overflow: ellipsis;
 }
 
-/* Laptop */
+/* Screen only — no laptop chassis */
 .laptop {
   position: relative;
   z-index: 1;
-  width: min(92%, 38rem);
+  width: min(96%, 40rem);
   display: flex;
   flex-direction: column;
   align-items: center;
-  transition:
-    opacity 0.95s var(--ease),
-    filter 0.95s var(--ease);
 }
 
-.zoomFlick .laptop {
-  opacity: 0.72;
-  filter: brightness(0.78);
-}
-
-/* Punch-in: hide chrome chrome so only the UI fills the wash */
-.zoomMarkAws .cam,
-.zoomMarkDd .cam,
-.zoomMarkAws .laptopBase,
-.zoomMarkDd .laptopBase,
 .zoomMarkAws .appTabs,
 .zoomMarkDd .appTabs {
   opacity: 0;
-  transition: opacity 0.45s var(--ease);
+  transition: opacity 0.4s var(--ease);
 }
 
-.zoomMarkAws .laptopScreen,
-.zoomMarkDd .laptopScreen {
-  box-shadow: none;
-  border-radius: 10px;
-}
-
-/* No dark laptop chassis — screen floats in the header wash */
 .laptopBezel {
   width: 100%;
   padding: 0;
@@ -157,31 +138,23 @@
   box-shadow: none;
 }
 
-.cam,
-.laptopBase,
 .appTabs {
-  transition: opacity 0.45s var(--ease);
+  transition: opacity 0.4s var(--ease);
 }
 
-.cam {
+.cam,
+.laptopBase {
   display: none;
 }
 
 .laptopScreen {
   position: relative;
   aspect-ratio: 16 / 10;
-  border-radius: 12px;
+  border-radius: 14px;
   overflow: hidden;
   background: #fff;
   border: none;
-  box-shadow:
-    0 1px 0 rgba(255, 253, 251, 0.8) inset,
-    0 18px 48px rgba(26, 20, 16, 0.1),
-    0 4px 14px rgba(26, 20, 16, 0.05);
-}
-
-.laptopBase {
-  display: none;
+  box-shadow: 0 22px 56px rgba(26, 20, 16, 0.08);
 }
 
 /* App switcher tabs */
@@ -610,33 +583,33 @@
   }
 }
 
-/* Chat panel */
+/* Floating Flickctx card — fade/rise in place, not a right-edge drawer */
 .chatPanel {
   position: absolute;
-  top: 48px;
-  right: 4%;
-  bottom: 10%;
-  width: min(46%, 15.5rem);
-  z-index: 3;
+  top: 10%;
+  right: 3%;
+  bottom: 8%;
+  width: min(42%, 14.5rem);
+  z-index: 5;
   display: flex;
   flex-direction: column;
-  background: rgba(17, 19, 24, 0.94);
+  background: rgba(17, 19, 24, 0.96);
   color: #e8eaef;
   border: none;
   border-radius: 14px;
-  box-shadow: 0 18px 42px rgba(26, 20, 16, 0.16);
-  transform: translateX(108%) scale(0.88);
-  opacity: 0.9;
+  box-shadow: 0 20px 48px rgba(26, 20, 16, 0.18);
+  transform: translateY(14px) scale(0.97);
+  opacity: 0;
   transition:
-    transform 1.15s var(--ease),
-    opacity 1.15s var(--ease);
+    transform 0.7s var(--ease),
+    opacity 0.7s var(--ease);
   overflow: hidden;
   pointer-events: none;
-  backdrop-filter: blur(8px);
+  backdrop-filter: blur(10px);
 }
 
 .chatPanelOn {
-  transform: translateX(0) scale(1);
+  transform: translateY(0) scale(1);
   opacity: 1;
 }
 
@@ -855,24 +828,25 @@
   }
 
   .laptop {
-    width: min(94%, 100%);
+    width: min(98%, 100%);
   }
 
   .zoomMarkAws {
-    transform: scale(1.65) translate(-2%, 5%);
+    transform: scale(1.12) translate(-1%, 2%);
   }
 
   .zoomMarkDd {
-    transform: scale(1.6) translate(0%, 1%);
+    transform: scale(1.1) translate(0%, 1%);
   }
 
   .zoomFlick {
-    transform: scale(1.32) translate(-12%, 0%);
+    transform: scale(1) translate(0, 0);
   }
 
   .chatPanel {
-    width: min(52%, 11rem);
-    top: 44px;
+    width: min(48%, 11rem);
+    top: 8%;
+    right: 2%;
   }
 
   .awsBody {
@@ -916,11 +890,6 @@
     transition: none !important;
   }
 
-  .zoomFlick .laptop {
-    opacity: 1;
-    filter: none;
-  }
-
   .strokeActive,
   .bboxActive {
     opacity: 1;
@@ -928,7 +897,8 @@
   }
 
   .chatPanelOn {
-    transform: translateX(0);
+    transform: none;
+    opacity: 1;
   }
 
   .markBarOn {

@@ -63,7 +63,7 @@ export function Hero() {
 
       <div
         className={styles.theater}
-        aria-label="Demo: AWS RDS monitoring on a laptop, freehand mark, Flickctx chat with OpenCode"
+        aria-label="Demo: mark a region in AWS or Datadog, then continue in Flickctx"
       >
         <div className={styles.stage}>
           <IncidentDemo onCaption={onCaption} />
