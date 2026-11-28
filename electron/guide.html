@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Flickctx guide</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: transparent;
+        font-family: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+        user-select: none;
+      }
+      #layer {
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+      }
+      .box {
+        position: absolute;
+        border: 2.5px solid #2ec4a8;
+        border-radius: 8px;
+        box-shadow:
+          0 0 0 1px rgba(0, 0, 0, 0.35),
+          0 0 22px rgba(46, 196, 168, 0.5);
+        background: rgba(46, 196, 168, 0.12);
+        animation: pop 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+      }
+      .pointer {
+        position: absolute;
+        width: 22px;
+        height: 22px;
+        margin-left: -4px;
+        margin-top: -2px;
+        filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.45));
+        animation: bob 1.1s ease-in-out infinite;
+        z-index: 2;
+      }
+      .label {
+        position: absolute;
+        left: 0;
+        top: -30px;
+        max-width: 280px;
+        padding: 5px 9px;
+        border-radius: 6px;
+        background: rgba(16, 18, 20, 0.94);
+        color: #e8f8f4;
+        font-size: 12px;
+        font-weight: 500;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        border: 1px solid rgba(46, 196, 168, 0.45);
+      }
+      #chrome {
+        position: fixed;
+        left: 50%;
+        bottom: 28px;
+        transform: translateX(-50%);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 12px 10px 14px;
+        border-radius: 12px;
+        background: rgba(16, 18, 20, 0.94);
+        border: 1px solid rgba(46, 196, 168, 0.4);
+        color: #e8f0ee;
+        box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+        pointer-events: auto;
+        opacity: 0;
+        transition: opacity 0.2s ease;
+      }
+      #chrome.on {
+        opacity: 1;
+      }
+      #chrome .meta {
+        font-size: 12px;
+        color: #a8b5b1;
+        max-width: 280px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      #chrome .meta strong {
+        color: #e8f8f4;
+        font-weight: 600;
+      }
+      #chrome button {
+        font: inherit;
+        font-size: 12px;
+        font-weight: 600;
+        border: 0;
+        border-radius: 8px;
+        padding: 8px 12px;
+        cursor: pointer;
+      }
+      #nextBtn {
+        background: #2ec4a8;
+        color: #0b1210;
+      }
+      #exitBtn {
+        background: transparent;
+        color: #c5d0cc;
+        border: 1px solid rgba(255, 255, 255, 0.14) !important;
+      }
+      #status {
+        position: fixed;
+        top: 18px;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 7px 12px;
+        border-radius: 999px;
+        background: rgba(16, 18, 20, 0.92);
+        color: #dce8e4;
+        font-size: 12px;
+        border: 1px solid rgba(46, 196, 168, 0.35);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.2s ease;
+      }
+      #status.on {
+        opacity: 1;
+      }
+      @keyframes pop {
+        from {
+          opacity: 0;
+          transform: scale(0.92);
+        }
+        to {
+          opacity: 1;
+          transform: none;
+        }
+      }
+      @keyframes bob {
+        0%,
+        100% {
+          transform: translateY(0);
+        }
+        50% {
+          transform: translateY(4px);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="layer"></div>
+    <div id="status">Guide · looking…</div>
+    <div id="chrome">
+      <div class="meta" id="meta">Guide</div>
+      <button type="button" id="nextBtn">Next</button>
+      <button type="button" id="exitBtn">Exit</button>
+    </div>
+    <script>
+      const layer = document.getElementById("layer");
+      const chrome = document.getElementById("chrome");
+      const meta = document.getElementById("meta");
+      const status = document.getElementById("status");
+      const nextBtn = document.getElementById("nextBtn");
+      const exitBtn = document.getElementById("exitBtn");
+
+      const POINTER_SVG =
+        '<svg class="pointer" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="#2ec4a8" stroke="#0b1210" stroke-width="1.2" d="M4 3.5 L4 18.5 L9.2 14.2 L12.8 21.5 L15.2 20.3 L11.5 13.2 L18 13.2 Z"/></svg>';
+
+      function setIgnore(ignore) {
+        if (window.flickctx.setGuideIgnoreMouse) {
+          window.flickctx.setGuideIgnoreMouse(ignore);
+        }
+      }
+
+      chrome.addEventListener("mouseenter", () => setIgnore(false));
+      chrome.addEventListener("mouseleave", () => setIgnore(true));
+      // Start click-through except chrome
+      setIgnore(true);
+
+      function render(data) {
+        layer.innerHTML = "";
+        const ox = data?.origin?.x || 0;
+        const oy = data?.origin?.y || 0;
+        const items = data?.items || [];
+        const step = data?.step || {};
+        const busy = Boolean(data?.busy);
+
+        for (const h of items) {
+          const el = document.createElement("div");
+          el.className = "box";
+          el.style.left = Math.round(h.x - ox) + "px";
+          el.style.top = Math.round(h.y - oy) + "px";
+          el.style.width = Math.round(h.width) + "px";
+          el.style.height = Math.round(h.height) + "px";
+          if (h.label) {
+            const lab = document.createElement("div");
+            lab.className = "label";
+            lab.textContent = h.label;
+            el.appendChild(lab);
+          }
+          el.insertAdjacentHTML("beforeend", POINTER_SVG);
+          layer.appendChild(el);
+        }
+
+        const n = step.step || 1;
+        const label = step.label || "";
+        if (step.done) {
+          meta.innerHTML = `<strong>Done</strong> · ${escapeHtml(label || "Goal reached")}`;
+          nextBtn.textContent = "Finish";
+          nextBtn.disabled = false;
+        } else {
+          meta.innerHTML = `<strong>Step ${n}</strong> · ${escapeHtml(label || "Follow the pointer")}`;
+          nextBtn.textContent = busy ? "Working…" : "Next";
+          nextBtn.disabled = busy;
+        }
+        chrome.classList.add("on");
+        status.textContent = busy
+          ? "Guide · capturing next screen…"
+          : "Guide · click the UI, then Next (⌘⇧→) · Esc exits";
+        status.classList.add("on");
+        setIgnore(true);
+      }
+
+      function escapeHtml(s) {
+        return String(s)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;");
+      }
+
+      function clear() {
+        layer.innerHTML = "";
+        chrome.classList.remove("on");
+        status.classList.remove("on");
+        setIgnore(true);
+      }
+
+      nextBtn.onclick = () => {
+        if (nextBtn.disabled) return;
+        if (nextBtn.textContent === "Finish") {
+          window.flickctx.guideExit && window.flickctx.guideExit();
+          return;
+        }
+        window.flickctx.guideNext && window.flickctx.guideNext();
+      };
+      exitBtn.onclick = () => window.flickctx.guideExit && window.flickctx.guideExit();
+
+      window.flickctx.onGuideShow &&
+        window.flickctx.onGuideShow((data) => render(data || {}));
+      window.flickctx.onGuideClear &&
+        window.flickctx.onGuideClear(() => clear());
+      window.flickctx.onGuideBusy &&
+        window.flickctx.onGuideBusy((busy) => {
+          nextBtn.disabled = Boolean(busy);
+          nextBtn.textContent = busy ? "Working…" : "Next";
+          status.textContent = busy
+            ? "Guide · capturing next screen…"
+            : "Guide · click the UI, then Next (⌘⇧→) · Esc exits";
+        });
+
+      window.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") {
+          window.flickctx.guideExit && window.flickctx.guideExit();
+        }
+      });
+    </script>
+  </body>
+</html>

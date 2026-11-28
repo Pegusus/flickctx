@@ -31,6 +31,19 @@ contextBridge.exposeInMainWorld("flickctx", {
   listSessions: () => ipcRenderer.invoke("sessions:list"),
   setRoute: (payload) => ipcRenderer.invoke("sessions:set-route", payload),
   changeRoute: () => ipcRenderer.send("result:change-route"),
+  guideNext: () => ipcRenderer.send("guide:next"),
+  guideExit: () => ipcRenderer.send("guide:exit"),
+  setGuideIgnoreMouse: (ignore) =>
+    ipcRenderer.send("guide:set-ignore-mouse", Boolean(ignore)),
+  onGuideShow: (cb) => {
+    ipcRenderer.on("guide:show", (_e, data) => cb(data));
+  },
+  onGuideClear: (cb) => {
+    ipcRenderer.on("guide:clear", () => cb());
+  },
+  onGuideBusy: (cb) => {
+    ipcRenderer.on("guide:busy", (_e, busy) => cb(busy));
+  },
   onOverlayReset: (cb) => {
     ipcRenderer.on("overlay:reset", () => cb());
   },

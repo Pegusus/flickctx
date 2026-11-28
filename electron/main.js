@@ -22,6 +22,21 @@ const { captureFullScreenPng, tmpPng } = require("../src/capture");
 const { detectFrontmost } = require("../src/frontmost");
 const { toScreenHighlights } = require("../src/highlights");
 const { listAgentSessions, sendToAgentSession } = require("../src/sessions");
+const {
+  isGuideIntent,
+  buildGuideStartPrompt,
+  buildGuideAdvancePrompt,
+  extractGuideBlock,
+  guideStepToHighlightPayload,
+} = require("../src/guide");
+const { createGuideHost } = require("./guideHost");
+const { createBrowserBridge } = require("../src/browserBridge");
+const {
+  formatGroundingContext,
+  isBrowserApp,
+} = require("../src/browserContext");
+const { captureDesktopA11y } = require("../src/desktopA11y");
+const { normalizeRef } = require("../src/som");
 
 // So dialogs / menus say Flickctx (Screen Recording list still shows “Electron” for npm start)
 app.setName("Flickctx");
@@ -48,6 +63,17 @@ let conversationHistory = [];
 let activeRoute = null;
 let highlightEscRegistered = false;
 let highlightGen = 0;
+/** @type {null | { goal: string, step: number, route: object }} */
+let guideState = null;
+let guideShortcutsRegistered = false;
+/** Ask deferred until the user picks a route */
+let pendingAsk = null;
+const guideHost = createGuideHost();
+const browserBridge = createBrowserBridge();
+/** Latest DOM inspect from the Chrome extension (per mark / guide step) */
+let lastBrowserContext = null;
+/** Latest desktop a11y snapshot for non-browser marks */
+let lastDesktopA11y = null;
 
 function resolveInitialRoute(config) {
   if (
@@ -1046,16 +1072,319 @@ async function showHighlightsOnScreen(payload) {
   return items;
 }
 
-async function runExplain(imagePath, question = "") {
+function displayFromMarkMeta() {
+  if (!lastMarkMeta?.displayBounds) return screen.getPrimaryDisplay();
+  const id = lastMarkMeta.displayId;
+  const all = screen.getAllDisplays();
+  return (
+    all.find((d) => d.id === id) ||
+    screen.getDisplayMatching(lastMarkMeta.displayBounds) ||
+    screen.getPrimaryDisplay()
+  );
+}
+
+function registerGuideShortcuts() {
+  if (guideShortcutsRegistered) return;
+  const nextAccel =
+    process.platform === "darwin" ? "Command+Shift+Right" : "Control+Shift+Right";
+  try {
+    globalShortcut.register(nextAccel, () => {
+      if (guideState) advanceGuide().catch((err) => console.warn(err));
+    });
+  } catch {
+    /* ignore */
+  }
+  try {
+    if (!highlightEscRegistered) {
+      globalShortcut.register("Escape", () => {
+        if (guideState) exitGuide();
+        else clearHighlights();
+      });
+      highlightEscRegistered = true;
+    }
+  } catch {
+    /* ignore */
+  }
+  guideShortcutsRegistered = true;
+}
+
+function unregisterGuideShortcuts() {
+  if (!guideShortcutsRegistered) return;
+  const nextAccel =
+    process.platform === "darwin" ? "Command+Shift+Right" : "Control+Shift+Right";
+  try {
+    globalShortcut.unregister(nextAccel);
+  } catch {
+    /* ignore */
+  }
+  guideShortcutsRegistered = false;
+  // Escape stays if highlights still need it; clearHighlights manages it.
+}
+
+async function refreshBrowserContext(screenRect, { showBadges = false } = {}) {
+  lastBrowserContext = null;
+  lastDesktopA11y = null;
+  const rect =
+    screenRect || lastMarkMeta?.screenRect || lastMarkMeta?.displayBounds;
+  const browserish =
+    isBrowserApp(lastFrontmost) ||
+    Boolean(lastFrontmost?.url) ||
+    Boolean(lastBrowserContext?.url);
+
+  if (browserBridge.isExtensionConnected() && browserish) {
+    try {
+      if (showBadges) {
+        lastBrowserContext = await browserBridge.snapshotSom({
+          screenRect: rect,
+          showBadges: true,
+        });
+      } else {
+        lastBrowserContext = await browserBridge.inspectMark(rect);
+      }
+      return lastBrowserContext;
+    } catch (err) {
+      console.warn("browser context failed:", err.message || err);
+    }
+  }
+
+  if (!browserish) {
+    try {
+      lastDesktopA11y = captureDesktopA11y({
+        screenRect: rect,
+        frontmost: lastFrontmost,
+      });
+    } catch (err) {
+      console.warn("desktop a11y failed:", err.message || err);
+    }
+  }
+  return lastBrowserContext;
+}
+
+function withBrowserContext(prompt) {
+  const block = formatGroundingContext({
+    browser: lastBrowserContext,
+    desktop: lastDesktopA11y,
+  });
+  if (!block) return prompt;
+  return `${prompt}\n\n${block}`;
+}
+
+function guideTargetFromStep(step) {
+  if (!step) return null;
+  const ref = normalizeRef(step.ref);
+  if (ref) return { ref, selector: step.selector || "" };
+  if (step.selector) return { ref: "", selector: step.selector };
+  return null;
+}
+
+async function presentGuideStep(step, { note, act = false } = {}) {
+  if (!lastMarkMeta?.displayBounds) return;
+  const payload = guideStepToHighlightPayload(step);
+  const items = payload
+    ? toScreenHighlights(payload, {
+        ...lastMarkMeta,
+        // Guide steps use full-display coords
+        screenRect: lastMarkMeta.displayBounds,
+      })
+    : [];
+  clearHighlights();
+
+  const target = guideTargetFromStep(step);
+  if (target && browserBridge.isExtensionConnected()) {
+    try {
+      await browserBridge.highlight([
+        {
+          ...target,
+          label: step.label || "",
+        },
+      ]);
+      if (act && step.action === "click" && !step.done) {
+        await browserBridge.click(target);
+      }
+    } catch (err) {
+      console.warn("browser guide act failed:", err.message || err);
+    }
+  }
+
+  await guideHost.show({
+    displayBounds: lastMarkMeta.displayBounds,
+    items,
+    step,
+    busy: false,
+  });
+  registerGuideShortcuts();
+  if (resultWindow && !resultWindow.isDestroyed() && note) {
+    resultWindow.webContents.send("result:stream", {
+      kind: "guide",
+      text: note,
+    });
+  }
+}
+
+function exitGuide() {
+  guideState = null;
+  unregisterGuideShortcuts();
+  guideHost.destroy();
+  browserBridge.clearHighlights().catch(() => {});
+  if (highlightEscRegistered) {
+    try {
+      globalShortcut.unregister("Escape");
+    } catch {
+      /* ignore */
+    }
+    highlightEscRegistered = false;
+    registerHotkey();
+  }
+}
+
+async function advanceGuide() {
+  if (!guideState || busy) return;
+  if (guideState.done) {
+    exitGuide();
+    return;
+  }
+  busy = true;
+  guideHost.setBusy(true);
+  try {
+    // If the current step named a selector, click it before re-capturing
+    const prevTarget =
+      guideState.lastRef || guideState.lastSelector
+        ? {
+            ref: guideState.lastRef || "",
+            selector: guideState.lastSelector || "",
+          }
+        : null;
+    if (prevTarget && browserBridge.isExtensionConnected()) {
+      try {
+        await browserBridge.click(prevTarget);
+        await new Promise((r) => setTimeout(r, 500));
+      } catch {
+        await new Promise((r) => setTimeout(r, 350));
+      }
+    } else {
+      await new Promise((r) => setTimeout(r, 350));
+    }
+    const display = displayFromMarkMeta();
+    const shot = await captureDisplayPng(display);
+    if (lastContextImagePath && lastContextImagePath !== shot) {
+      try {
+        fs.unlinkSync(lastContextImagePath);
+      } catch {
+        /* ignore */
+      }
+    }
+    lastContextImagePath = shot;
+    lastImagePath = shot;
+    lastMarkMeta = {
+      displayId: display.id,
+      screenRect: { ...display.bounds },
+      displayBounds: { ...display.bounds },
+    };
+    guideState.step += 1;
+    await refreshBrowserContext(display.bounds, { showBadges: true });
+    const prompt = withBrowserContext(
+      buildGuideAdvancePrompt(guideState.goal, guideState.step, shot)
+    );
+    const route = guideState.route || activeRoute;
+    let result;
+    if (route && route.provider && route.provider !== "flickctx") {
+      result = await sendToAgentSession({
+        session: route,
+        question: prompt,
+        imagePath: shot,
+        onProgress: () => {},
+      });
+    } else {
+      const config = loadConfig();
+      result = await explainSelection({
+        apiKey: config.apiKey,
+        authMode: config.authMode,
+        apiKeySource: config.apiKeySource,
+        model: config.model,
+        projectPath: config.projectPath,
+        imagePath: shot,
+        contextImagePath: null,
+        frontmost: null,
+        question: prompt,
+        conversationHistory: [],
+        thinking: false,
+        maxImageEdge: config.maxImageEdge || 1600,
+        jpegQuality: config.jpegQuality || 80,
+      });
+    }
+    if (
+      result.route &&
+      result.route.id &&
+      result.route.id !== "new" &&
+      guideState
+    ) {
+      guideState.route = {
+        ...(guideState.route || {}),
+        ...result.route,
+        isNew: false,
+      };
+      applyActiveRoute(guideState.route, {
+        remember: loadConfig().rememberSessionRoute !== false,
+      });
+    }
+    const { cleanText, step } = extractGuideBlock(result.explanation || "");
+    if (!step) {
+      exitGuide();
+      const win = showResultWindow();
+      win.webContents.send("result:done", {
+        explanation:
+          cleanText ||
+          result.explanation ||
+          "Guide could not find a next target. Try asking again.",
+        reasoning: result.reasoning || "",
+        guideEnded: true,
+      });
+      return;
+    }
+    guideState.lastSelector = step.selector || "";
+    guideState.lastRef = step.ref || "";
+    if (step.done) {
+      guideState.done = true;
+      await presentGuideStep(step, { note: cleanText });
+      return;
+    }
+    await presentGuideStep(step, { note: cleanText });
+  } catch (err) {
+    console.warn("guide advance failed:", err.message || err);
+    exitGuide();
+    const win = showResultWindow();
+    win.webContents.send("result:error", {
+      message: err.message || String(err),
+    });
+  } finally {
+    busy = false;
+    guideHost.setBusy(false);
+  }
+}
+
+async function runExplain(imagePath, question = "", opts = {}) {
   const config = loadConfig();
   const win = showResultWindow();
   const route = activeRoute;
+  const guide =
+    Boolean(opts.guide) || isGuideIntent(question, Boolean(opts.guide));
   win.webContents.send("result:loading", {
     projectPath: config.projectPath,
     route: route
       ? { provider: route.provider, id: route.id, title: route.title }
       : null,
+    guide,
   });
+
+  if (guide && lastMarkMeta) {
+    await refreshBrowserContext(lastMarkMeta.screenRect || lastMarkMeta.displayBounds, {
+      showBadges: true,
+    });
+  }
+
+  const askText = withBrowserContext(
+    guide ? buildGuideStartPrompt(question, imagePath) : question
+  );
 
   try {
     let result;
@@ -1063,7 +1392,7 @@ async function runExplain(imagePath, question = "") {
       // OpenCode / Claude Code use their own auth — stream thinking/answer through.
       result = await sendToAgentSession({
         session: route,
-        question,
+        question: askText,
         imagePath,
         onProgress: (progress) => {
           if (!win.isDestroyed()) {
@@ -1084,7 +1413,7 @@ async function runExplain(imagePath, question = "") {
         imagePath,
         contextImagePath: lastContextImagePath,
         frontmost: lastFrontmost,
-        question,
+        question: askText,
         maxTranscriptChars: config.maxTranscriptChars,
         maxDiffChars: config.maxDiffChars,
         searchRoots: config.searchRoots,
@@ -1097,9 +1426,18 @@ async function runExplain(imagePath, question = "") {
         jpegQuality: config.jpegQuality || 80,
       });
     }
+
+    let explanation = result.explanation || "";
+    let guideStep = null;
+    if (guide) {
+      const parsed = extractGuideBlock(explanation);
+      explanation = parsed.cleanText || explanation;
+      guideStep = parsed.step;
+    }
+
     conversationHistory.push({
       user: question || "look at what i marked and explain it.",
-      assistant: result.explanation || "",
+      assistant: explanation,
     });
     if (conversationHistory.length > 10) {
       conversationHistory = conversationHistory.slice(-10);
@@ -1144,7 +1482,32 @@ async function runExplain(imagePath, question = "") {
       }
     }
     let highlightCount = 0;
-    if (!result.route || result.route.provider === "flickctx") {
+    if (guide && guideStep) {
+      // Switch mark meta to display-space for pointer mapping
+      if (lastMarkMeta?.displayBounds) {
+        lastMarkMeta = {
+          ...lastMarkMeta,
+          screenRect: { ...lastMarkMeta.displayBounds },
+        };
+      }
+      guideState = {
+        goal: question || "Guide me on this screen",
+        step: guideStep.step || 1,
+        route: activeRoute,
+        done: Boolean(guideStep.done),
+        lastSelector: guideStep.selector || "",
+        lastRef: guideStep.ref || "",
+      };
+      try {
+        await presentGuideStep(guideStep, { note: explanation });
+        highlightCount = guideStep.done ? 0 : 1;
+        if (resultWindow && !resultWindow.isDestroyed()) {
+          resultWindow.hide();
+        }
+      } catch (err) {
+        console.warn("guide overlay failed:", err.message || err);
+      }
+    } else if (!result.route || result.route.provider === "flickctx") {
       try {
         const drawn = await showHighlightsOnScreen(result.highlights || null);
         highlightCount = drawn.length;
@@ -1154,6 +1517,7 @@ async function runExplain(imagePath, question = "") {
     }
     win.webContents.send("result:done", {
       ...result,
+      explanation,
       imagePath,
       previewDataUrl: imagePreviewDataUrl(imagePath),
       width,
@@ -1161,6 +1525,8 @@ async function runExplain(imagePath, question = "") {
       frontmostLabel: hintBits.join(" · ") || "",
       hasContextImage: Boolean(lastContextImagePath),
       highlightCount,
+      guide: Boolean(guide && guideStep),
+      guideStep: guideStep || null,
       route: route
         ? {
             provider: route.provider,
@@ -1256,10 +1622,26 @@ function registerIpc() {
     if (payload?.remember === false) {
       saveConfig({ rememberSessionRoute: false });
     }
+    // Resume a deferred ask (e.g. Guide before route was chosen)
+    if (pendingAsk && activeRoute && !busy) {
+      const next = pendingAsk;
+      pendingAsk = null;
+      busy = true;
+      runExplain(next.imagePath, next.question || "", {
+        guide: Boolean(next.guide),
+      })
+        .catch((err) => console.warn(err))
+        .finally(() => {
+          busy = false;
+        });
+    }
     return { route: activeRoute };
   });
 
-  ipcMain.on("app:mark", () => showOverlay());
+  ipcMain.on("app:mark", () => {
+    if (guideState) exitGuide();
+    showOverlay();
+  });
   ipcMain.on("app:screenshot", () => captureScreenshotIntoFlickctx());
   ipcMain.on("app:quit", () => app.quit());
 
@@ -1305,6 +1687,41 @@ function registerIpc() {
       pendingFrontmost = null;
       conversationHistory = []; // new mark = new chat thread
       clearHighlights();
+      try {
+        await browserBridge.clearHighlights();
+      } catch {
+        /* ignore */
+      }
+      // If the mark is on a browser tab and the extension is connected, resolve DOM
+      if (
+        browserBridge.isExtensionConnected() &&
+        (isBrowserApp(lastFrontmost) || lastFrontmost?.url)
+      ) {
+        await refreshBrowserContext(
+          {
+            x: rect.x,
+            y: rect.y,
+            width: rect.width,
+            height: rect.height,
+          },
+          { showBadges: false }
+        );
+      } else {
+        lastBrowserContext = null;
+        try {
+          lastDesktopA11y = captureDesktopA11y({
+            screenRect: {
+              x: rect.x,
+              y: rect.y,
+              width: rect.width,
+              height: rect.height,
+            },
+            frontmost: lastFrontmost,
+          });
+        } catch {
+          lastDesktopA11y = null;
+        }
+      }
       lastHighlightPayload = null;
       lastMarkMeta = {
         displayId: display.id,
@@ -1331,6 +1748,11 @@ function registerIpc() {
           hintBits.push(String(fm.url).slice(0, 48));
         }
       }
+      if (lastBrowserContext?.elements?.length) {
+        hintBits.push(`dom:${lastBrowserContext.elements.length}`);
+      } else if (browserBridge.isExtensionConnected()) {
+        hintBits.push("bridge:on");
+      }
       win.webContents.send("result:ready-ask", {
         imagePath: cropped.path,
         previewDataUrl: imagePreviewDataUrl(cropped.path),
@@ -1340,6 +1762,14 @@ function registerIpc() {
         projectPath: config.projectPath,
         frontmostLabel: hintBits.join(" · ") || "",
         hasContextImage: true,
+        browserBridge: browserBridge.getStatus(),
+        browserContext: lastBrowserContext
+          ? {
+              url: lastBrowserContext.url || "",
+              title: lastBrowserContext.title || "",
+              elements: (lastBrowserContext.elements || []).slice(0, 3),
+            }
+          : null,
         route: activeRoute,
         needsRoutePick: !activeRoute,
         sessions: picker.sessions,
@@ -1434,6 +1864,9 @@ function registerIpc() {
 
   ipcMain.on("result:ask", async (_e, payload) => {
     const imagePath = payload?.imagePath || lastImagePath;
+    const question = payload?.question || "";
+    const guide =
+      Boolean(payload?.guide) || isGuideIntent(question, Boolean(payload?.guide));
     if (!imagePath) {
       const win = showResultWindow();
       win.webContents.send("result:error", {
@@ -1442,6 +1875,7 @@ function registerIpc() {
       return;
     }
     if (!activeRoute) {
+      pendingAsk = { imagePath, question, guide };
       const win = showResultWindow();
       const picker = sessionPickerPayload(loadSessionCatalog(), loadConfig());
       win.webContents.send("result:pick-route", {
@@ -1449,16 +1883,28 @@ function registerIpc() {
         sessions: picker.sessions,
         byProvider: picker.byProvider,
         sessionMeta: picker.sessionMeta,
+        pendingGuide: guide,
       });
       return;
     }
     if (busy) return;
     busy = true;
     try {
-      await runExplain(imagePath, payload?.question || "");
+      await runExplain(imagePath, question, { guide });
     } finally {
       busy = false;
     }
+  });
+
+  ipcMain.on("guide:next", () => {
+    advanceGuide().catch((err) => console.warn(err));
+  });
+  ipcMain.on("guide:exit", () => {
+    exitGuide();
+    showResultWindow();
+  });
+  ipcMain.on("guide:set-ignore-mouse", (_e, ignore) => {
+    guideHost.setIgnoreMouse(ignore !== false);
   });
 
   ipcMain.on("result:close", () => {
@@ -1492,7 +1938,8 @@ function registerIpc() {
   });
 
   ipcMain.on("highlight:dismiss", () => {
-    clearHighlights();
+    if (guideState) exitGuide();
+    else clearHighlights();
   });
 
   ipcMain.on("highlight:reshow", async () => {
@@ -1708,6 +2155,12 @@ if (!gotLock) {
     activeRoute = resolveInitialRoute(loadConfig());
     showLauncherBar();
     broadcastLauncherRoute();
+    try {
+      const port = await browserBridge.start();
+      console.log(`Flickctx browser bridge on http://127.0.0.1:${port}`);
+    } catch (err) {
+      console.warn("browser bridge failed to start:", err.message || err);
+    }
     screen.on("display-metrics-changed", () => {
       if (launcherWindow && !launcherWindow.isDestroyed()) {
         setLauncherExpanded(launcherExpanded);
@@ -1733,6 +2186,7 @@ if (!gotLock) {
 
   app.on("will-quit", () => {
     globalShortcut.unregisterAll();
+    browserBridge.stop().catch(() => {});
   });
 
   app.on("window-all-closed", (e) => {

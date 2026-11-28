@@ -465,6 +465,9 @@
       ></textarea>
       <div id="composer-actions">
         <button id="askBtn" class="primary">Send</button>
+        <button id="guideBtn" title="Pointer walkthrough via your session">
+          Guide me
+        </button>
         <button id="explainBtn">Explain mark</button>
       </div>
     </div>
@@ -480,6 +483,7 @@
       const composer = document.getElementById("composer");
       const questionEl = document.getElementById("question");
       const askBtn = document.getElementById("askBtn");
+      const guideBtn = document.getElementById("guideBtn");
       const markPreview = document.getElementById("mark-preview");
       const markImg = document.getElementById("mark-img");
       const markDims = document.getElementById("mark-dims");
@@ -975,23 +979,39 @@
       function setBusy(isBusy) {
         busy = isBusy;
         askBtn.disabled = isBusy;
+        if (guideBtn) guideBtn.disabled = isBusy;
         questionEl.disabled = isBusy;
       }
 
-      function submit(question) {
+      function submit(question, { guide = false } = {}) {
         if (!pendingImagePath || busy) return;
         if (!activeRoute) {
           messages = [{
             role: "system",
-            text: "Pick an OpenCode / Claude Code session (or Flickctx built-in) first.",
+            text: guide
+              ? "Pick an OpenCode or Claude Code session first — Guide will start after you choose."
+              : "Pick an OpenCode / Claude Code session (or Flickctx built-in) first.",
           }];
           renderChat();
           routePicker.classList.add("visible");
+          window.flickctx.askAboutMark({
+            imagePath: pendingImagePath,
+            question: (question || "").trim(),
+            guide: Boolean(guide),
+          });
           return;
         }
         const q = (question || "").trim();
-        if (q) {
-          messages.push({ role: "user", text: q });
+        if (guide && !q) {
+          messages.push({
+            role: "user",
+            text: "Guide me on this screen — show where to click next.",
+          });
+        } else if (q) {
+          messages.push({
+            role: "user",
+            text: guide ? `Guide: ${q}` : q,
+          });
         } else {
           messages.push({ role: "user", text: "Explain what I marked." });
         }
@@ -999,8 +1019,9 @@
           role: "assistant",
           text: "",
           reasoning: "",
-          status:
-            activeRoute.provider === "flickctx"
+          status: guide
+            ? "Guide · finding next click…"
+            : activeRoute.provider === "flickctx"
               ? "Thinking…"
               : activeRoute.provider === "claude"
                 ? "Claude Code · starting…"
@@ -1013,6 +1034,7 @@
         window.flickctx.askAboutMark({
           imagePath: pendingImagePath,
           question: q,
+          guide: Boolean(guide),
         });
       }
 
@@ -1054,6 +1076,14 @@
           window.flickctx.copyText(last.followUpPrompt);
       };
       askBtn.onclick = () => submit(questionEl.value);
+      if (guideBtn) {
+        guideBtn.onclick = () =>
+          submit(
+            questionEl.value ||
+              "Show me where to go next on this screen to finish my goal.",
+            { guide: true }
+          );
+      }
       document.getElementById("explainBtn").onclick = () => submit("");
       questionEl.addEventListener("keydown", (e) => {
         if (e.key === "Enter" && !e.shiftKey) {
@@ -1210,6 +1240,14 @@
         if (data.model) bits.push(data.model);
         if (data.thinkingEnabled) bits.push("thinking");
         if (data.highlightCount) bits.push(`highlights:${data.highlightCount}`);
+        if (data.guide) {
+          bits.push("guide:on-screen");
+          messages.push({
+            role: "system",
+            text: "Guide is on screen — follow the pointer, then Next (⌘⇧→ / Ctrl+Shift+→). Esc exits.",
+          });
+          renderChat();
+        }
         meta.textContent = bits.join(" · ");
         footer.classList.remove("hidden");
         if (data.highlightCount > 0) reshowHighlights.classList.remove("hidden");

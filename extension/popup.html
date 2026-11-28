@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Flickctx</title>
+    <style>
+      body {
+        margin: 0;
+        font: 13px/1.45 system-ui, sans-serif;
+        color: #111;
+        min-width: 260px;
+        padding: 12px 14px;
+        background: #f7f7f7;
+      }
+      h1 {
+        margin: 0 0 6px;
+        font-size: 14px;
+        letter-spacing: -0.02em;
+      }
+      h1 span {
+        color: #0f766e;
+      }
+      p {
+        margin: 0 0 8px;
+        color: #66707a;
+        font-size: 12px;
+      }
+      #status {
+        font-family: ui-monospace, monospace;
+        font-size: 11px;
+        padding: 8px 10px;
+        background: #fff;
+        border: 1px solid #e4e4e4;
+        border-radius: 6px;
+      }
+      .ok {
+        color: #0f766e;
+      }
+      .bad {
+        color: #b91c1c;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Flick<span>ctx</span> bridge</h1>
+    <p>Talks to the Flickctx desktop app on localhost:19234.</p>
+    <div id="status">Checking…</div>
+    <script src="popup.js"></script>
+  </body>
+</html>

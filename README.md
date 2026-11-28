@@ -42,6 +42,20 @@ npx flickctx context
 npx flickctx mark
 ```
 
+## Browser bridge (optional)
+
+For richer Guide / highlights on web UIs, load the Chrome extension:
+
+1. `npm start` (bridge on `127.0.0.1:19234`)
+2. Chrome → Extensions → Developer mode → **Load unpacked** → `extension/`
+3. Popup should say **Connected**
+
+Mark a region on a tab → Flickctx silently inspects DOM under the mark (no SoM badges).
+
+**Guide** on a tab turns on Set-of-Marks badges (`e1`, `e2`, …) and prefers `ref` in `flickctx-guide` for in-page highlight/click. Normal ask/mark keeps badges off (intent-gated).
+
+Non-browser marks can include a lightweight desktop accessibility tree (`src/desktopA11y.js`).
+
 ## Stack
 
 | Piece | Role |
@@ -49,6 +63,7 @@ npx flickctx mark
 | **Electron** + **Node.js** | Desktop shell, IPC, capture, session bridge |
 | **screenshot-desktop** | Display capture |
 | **Claude Code / OpenCode** | Session CLIs Flickctx routes into |
+| **Chrome extension** | Optional DOM inspect / in-page highlight + click |
 | **Next.js** | Marketing site (`site/`) |
 
 ## License
