@@ -243,6 +243,15 @@
   font-size: 10px;
 }
 
+.ddTop img {
+  width: 18px !important;
+  height: 20px !important;
+  max-width: 18px;
+  max-height: 20px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
 .ddTop strong {
   font-weight: 600;
   color: #fff;
@@ -322,7 +331,15 @@
   background: #232f3e;
   color: #eaeded;
   font-size: 10px;
-  /* header is inside the floating screen — not an outer border */
+}
+
+.awsHeader img {
+  width: 36px !important;
+  height: 22px !important;
+  max-width: 36px;
+  max-height: 22px;
+  object-fit: contain;
+  flex-shrink: 0;
 }
 
 .awsHeader strong {
