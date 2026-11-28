@@ -301,7 +301,8 @@ function createOverlays() {
   return overlayWindows;
 }
 
-const LAUNCHER_EXPANDED = { width: 520, height: 44 };
+const PANEL_WIDTH = 520;
+const LAUNCHER_EXPANDED = { width: PANEL_WIDTH, height: 44 };
 const LAUNCHER_COLLAPSED = { width: 118, height: 36 };
 let launcherExpanded = false;
 /** Remember chat visibility across a Mark gesture so cancel can restore it. */
@@ -505,7 +506,7 @@ function launcherBounds(expanded = launcherExpanded) {
 function placeResultWindow(win) {
   if (!win || win.isDestroyed()) return;
   const area = primaryWorkArea();
-  const width = Math.min(460, Math.max(360, win.getBounds().width || 460));
+  const width = PANEL_WIDTH;
   const height = Math.min(620, Math.max(420, win.getBounds().height || 620));
   const launcherVisible =
     launcherWindow && !launcherWindow.isDestroyed() && launcherWindow.isVisible();
@@ -552,12 +553,14 @@ function showLauncherBar() {
 }
 
 function createResultWindow() {
-  const width = 460;
+  const width = PANEL_WIDTH;
   const height = 620;
   const area = primaryWorkArea();
   const win = new BrowserWindow({
     width,
     height,
+    minWidth: PANEL_WIDTH,
+    maxWidth: PANEL_WIDTH,
     x: area.x + area.width - width - 16,
     y: area.y + 12 + LAUNCHER_COLLAPSED.height + 10,
     frame: false,
