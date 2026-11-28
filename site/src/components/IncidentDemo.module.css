@@ -23,20 +23,28 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transform-origin: 54% 46%;
-  transition: transform 0.95s var(--ease);
+  transform-origin: 50% 48%;
+  will-change: transform;
+  transition: transform 1.15s var(--ease);
 }
 
 .zoomWide {
-  transform: scale(1);
+  transform: scale(1) translate(0, 0);
 }
 
-.zoomMark {
-  transform: scale(1.42);
+/* Punch into AWS ACU spike (right-center of laptop screen) */
+.zoomMarkAws {
+  transform: scale(2.25) translate(-8%, 6%);
 }
 
+/* Punch into Datadog error rows (mid logs) */
+.zoomMarkDd {
+  transform: scale(2.05) translate(2%, -4%);
+}
+
+/* Pull back and pan so Flickctx panel owns the frame */
 .zoomFlick {
-  transform: scale(1.28) translate(-9%, 1.5%);
+  transform: scale(1.55) translate(-22%, 1%);
 }
 
 /* Mark bar */
@@ -114,8 +122,8 @@
 }
 
 .zoomFlick .laptop {
-  opacity: 0.82;
-  filter: brightness(0.88);
+  opacity: 0.72;
+  filter: brightness(0.78);
 }
 
 .laptopBezel {
@@ -597,11 +605,11 @@
   border-right: none;
   border-radius: 12px 0 0 12px;
   box-shadow: -12px 0 40px rgba(0, 0, 0, 0.5);
-  transform: translateX(104%) scale(0.92);
-  opacity: 0.94;
+  transform: translateX(108%) scale(0.88);
+  opacity: 0.9;
   transition:
-    transform 0.95s var(--ease),
-    opacity 0.95s var(--ease);
+    transform 1.15s var(--ease),
+    opacity 1.15s var(--ease);
   overflow: hidden;
   pointer-events: none;
 }
@@ -829,8 +837,16 @@
     width: min(94%, 100%);
   }
 
+  .zoomMarkAws {
+    transform: scale(1.75) translate(-5%, 4%);
+  }
+
+  .zoomMarkDd {
+    transform: scale(1.7) translate(1%, -2%);
+  }
+
   .zoomFlick {
-    transform: scale(1.22) translate(-6%, 1%);
+    transform: scale(1.35) translate(-14%, 1%);
   }
 
   .chatPanel {
@@ -861,7 +877,8 @@
     transition: none !important;
   }
 
-  .zoomMark,
+  .zoomMarkAws,
+  .zoomMarkDd,
   .zoomFlick,
   .zoomWide {
     transform: none !important;

@@ -63,7 +63,7 @@ function flowFor(
       id: `${p}-draw`,
       app,
       caption: "Freehand mark becomes the focus.",
-      ms: 2000,
+      ms: 1800,
       dim: true,
       hint: true,
       draw: true,
@@ -77,8 +77,8 @@ function flowFor(
     {
       id: `${p}-drawn`,
       app,
-      caption: "Crop locked — zoom in on the mark.",
-      ms: 1400,
+      caption: "Crop locked — camera pushes into the mark.",
+      ms: 2200,
       dim: true,
       hint: false,
       draw: false,
@@ -92,8 +92,8 @@ function flowFor(
     {
       id: `${p}-chat`,
       app,
-      caption: `Zoom to Flickctx · ${cfg.route}.`,
-      ms: 2000,
+      caption: `Pull to Flickctx · ${cfg.route}.`,
+      ms: 2200,
       dim: false,
       hint: false,
       draw: false,
@@ -220,12 +220,15 @@ export function IncidentDemo({
     .filter(Boolean)
     .join(" ");
 
+  // Wide → punch into mark (after crop) → pan to Flickctx. No zoom while drawing.
   const cameraClass = [
     styles.camera,
     step.chat
       ? styles.zoomFlick
-      : step.draw || step.drawn
-        ? styles.zoomMark
+      : step.drawn
+        ? isAws
+          ? styles.zoomMarkAws
+          : styles.zoomMarkDd
         : styles.zoomWide,
   ].join(" ");
 
