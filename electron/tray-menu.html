@@ -70,6 +70,10 @@
         <span>Mark region</span>
         <span class="kbd" id="hotkey">⌘⇧F</span>
       </button>
+      <button class="item" data-action="screenshot" type="button">
+        <span>Screenshot → Flickctx</span>
+        <span class="kbd" id="shotHotkey">⌘⇧S</span>
+      </button>
       <button class="item" data-action="chat" type="button">
         <span>Open chat</span>
       </button>
@@ -105,6 +109,10 @@
         window.flickctx.onTrayMenuMeta((meta) => {
           if (meta?.hotkey) {
             document.getElementById("hotkey").textContent = meta.hotkey;
+          }
+          if (meta?.screenshotHotkey) {
+            document.getElementById("shotHotkey").textContent =
+              meta.screenshotHotkey;
           }
         });
       }

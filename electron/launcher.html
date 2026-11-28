@@ -120,6 +120,7 @@
     <div id="bar">
       <div id="brand">Flick<span>ctx</span></div>
       <button id="mark" type="button" title="Mark a screen region">Mark</button>
+      <button id="shot" type="button" title="Screenshot this display">Shot</button>
       <button id="route" type="button" title="Pick Claude Code / OpenCode session">
         Route
       </button>
@@ -131,6 +132,7 @@
       const body = document.body;
       const chip = document.getElementById("chip");
       const mark = document.getElementById("mark");
+      const shot = document.getElementById("shot");
       const routeBtn = document.getElementById("route");
       const chat = document.getElementById("chat");
       const collapse = document.getElementById("collapse");
@@ -163,6 +165,7 @@
         }
       };
       mark.onclick = () => window.flickctx.mark();
+      shot.onclick = () => window.flickctx.screenshot();
       routeBtn.onclick = () =>
         window.flickctx.openRouteMenu && window.flickctx.openRouteMenu();
       chat.onclick = () =>

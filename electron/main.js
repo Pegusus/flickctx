@@ -68,6 +68,42 @@ function resolveInitialRoute(config) {
   return null;
 }
 
+function loadSessionCatalog() {
+  try {
+    return listAgentSessions({ limit: 40 });
+  } catch (err) {
+    console.warn("session list failed:", err.message || err);
+    return {
+      sessions: [],
+      byProvider: { claude: [], opencode: [] },
+      counts: { claude: 0, opencode: 0 },
+      claudeAvailable: false,
+      opencodeAvailable: false,
+      error: err.message || String(err),
+    };
+  }
+}
+
+function sessionPickerPayload(catalog, config) {
+  return {
+    sessions: catalog.sessions || [],
+    byProvider: catalog.byProvider || {
+      claude: (catalog.sessions || []).filter((s) => s.provider === "claude"),
+      opencode: (catalog.sessions || []).filter(
+        (s) => s.provider === "opencode"
+      ),
+    },
+    sessionMeta: {
+      counts: catalog.counts || {},
+      claudeAvailable: Boolean(catalog.claudeAvailable),
+      opencodeAvailable: Boolean(catalog.opencodeAvailable),
+      rememberSessionRoute:
+        !config || config.rememberSessionRoute !== false,
+      error: catalog.error || "",
+    },
+  };
+}
+
 function ensureMacScreenPermission({ forcePrompt = false } = {}) {
   if (process.platform !== "darwin") return true;
   let status = "unknown";
@@ -211,7 +247,7 @@ function createOverlays() {
   return overlayWindows;
 }
 
-const LAUNCHER_EXPANDED = { width: 460, height: 44 };
+const LAUNCHER_EXPANDED = { width: 520, height: 44 };
 const LAUNCHER_COLLAPSED = { width: 118, height: 36 };
 let launcherExpanded = false;
 /** Remember chat visibility across a Mark gesture so cancel can restore it. */
@@ -520,6 +556,101 @@ function createLauncher() {
   return win;
 }
 
+async function captureScreenshotIntoFlickctx() {
+  if (busy) return;
+  ensureMacScreenPermission();
+  busy = true;
+  hideTrayMenu();
+  let fm = null;
+  try {
+    fm = detectFrontmost();
+  } catch {
+    fm = null;
+  }
+  if (launcherWindow && !launcherWindow.isDestroyed()) {
+    launcherWindow.hide();
+  }
+  if (resultWindow && !resultWindow.isDestroyed()) {
+    resultWindow.hide();
+  }
+  try {
+    await new Promise((r) => setTimeout(r, 140));
+    const pt = screen.getCursorScreenPoint();
+    const display = screen.getDisplayNearestPoint(pt);
+    const full = await captureDisplayPng(display);
+    if (lastContextImagePath && lastContextImagePath !== full) {
+      try {
+        fs.unlinkSync(lastContextImagePath);
+      } catch {
+        /* ignore */
+      }
+    }
+    lastContextImagePath = null;
+    lastImagePath = full;
+    lastFrontmost = fm;
+    conversationHistory = [];
+    clearHighlights();
+    lastHighlightPayload = null;
+    lastMarkMeta = {
+      displayId: display.id,
+      screenRect: {
+        x: display.bounds.x,
+        y: display.bounds.y,
+        width: display.bounds.width,
+        height: display.bounds.height,
+      },
+      displayBounds: { ...display.bounds },
+      captureMode: "screenshot",
+    };
+    const config = loadConfig();
+    activeRoute = resolveInitialRoute(config);
+    const sessionCatalog = loadSessionCatalog();
+    const picker = sessionPickerPayload(sessionCatalog, config);
+    const win = showResultWindow();
+    const img = nativeImage.createFromPath(full);
+    const size = img.getSize();
+    let bytes = 0;
+    try {
+      bytes = fs.statSync(full).size;
+    } catch {
+      bytes = 0;
+    }
+    const hintBits = ["screenshot"];
+    if (fm?.appName) hintBits.push(fm.appName);
+    if (fm?.url) {
+      try {
+        hintBits.push(new URL(fm.url).hostname);
+      } catch {
+        hintBits.push(String(fm.url).slice(0, 48));
+      }
+    }
+    win.webContents.send("result:ready-ask", {
+      imagePath: full,
+      previewDataUrl: imagePreviewDataUrl(full),
+      width: size.width,
+      height: size.height,
+      bytes,
+      projectPath: config.projectPath,
+      frontmostLabel: hintBits.join(" · "),
+      hasContextImage: false,
+      captureMode: "screenshot",
+      route: activeRoute,
+      needsRoutePick: !activeRoute,
+      sessions: picker.sessions,
+      byProvider: picker.byProvider,
+      sessionMeta: picker.sessionMeta,
+    });
+  } catch (err) {
+    const win = showResultWindow();
+    win.webContents.send("result:error", {
+      message: err.message || String(err),
+    });
+  } finally {
+    busy = false;
+    showLauncherBar();
+  }
+}
+
 function showOverlay() {
   if (busy) return;
   ensureMacScreenPermission();
@@ -805,8 +936,10 @@ function showTrayMenu() {
   }
 
   trayMenuWindow.setBounds({ x, y, width, height });
+  const trayConfig = loadConfig();
   trayMenuWindow.webContents.send("tray:meta", {
-    hotkey: formatHotkeyLabel(loadConfig().hotkey),
+    hotkey: formatHotkeyLabel(trayConfig.hotkey),
+    screenshotHotkey: formatHotkeyLabel(trayConfig.screenshotHotkey),
   });
   trayMenuWindow.show();
   pinAcrossSpaces(trayMenuWindow);
@@ -1070,42 +1203,6 @@ function registerIpc() {
     };
   });
 
-  function loadSessionCatalog() {
-    try {
-      return listAgentSessions({ limit: 40 });
-    } catch (err) {
-      console.warn("session list failed:", err.message || err);
-      return {
-        sessions: [],
-        byProvider: { claude: [], opencode: [] },
-        counts: { claude: 0, opencode: 0 },
-        claudeAvailable: false,
-        opencodeAvailable: false,
-        error: err.message || String(err),
-      };
-    }
-  }
-
-  function sessionPickerPayload(catalog, config) {
-    return {
-      sessions: catalog.sessions || [],
-      byProvider: catalog.byProvider || {
-        claude: (catalog.sessions || []).filter((s) => s.provider === "claude"),
-        opencode: (catalog.sessions || []).filter(
-          (s) => s.provider === "opencode"
-        ),
-      },
-      sessionMeta: {
-        counts: catalog.counts || {},
-        claudeAvailable: Boolean(catalog.claudeAvailable),
-        opencodeAvailable: Boolean(catalog.opencodeAvailable),
-        rememberSessionRoute:
-          !config || config.rememberSessionRoute !== false,
-        error: catalog.error || "",
-      },
-    };
-  }
-
   ipcMain.handle("sessions:list", () => {
     return loadSessionCatalog();
   });
@@ -1163,6 +1260,7 @@ function registerIpc() {
   });
 
   ipcMain.on("app:mark", () => showOverlay());
+  ipcMain.on("app:screenshot", () => captureScreenshotIntoFlickctx());
   ipcMain.on("app:quit", () => app.quit());
 
   ipcMain.on("overlay:cancel", () => {
@@ -1282,6 +1380,9 @@ function registerIpc() {
     switch (action) {
       case "mark":
         showOverlay();
+        break;
+      case "screenshot":
+        captureScreenshotIntoFlickctx();
         break;
       case "chat":
         showResultWindow();
@@ -1434,6 +1535,11 @@ function buildTray() {
       click: () => showOverlay(),
     },
     {
+      label: "Screenshot → Flickctx",
+      accelerator: "CommandOrControl+Shift+S",
+      click: () => captureScreenshotIntoFlickctx(),
+    },
+    {
       label: "Show Mark bar",
       click: () => showLauncherBar(),
     },
@@ -1517,6 +1623,11 @@ function buildDock() {
     app.dock.setMenu(
       Menu.buildFromTemplate([
         { label: "Mark region", click: () => showOverlay() },
+        {
+          label: "Screenshot → Flickctx",
+          accelerator: "CommandOrControl+Shift+S",
+          click: () => captureScreenshotIntoFlickctx(),
+        },
         { label: "Show Mark bar", click: () => setLauncherExpanded(true) },
         { label: "Open chat", click: () => showResultWindow() },
         { type: "separator" },
@@ -1561,8 +1672,20 @@ function registerHotkey() {
   const ok = globalShortcut.register(config.hotkey, () => showOverlay());
   if (!ok) {
     console.error("Failed to register hotkey", config.hotkey);
-  } else {
-    console.log(`Flickctx ready — press ${config.hotkey} to mark a region`);
+  }
+  const shotKey = config.screenshotHotkey;
+  if (shotKey) {
+    const okShot = globalShortcut.register(shotKey, () =>
+      captureScreenshotIntoFlickctx()
+    );
+    if (!okShot) {
+      console.error("Failed to register screenshot hotkey", shotKey);
+    }
+  }
+  if (ok) {
+    console.log(
+      `Flickctx ready — press ${config.hotkey} to mark, ${shotKey || "Screenshot hotkey"} for full display`
+    );
   }
 }
 
@@ -1604,7 +1727,7 @@ if (!gotLock) {
       /* permission may still be pending */
     }
     console.log(
-      "Flickctx ready — look top-right menu bar for “Flickctx”, or the Mark bar under it. ⌘⇧F to mark."
+      "Flickctx ready — look top-right menu bar for “Flickctx”, or the Mark bar under it. ⌘⇧F to mark, ⌘⇧S for screenshot."
     );
   });
 
