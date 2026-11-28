@@ -32,19 +32,19 @@
   transform: scale(1) translate(0, 0);
 }
 
-/* Punch into AWS ACU spike (right-center of laptop screen) */
+/* Punch into AWS ACU spike — keep framed on the chart, not the bezel edge */
 .zoomMarkAws {
-  transform: scale(2.25) translate(-8%, 6%);
+  transform: scale(2.05) translate(-4%, 8%);
 }
 
 /* Punch into Datadog error rows (mid logs) */
 .zoomMarkDd {
-  transform: scale(2.05) translate(2%, -4%);
+  transform: scale(1.95) translate(0%, 2%);
 }
 
 /* Pull back and pan so Flickctx panel owns the frame */
 .zoomFlick {
-  transform: scale(1.55) translate(-22%, 1%);
+  transform: scale(1.5) translate(-20%, 0%);
 }
 
 /* Mark bar */
@@ -870,15 +870,15 @@
   }
 
   .zoomMarkAws {
-    transform: scale(1.75) translate(-5%, 4%);
+    transform: scale(1.65) translate(-2%, 5%);
   }
 
   .zoomMarkDd {
-    transform: scale(1.7) translate(1%, -2%);
+    transform: scale(1.6) translate(0%, 1%);
   }
 
   .zoomFlick {
-    transform: scale(1.35) translate(-14%, 1%);
+    transform: scale(1.32) translate(-12%, 0%);
   }
 
   .chatPanel {

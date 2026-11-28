@@ -83,7 +83,7 @@ function flowFor(
       hint: false,
       draw: false,
       drawn: true,
-      markBar: true,
+      markBar: false,
       chat: false,
       preview: false,
       typed: false,
@@ -234,22 +234,23 @@ export function IncidentDemo({
 
   return (
     <div className={demoClass}>
-      <div className={cameraClass}>
-        <div
-          className={`${styles.markBar} ${step.markBar ? styles.markBarOn : ""}`}
-          aria-hidden
-        >
-          <div className={styles.markBrand}>
-            Flick<span>ctx</span>
-          </div>
-          <span className={styles.markBtn}>Mark</span>
-          <span className={styles.markBtn}>Shot</span>
-          <span className={`${styles.markBtn} ${styles.markRouteOn}`}>
-            {isAws ? "OpenCode" : "Claude"}
-          </span>
-          <span className={styles.markBtn}>Chat</span>
+      {/* Outside .camera so it does not scale into a thick black strip during zoom */}
+      <div
+        className={`${styles.markBar} ${step.markBar ? styles.markBarOn : ""}`}
+        aria-hidden
+      >
+        <div className={styles.markBrand}>
+          Flick<span>ctx</span>
         </div>
+        <span className={styles.markBtn}>Mark</span>
+        <span className={styles.markBtn}>Shot</span>
+        <span className={`${styles.markBtn} ${styles.markRouteOn}`}>
+          {isAws ? "OpenCode" : "Claude"}
+        </span>
+        <span className={styles.markBtn}>Chat</span>
+      </div>
 
+      <div className={cameraClass}>
         <div className={styles.laptop}>
           <div className={styles.laptopBezel}>
             <div className={styles.cam} aria-hidden />
